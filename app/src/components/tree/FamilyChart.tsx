@@ -1,0 +1,1104 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as REPointerEvent,
+} from "react";
+import type { Person, Relationship } from "@db/schema";
+import type { TreeBranch } from "@db/tables";
+import { useLabels } from "@/lib/labels";
+import { useTranslation } from "react-i18next";
+import { computePersonRanks, birthSortKey } from "@/lib/birthOrder";
+import {
+  childrenOfPair,
+  childrenWithFatherOnly,
+  collectReachableFromRoots,
+  getParents,
+} from "@/lib/familyGraph";
+import PersonRankLines from "@/components/tree/PersonRankLines";
+import {
+  findSpouseRel,
+  formatSpouseDates,
+  sortSpouses,
+} from "@/lib/spouseMeta";
+import {
+  BranchColumn,
+  CoupleBridge,
+  CoupleToChildrenConnector,
+  PolygamyLayout,
+  SiblingFork,
+  SpouseHeart,
+  VLine,
+} from "@/components/tree/ChartConnectors";
+import { Baby, Heart, Minus, Plus, RotateCcw, Move } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type Labels = ReturnType<typeof useLabels>;
+
+type RemotePerson = Person & { linkId: number; forPersonId: number };
+
+type Props = {
+  people: Person[];
+  rels: Relationship[];
+  branches?: TreeBranch[];
+  remotePeople?: RemotePerson[];
+  onPersonClick?: (person: Person) => void;
+  onToggleBranch?: (branchId: number, isHidden: boolean) => void;
+  compact?: boolean;
+  disablePanZoom?: boolean;
+};
+
+function isFemale(gender: string) {
+  return gender === "female";
+}
+
+function isAlive(person: Person) {
+  return person.isLiving === true || (person.isLiving as unknown) === 1;
+}
+
+function genderTheme(gender: string, living: boolean) {
+  const female = isFemale(gender);
+  if (!living) {
+    return female
+      ? { bar: "#9d174d", avatar: "#9f1239", ring: "ring-pink-300", bg: "bg-pink-50", border: "border-pink-200" }
+      : { bar: "#1e3a8a", avatar: "#1e40af", ring: "ring-blue-300", bg: "bg-blue-50", border: "border-blue-200" };
+  }
+  return female
+    ? { bar: "#ec4899", avatar: "#db2777", ring: "ring-pink-200", bg: "bg-pink-50/70", border: "border-pink-300" }
+    : { bar: "#2563eb", avatar: "#1d4ed8", ring: "ring-blue-200", bg: "bg-blue-50/70", border: "border-blue-300" };
+}
+
+export default function FamilyChart({
+  people,
+  rels,
+  branches = [],
+  remotePeople = [],
+  onPersonClick,
+  onToggleBranch,
+  compact,
+  disablePanZoom,
+}: Props) {
+  const L = useLabels();
+  const { t } = useTranslation();
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const last = useRef({ x: 0, y: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const graph = useMemo(() => {
+    const byId = new Map<number, Person>(people.map((p) => [p.id, p]));
+    const childrenOf = new Map<number, number[]>();
+    const spousesOf = new Map<number, number[]>();
+    const childIds = new Set<number>();
+
+    for (const r of rels) {
+      if (!byId.has(r.fromPersonId) || !byId.has(r.toPersonId)) continue;
+      if (r.type === "parent") {
+        childIds.add(r.toPersonId);
+        const kids = childrenOf.get(r.fromPersonId) ?? [];
+        if (!kids.includes(r.toPersonId)) kids.push(r.toPersonId);
+        childrenOf.set(r.fromPersonId, kids);
+      } else {
+        for (const [a, b] of [
+          [r.fromPersonId, r.toPersonId],
+          [r.toPersonId, r.fromPersonId],
+        ] as const) {
+          const arr = spousesOf.get(a) ?? [];
+          if (!arr.includes(b)) arr.push(b);
+          spousesOf.set(a, arr);
+        }
+      }
+    }
+
+    for (const [pid, kids] of childrenOf) {
+      kids.sort((a, b) => {
+        const pa = byId.get(a);
+        const pb = byId.get(b);
+        if (!pa || !pb) return 0;
+        return birthSortKey(pa) - birthSortKey(pb);
+      });
+      childrenOf.set(pid, kids);
+    }
+
+    const hiddenBranchIds = new Set(
+      branches.filter((b) => b.isHidden).map((b) => b.id),
+    );
+    const branchRootIds = new Set(
+      branches.filter((b) => !b.isHidden).map((b) => b.rootPersonId),
+    );
+
+    const rawRoots = people.filter((p) => {
+      if (childIds.has(p.id)) return false;
+      if (p.branchId && hiddenBranchIds.has(p.branchId)) {
+        const hasSpouseInMain = (spousesOf.get(p.id) ?? []).some((sid) => {
+          const s = byId.get(sid);
+          return s && (!s.branchId || !hiddenBranchIds.has(s.branchId));
+        });
+        return hasSpouseInMain;
+      }
+      return true;
+    });
+    const spouseOfDescendant = new Set<number>();
+    for (const [personId, spouseIds] of spousesOf) {
+      if (childIds.has(personId)) {
+        for (const sid of spouseIds) spouseOfDescendant.add(sid);
+      }
+    }
+
+    const shownAsSpouse = new Set<number>();
+    const orderedRoots: Person[] = [];
+    const sortedRaw = [...rawRoots].sort((a, b) => {
+      if (a.gender !== b.gender) return isFemale(a.gender) ? 1 : -1;
+      return a.givenName.localeCompare(b.givenName, "ar");
+    });
+    for (const root of sortedRaw) {
+      if (spouseOfDescendant.has(root.id) || shownAsSpouse.has(root.id)) continue;
+      orderedRoots.push(root);
+      for (const sid of spousesOf.get(root.id) ?? []) {
+        if (!childIds.has(sid)) shownAsSpouse.add(sid);
+      }
+    }
+    if (orderedRoots.length === 0 && people.length > 0) orderedRoots.push(people[0]);
+
+    for (const br of branches) {
+      if (br.isHidden) continue;
+      const rootPerson = byId.get(br.rootPersonId);
+      if (
+        rootPerson &&
+        !childIds.has(rootPerson.id) &&
+        !orderedRoots.some((r) => r.id === rootPerson.id)
+      ) {
+        orderedRoots.push(rootPerson);
+      }
+    }
+
+    // اعرض من أعلى جد — امشِ للأعلى من أي جذر محتمل
+    const resolveTopmost = (startId: number): number => {
+      let current = startId;
+      const seen = new Set<number>();
+      for (let i = 0; i < 40; i++) {
+        const { fatherId, motherId } = getParents(current, rels, byId);
+        const parentId = fatherId ?? motherId;
+        if (!parentId || seen.has(parentId)) break;
+        seen.add(parentId);
+        current = parentId;
+      }
+      return current;
+    };
+
+    const isAncestorOf = (ancestorId: number, personId: number): boolean => {
+      let current = personId;
+      const seen = new Set<number>();
+      for (let i = 0; i < 40; i++) {
+        const { fatherId, motherId } = getParents(current, rels, byId);
+        const parentId = fatherId ?? motherId;
+        if (!parentId || seen.has(parentId)) break;
+        if (parentId === ancestorId) return true;
+        seen.add(parentId);
+        current = parentId;
+      }
+      return false;
+    };
+
+    const topRootById = new Map<number, Person>();
+    for (const r of orderedRoots) {
+      const topId = resolveTopmost(r.id);
+      const top = byId.get(topId);
+      if (top) topRootById.set(topId, top);
+    }
+    const mergedRoots = [...topRootById.values()].sort((a, b) => {
+      if (a.gender !== b.gender) return isFemale(a.gender) ? 1 : -1;
+      return a.givenName.localeCompare(b.givenName, "ar");
+    });
+    const finalRoots = mergedRoots.filter(
+      (r) => !mergedRoots.some((other) => other.id !== r.id && isAncestorOf(other.id, r.id)),
+    );
+
+    const isConnected = (p: Person) =>
+      (childrenOf.get(p.id)?.length ?? 0) > 0 ||
+      (spousesOf.get(p.id)?.length ?? 0) > 0;
+
+    const dedupedRoots = finalRoots.filter((r) => {
+      const sameName = people.filter((p) => p.givenName === r.givenName);
+      if (sameName.length <= 1) return true;
+      if (isConnected(r)) return true;
+      return !sameName.some((p) => p.id !== r.id && isConnected(p));
+    });
+
+    const remoteByLocal = new Map<number, RemotePerson[]>();
+    for (const rp of remotePeople) {
+      const arr = remoteByLocal.get(rp.forPersonId) ?? [];
+      arr.push(rp);
+      remoteByLocal.set(rp.forPersonId, arr);
+    }
+
+    const ranks = new Map(
+      people.map((p) => [p.id, computePersonRanks(p, people, rels)]),
+    );
+
+    const displayRoots = dedupedRoots.length > 0 ? dedupedRoots : finalRoots.length > 0 ? finalRoots : orderedRoots;
+    const reachable = collectReachableFromRoots(
+      displayRoots.map((r) => r.id),
+      childrenOf,
+      spousesOf,
+    );
+    const orphans = people.filter((p) => !reachable.has(p.id));
+
+    return {
+      byId,
+      childrenOf,
+      spousesOf,
+      roots: displayRoots,
+      orphans,
+      ranks,
+      remoteByLocal,
+      branchRootIds,
+      branches,
+    };
+  }, [people, rels, branches, remotePeople]);
+
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  // إعادة ضبط العرض عند تغيّر البيانات حتى لا تبقى الشجرة خارج الشاشة
+  useEffect(() => {
+    resetView();
+  }, [people.length, rels.length, resetView]);
+
+  // ضبط حجم الشجرة للطباعة والمعاينة
+  useEffect(() => {
+    if (!disablePanZoom) return;
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content) return;
+
+    const fit = () => {
+      content.style.transform = "";
+      const available = viewport.clientWidth - 24;
+      const needed = content.scrollWidth;
+      if (needed > available && available > 0) {
+        const scale = Math.max(0.45, available / needed);
+        content.style.transform = `scale(${scale})`;
+        content.style.transformOrigin = "top center";
+      } else {
+        content.style.transform = "";
+      }
+    };
+
+    fit();
+    const id = window.requestAnimationFrame(fit);
+    window.addEventListener("resize", fit);
+    return () => {
+      window.cancelAnimationFrame(id);
+      window.removeEventListener("resize", fit);
+      content.style.transform = "";
+    };
+  }, [disablePanZoom, people, rels, branches, compact]);
+
+  const onPointerDown = useCallback(
+    (e: REPointerEvent<HTMLDivElement>) => {
+      if (disablePanZoom || e.button !== 0) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest("button, a, input, textarea, select, [data-no-pan]")) return;
+      dragging.current = true;
+      last.current = { x: e.clientX, y: e.clientY };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [disablePanZoom],
+  );
+
+  const onPointerMove = useCallback((e: REPointerEvent<HTMLDivElement>) => {
+    if (!dragging.current) return;
+    const dx = e.clientX - last.current.x;
+    const dy = e.clientY - last.current.y;
+    last.current = { x: e.clientX, y: e.clientY };
+    setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+  }, []);
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (disablePanZoom) return;
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      setZoom((z) => Math.min(2.2, Math.max(0.35, Math.round((z + delta) * 100) / 100)));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [disablePanZoom]);
+
+  const zoomBy = (delta: number) => {
+    setZoom((z) => Math.min(2.2, Math.max(0.35, Math.round((z + delta) * 100) / 100)));
+  };
+
+  if (people.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+        <Baby className="h-12 w-12 mb-4 opacity-40" />
+        <p className="text-lg font-medium">{t("tree.emptyChart")}</p>
+        <p className="text-sm">{t("tree.emptyChartHint")}</p>
+      </div>
+    );
+  }
+
+  const hasRels = rels.length > 0;
+
+  return (
+    <div className="relative w-full min-w-0 max-w-full">
+      {/* شريط الأدوات داخل المخطط */}
+      {!disablePanZoom && (
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> {t("common.male")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-pink-500" /> {t("common.female")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-4 rounded bg-stone-400" /> {t("common.deceased")}
+          </span>
+        </div>
+
+          <div className="flex items-center gap-1 rounded-xl border bg-card p-0.5 shadow-sm">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={() => zoomBy(0.1)}
+              title={t("chart.zoomIn")}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={() => zoomBy(-0.1)}
+              title={t("chart.zoomOut")}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={resetView}
+              title={t("chart.reset")}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <span className="min-w-[3rem] px-1 text-center text-[11px] tabular-nums text-muted-foreground">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+      </div>
+      )}
+
+      {!disablePanZoom && !hasRels && people.length > 1 && (
+        <p className="mb-2 text-center text-xs sm:text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {t("tree.noRelsHint")}
+        </p>
+      )}
+
+      {!disablePanZoom && branches.length > 0 && onToggleBranch && (
+        <div className="mb-2 flex flex-wrap gap-2 px-1">
+          {branches.map((br) => (
+            <Button
+              key={br.id}
+              type="button"
+              size="sm"
+              variant={br.isHidden ? "outline" : "secondary"}
+              className="h-7 text-[11px] gap-1"
+              onClick={() => onToggleBranch(br.id, !br.isHidden)}
+            >
+              {br.isHidden ? t("chart.showBranch") : t("chart.hideBranch")}: {br.name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* منطقة العرض: عرض ثابت، تمركز بـ flex (آمن مع RTL) */}
+      <div
+        ref={viewportRef}
+        className={cn(
+          "relative w-full min-w-0 max-w-full rounded-2xl border bg-gradient-to-b from-slate-50 to-white",
+          !disablePanZoom &&
+            "h-[min(62vh,560px)] sm:h-[min(68vh,680px)] cursor-grab active:cursor-grabbing select-none overflow-hidden",
+          disablePanZoom &&
+            "min-h-[320px] py-4 overflow-visible print:overflow-visible print:border-0 print:bg-transparent",
+        )}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        {!disablePanZoom && (
+          <p className="pointer-events-none absolute bottom-2 end-2 z-10 hidden sm:flex items-center gap-1 rounded-full border bg-card/90 px-2.5 py-1 text-[10px] text-muted-foreground shadow-sm">
+            <Move className="h-3 w-3" /> {t("chart.dragHint")}
+          </p>
+        )}
+
+        <div
+          className={cn(
+            "flex h-full w-full items-start justify-center pt-5",
+            disablePanZoom ? "overflow-visible print:overflow-visible" : "overflow-hidden",
+          )}
+          dir="ltr"
+        >
+          <div
+            ref={contentRef}
+            className="shrink-0"
+            style={{
+              transform: disablePanZoom
+                ? undefined
+                : `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+              transformOrigin: "top center",
+              willChange: disablePanZoom ? undefined : "transform",
+            }}
+          >
+            <div className="flex flex-col items-center gap-0 px-2" dir="rtl">
+              {graph.roots.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-10">{t("tree.emptyChart")}</p>
+              ) : (
+                graph.roots.map((root, i) => {
+                  const branch = branches.find((b) => b.rootPersonId === root.id);
+                  return (
+                  <div
+                    key={root.id}
+                    className={cn(
+                      "flex flex-col items-center",
+                      i > 0 && "mt-12 border-t border-dashed border-slate-200 pt-8",
+                    )}
+                  >
+                    {branch && (
+                      <p className="mb-3 text-[10px] sm:text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-3 py-1">
+                        {t("chart.branchLabel")}: {branch.name}
+                      </p>
+                    )}
+                <CoupleNode
+                  focusId={root.id}
+                  depth={0}
+                  byId={graph.byId}
+                  childrenOf={graph.childrenOf}
+                  spousesOf={graph.spousesOf}
+                  rels={rels}
+                  ranks={graph.ranks}
+                  remoteByLocal={graph.remoteByLocal}
+                  onPersonClick={onPersonClick}
+                  compact={compact}
+                  visited={new Set()}
+                  L={L}
+                  t={t}
+                />
+                  </div>
+                  );
+                })
+              )}
+              {graph.orphans.length > 0 && (
+                <div className="mt-10 w-full border-t border-dashed border-amber-300 pt-6">
+                  <p className="mb-3 text-center text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    {t("chart.unlinkedPeople", { count: graph.orphans.length })}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {graph.orphans.map((p) => (
+                      <PersonCard
+                        key={p.id}
+                        person={p}
+                        depth={0}
+                        compact={compact}
+                        ranks={graph.ranks.get(p.id)}
+                        onPersonClick={onPersonClick}
+                        L={L}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExternalSpouseCard({
+  person,
+  compact,
+  t,
+}: {
+  person: Person;
+  compact?: boolean;
+  t: (k: string) => string;
+}) {
+  const theme = genderTheme(person.gender, isAlive(person));
+  return (
+    <div
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-xl border-2 border-dashed shadow-sm text-start",
+        theme.border,
+        theme.bg,
+        compact ? "w-[7.5rem] p-1.5" : "w-[9.25rem] sm:w-[10rem] p-2",
+      )}
+    >
+      <span className="absolute inset-x-0 top-0 h-1 opacity-60" style={{ backgroundColor: theme.bar }} />
+      <p className="text-[8px] text-violet-600 font-medium mb-1">{t("chart.externalSpouse")}</p>
+      <p className={cn("font-bold truncate", compact ? "text-xs" : "text-[13px]")}>
+        {person.givenName}
+      </p>
+      {person.fatherName && (
+        <p className="text-[9px] text-muted-foreground line-clamp-2 mt-1">{person.fatherName}</p>
+      )}
+    </div>
+  );
+}
+
+function PersonCard({
+  person,
+  depth,
+  compact,
+  ranks,
+  onPersonClick,
+  L,
+  t,
+  chartMode = true,
+}: {
+  person: Person;
+  depth: number;
+  compact?: boolean;
+  ranks: ReturnType<typeof computePersonRanks> | undefined;
+  onPersonClick?: (person: Person) => void;
+  L: Labels;
+  t: (k: string, o?: Record<string, unknown>) => string;
+  chartMode?: boolean;
+}) {
+  const living = isAlive(person);
+  const theme = genderTheme(person.gender, living);
+  const years = L.formatYears(person.birthYear, person.deathYear, living);
+
+  return (
+    <button
+      type="button"
+      data-no-pan
+      onClick={(e) => {
+        e.stopPropagation();
+        onPersonClick?.(person);
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-xl border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition text-start cursor-pointer z-[1]",
+        theme.border,
+        theme.bg,
+        compact ? "w-[7rem] p-1.5" : "w-[8.5rem] sm:w-[9rem] p-2",
+      )}
+    >
+      <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: theme.bar }} />
+
+      {!living && (
+        <>
+          <span className="pointer-events-none absolute inset-x-3 top-2 h-0.5 bg-stone-800/70" />
+          <span className="pointer-events-none absolute inset-x-3 top-3.5 h-0.5 bg-stone-800/70" />
+          <span className="absolute top-1 start-1 rounded bg-rose-700 px-1 py-px text-[8px] font-bold text-white shadow">
+            {t("common.deceased")}
+          </span>
+        </>
+      )}
+
+      <div className={cn("flex items-start gap-1.5", !living && "mt-3")}>
+        <span
+          className={cn(
+            "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full text-white font-bold ring-1 ring-offset-1",
+            theme.ring,
+            compact ? "h-7 w-7 text-[10px]" : "h-8 w-8 sm:h-9 sm:w-9 text-xs",
+          )}
+          style={{ backgroundColor: theme.avatar }}
+        >
+          {person.photoUrl ? (
+            <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+          ) : isFemale(person.gender) ? (
+            "♀"
+          ) : (
+            "♂"
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "font-bold leading-tight truncate",
+              compact ? "text-xs" : "text-[13px] sm:text-sm",
+              !living && "line-through decoration-stone-700 text-stone-700",
+            )}
+          >
+            {person.givenName}
+          </p>
+          <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-px leading-none">
+            {depth === 0 ? t("chart.generationRoot") : t("chart.generationN", { n: depth + 1 })}
+          </p>
+        </div>
+      </div>
+
+      {!compact && person.fatherName && (
+        <p className="mt-1 text-[8px] text-muted-foreground truncate font-display leading-snug">
+          {person.fatherName}
+        </p>
+      )}
+
+      {!compact && !chartMode && (
+        <PersonRankLines ranks={ranks} gender={person.gender} t={t} dense />
+      )}
+
+      {!compact && years && (
+        <p className="mt-1 text-[8px] text-slate-500 leading-none truncate">{years}</p>
+      )}
+    </button>
+  );
+}
+
+function ChildrenRow({
+  kidIds,
+  depth,
+  byId,
+  childrenOf,
+  spousesOf,
+  rels,
+  ranks,
+  onPersonClick,
+  compact,
+  visited,
+  remoteByLocal,
+  L,
+  t,
+}: {
+  kidIds: number[];
+  depth: number;
+  byId: Map<number, Person>;
+  childrenOf: Map<number, number[]>;
+  spousesOf: Map<number, number[]>;
+  rels: Relationship[];
+  ranks: Map<number, ReturnType<typeof computePersonRanks>>;
+  onPersonClick?: (person: Person) => void;
+  compact?: boolean;
+  visited: Set<number>;
+  remoteByLocal: Map<number, RemotePerson[]>;
+  L: Labels;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  if (kidIds.length === 0) return null;
+  const sorted = [...kidIds].sort((a, b) => {
+    const pa = byId.get(a)!;
+    const pb = byId.get(b)!;
+    return birthSortKey(pa) - birthSortKey(pb);
+  });
+
+  return (
+    <div className="w-full max-w-none">
+      <SiblingFork childCount={sorted.length}>
+        {sorted.map((kidId) => (
+          <BranchColumn key={kidId}>
+            <CoupleNode
+              focusId={kidId}
+              depth={depth + 1}
+              byId={byId}
+              childrenOf={childrenOf}
+              spousesOf={spousesOf}
+              rels={rels}
+              ranks={ranks}
+              onPersonClick={onPersonClick}
+              compact={compact}
+              visited={visited}
+              remoteByLocal={remoteByLocal}
+              L={L}
+              t={t}
+            />
+          </BranchColumn>
+        ))}
+      </SiblingFork>
+    </div>
+  );
+}
+
+/** بطاقات الزوج/الزوجة + الروابط الخارجية بجانب الشخص */
+function CoupleCardsRow({
+  couple,
+  depth,
+  ranks,
+  onPersonClick,
+  compact,
+  spouseDates,
+  externalSpouses,
+  L,
+  t,
+}: {
+  couple: Person[];
+  depth: number;
+  ranks: Map<number, ReturnType<typeof computePersonRanks>>;
+  onPersonClick?: (person: Person) => void;
+  compact?: boolean;
+  spouseDates: { marriage?: string; divorce?: string };
+  externalSpouses: RemotePerson[];
+  L: Labels;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="flex flex-nowrap items-start justify-center gap-0 shrink-0">
+      {couple.map((p, idx) => (
+        <div key={p.id} className="flex flex-nowrap items-center shrink-0">
+          {idx > 0 && (
+            <>
+              <CoupleBridge />
+              <SpouseHeart
+                marriageLabel={spouseDates.marriage}
+                divorceLabel={spouseDates.divorce}
+                className="mx-0.5"
+              />
+              <CoupleBridge />
+            </>
+          )}
+          <PersonCard
+            person={p}
+            depth={depth}
+            compact={compact}
+            ranks={ranks.get(p.id)}
+            onPersonClick={onPersonClick}
+            L={L}
+            t={t}
+          />
+        </div>
+      ))}
+      {externalSpouses.map((ep) => (
+        <div key={ep.linkId} className="flex flex-nowrap items-center shrink-0">
+          <CoupleBridge />
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 border border-violet-200 shadow-sm mx-0.5">
+            <Heart className="h-3 w-3 fill-violet-500" />
+          </span>
+          <CoupleBridge />
+          <ExternalSpouseCard person={ep} compact={compact} t={t} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CoupleNode({
+  focusId,
+  depth,
+  byId,
+  childrenOf,
+  spousesOf,
+  rels,
+  ranks,
+  onPersonClick,
+  compact,
+  visited,
+  remoteByLocal,
+  L,
+  t,
+}: {
+  focusId: number;
+  depth: number;
+  byId: Map<number, Person>;
+  childrenOf: Map<number, number[]>;
+  spousesOf: Map<number, number[]>;
+  rels: Relationship[];
+  ranks: Map<number, ReturnType<typeof computePersonRanks>>;
+  onPersonClick?: (person: Person) => void;
+  compact?: boolean;
+  visited: Set<number>;
+  remoteByLocal: Map<number, RemotePerson[]>;
+  L: Labels;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  const focus = byId.get(focusId);
+  if (!focus) return null;
+
+  // ظهر سابقاً (مثلاً كزوج تحت عائلة أخرى) — أعد عرضه مع زوجه دون تكرار الأبناء
+  const mirrorOnly = visited.has(focusId);
+
+  const nextVisited = new Set(visited);
+  nextVisited.add(focusId);
+
+  const externalSpouses = remoteByLocal.get(focusId) ?? [];
+
+  // دائماً أظهر الأزواج حتى لو ظهروا سابقاً في فرع آخر (انعكاس الزواج بين العائلتين)
+  const oppositeSpouses = (spousesOf.get(focusId) ?? [])
+    .map((id) => byId.get(id))
+    .filter((p): p is Person => !!p && p.gender !== focus.gender);
+
+  for (const s of oppositeSpouses) nextVisited.add(s.id);
+
+  const coupleSorted = [focus, ...oppositeSpouses].sort((a, b) => {
+    if (a.gender === b.gender) return 0;
+    return isFemale(a.gender) ? 1 : -1;
+  });
+  const fatherCard = coupleSorted.find((p) => !isFemale(p.gender)) ?? null;
+  const motherCard = coupleSorted.find((p) => isFemale(p.gender)) ?? null;
+  const primarySpouseRel =
+    fatherCard && motherCard
+      ? findSpouseRel(rels, fatherCard.id, motherCard.id)
+      : oppositeSpouses[0]
+        ? findSpouseRel(rels, focus.id, oppositeSpouses[0].id)
+        : undefined;
+  const primarySpouseDates = formatSpouseDates(primarySpouseRel, t);
+
+  if (mirrorOnly) {
+    return (
+      <div className="flex flex-col items-center shrink-0 w-max max-w-none">
+        <CoupleCardsRow
+          couple={coupleSorted}
+          depth={depth}
+          ranks={ranks}
+          onPersonClick={onPersonClick}
+          compact={compact}
+          spouseDates={primarySpouseDates}
+          externalSpouses={externalSpouses}
+          L={L}
+          t={t}
+        />
+        <p className="mt-1 text-[8px] text-violet-600/90">{t("chart.spouseMirror")}</p>
+      </div>
+    );
+  }
+
+  // ذكر بعدة زوجات: الأب في الأعلى، الزوجة الأولى يميناً والثانية يساراً
+  if (!isFemale(focus.gender) && oppositeSpouses.length > 1) {
+    const orderedWives = sortSpouses(oppositeSpouses, rels, focus.id);
+    const orphanKids = childrenWithFatherOnly(
+      focus.id,
+      oppositeSpouses,
+      childrenOf,
+      rels,
+      byId,
+    );
+
+    const colCount = orderedWives.length + (orphanKids.length > 0 ? 1 : 0);
+
+    return (
+      <div className="flex flex-col items-center w-max max-w-none">
+        <PersonCard
+          person={focus}
+          depth={depth}
+          compact={compact}
+          ranks={ranks.get(focus.id)}
+          onPersonClick={onPersonClick}
+          L={L}
+          t={t}
+        />
+        <VLine h={18} />
+        <PolygamyLayout wifeCount={colCount} className="mt-0">
+          {orderedWives.map((wife) => {
+            const spouseRel = findSpouseRel(rels, focus.id, wife.id);
+            const dates = formatSpouseDates(spouseRel, t);
+            const kids = childrenOfPair(
+              focus.id,
+              wife.id,
+              childrenOf,
+              rels,
+              byId,
+              true,
+            );
+
+            return (
+              <BranchColumn key={wife.id}>
+                <SpouseHeart
+                  marriageLabel={dates.marriage}
+                  divorceLabel={dates.divorce}
+                />
+                <PersonCard
+                  person={wife}
+                  depth={depth}
+                  compact={compact}
+                  ranks={ranks.get(wife.id)}
+                  onPersonClick={onPersonClick}
+                  L={L}
+                  t={t}
+                />
+                {kids.length > 0 && (
+                  <>
+                    <CoupleToChildrenConnector h={20} />
+                    <ChildrenRow
+                      kidIds={kids}
+                      depth={depth}
+                      byId={byId}
+                      childrenOf={childrenOf}
+                      spousesOf={spousesOf}
+                      rels={rels}
+                      ranks={ranks}
+                      onPersonClick={onPersonClick}
+                      compact={compact}
+                      visited={nextVisited}
+                      remoteByLocal={remoteByLocal}
+                      L={L}
+                      t={t}
+                    />
+                  </>
+                )}
+              </BranchColumn>
+            );
+          })}
+          {orphanKids.length > 0 && (
+            <BranchColumn>
+              <p className="text-[9px] text-muted-foreground mb-1 text-center px-1">
+                {t("chart.noMotherListed")}
+              </p>
+              <CoupleToChildrenConnector h={20} />
+              <ChildrenRow
+                kidIds={orphanKids}
+                depth={depth}
+                byId={byId}
+                childrenOf={childrenOf}
+                spousesOf={spousesOf}
+                rels={rels}
+                ranks={ranks}
+                onPersonClick={onPersonClick}
+                compact={compact}
+                visited={nextVisited}
+                remoteByLocal={remoteByLocal}
+                L={L}
+                t={t}
+              />
+            </BranchColumn>
+          )}
+        </PolygamyLayout>
+      </div>
+    );
+  }
+
+  // أنثى بعدة أزواج
+  if (isFemale(focus.gender) && oppositeSpouses.length > 1) {
+    const orderedHusbands = sortSpouses(oppositeSpouses, rels, focus.id);
+
+    return (
+      <div className="flex flex-col items-center w-max max-w-none">
+        <PersonCard
+          person={focus}
+          depth={depth}
+          compact={compact}
+          ranks={ranks.get(focus.id)}
+          onPersonClick={onPersonClick}
+          L={L}
+          t={t}
+        />
+        <VLine h={18} />
+        <PolygamyLayout wifeCount={orderedHusbands.length}>
+          {orderedHusbands.map((husband) => {
+            const spouseRel = findSpouseRel(rels, focus.id, husband.id);
+            const dates = formatSpouseDates(spouseRel, t);
+            const kids = childrenOfPair(husband.id, focus.id, childrenOf, rels, byId);
+            return (
+              <BranchColumn key={husband.id}>
+                <SpouseHeart
+                  marriageLabel={dates.marriage}
+                  divorceLabel={dates.divorce}
+                />
+                <PersonCard
+                  person={husband}
+                  depth={depth}
+                  compact={compact}
+                  ranks={ranks.get(husband.id)}
+                  onPersonClick={onPersonClick}
+                  L={L}
+                  t={t}
+                />
+                {kids.length > 0 && (
+                  <>
+                    <CoupleToChildrenConnector h={20} />
+                    <ChildrenRow
+                      kidIds={kids}
+                      depth={depth}
+                      byId={byId}
+                      childrenOf={childrenOf}
+                      spousesOf={spousesOf}
+                      rels={rels}
+                      ranks={ranks}
+                      onPersonClick={onPersonClick}
+                      compact={compact}
+                      visited={nextVisited}
+                      remoteByLocal={remoteByLocal}
+                      L={L}
+                      t={t}
+                    />
+                  </>
+                )}
+              </BranchColumn>
+            );
+          })}
+        </PolygamyLayout>
+      </div>
+    );
+  }
+
+  const couple = [focus, ...oppositeSpouses].sort((a, b) => {
+    if (a.gender === b.gender) return 0;
+    return isFemale(a.gender) ? 1 : -1;
+  });
+
+  const father = couple.find((p) => !isFemale(p.gender)) ?? null;
+  const mother = couple.find((p) => isFemale(p.gender)) ?? null;
+
+  const displayKids = childrenOfPair(
+    father?.id ?? null,
+    mother?.id ?? null,
+    childrenOf,
+    rels,
+    byId,
+    false,
+  ).sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
+
+  const spouseRel =
+    father && mother ? findSpouseRel(rels, father.id, mother.id) : undefined;
+  const spouseDates = formatSpouseDates(spouseRel, t);
+
+  return (
+    <div className="flex flex-col items-center shrink-0 w-max max-w-none">
+      <CoupleCardsRow
+        couple={couple}
+        depth={depth}
+        ranks={ranks}
+        onPersonClick={onPersonClick}
+        compact={compact}
+        spouseDates={spouseDates}
+        externalSpouses={externalSpouses}
+        L={L}
+        t={t}
+      />
+
+      {displayKids.length > 0 && (
+        <>
+          <CoupleToChildrenConnector h={20} />
+          <ChildrenRow
+            kidIds={displayKids}
+            depth={depth}
+            byId={byId}
+            childrenOf={childrenOf}
+            spousesOf={spousesOf}
+            rels={rels}
+            ranks={ranks}
+            onPersonClick={onPersonClick}
+            compact={compact}
+            visited={nextVisited}
+            remoteByLocal={remoteByLocal}
+            L={L}
+            t={t}
+          />
+        </>
+      )}
+    </div>
+  );
+}
