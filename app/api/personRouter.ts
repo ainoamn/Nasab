@@ -7,7 +7,8 @@ import { persons, relationships, treeBranches, personLinks, trees } from "@db/ta
 import { insertReturningId } from "./queries/insert-id";
 import {
   applyPublicPrivacy,
-  getViewableTree,
+  filterPersonsForMember,
+  getViewableTreeByShareToken,
   logChange,
   requireTreeRole,
 } from "./permissions";
@@ -536,20 +537,30 @@ export const personRouter = createRouter({
   list: authedQuery
     .input(z.object({ treeId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      await requireTreeRole(ctx.user.id, input.treeId, "viewer");
-      return getTreeData(input.treeId);
+      const role = await requireTreeRole(ctx.user.id, input.treeId, "viewer");
+      const data = await getTreeData(input.treeId);
+      return {
+        ...data,
+        people: filterPersonsForMember(data.people, role, ctx.user.id),
+      };
     }),
 
-  /** عرض عام لشجرة عامة/برابط سري — مع تطبيق قواعد الخصوصية */
+  /** عرض عام — يتطلب shareToken (لا يمكن تخمين الشجرة برقمها) */
   listPublic: publicQuery
-    .input(z.object({ treeId: z.number().int().positive() }))
+    .input(z.object({ shareToken: z.string().min(16).max(64) }))
     .query(async ({ ctx, input }) => {
-      const { tree, role } = await getViewableTree(input.treeId, ctx.user?.id);
-      const data = await getTreeData(input.treeId);
+      const { tree, role } = await getViewableTreeByShareToken(
+        input.shareToken,
+        ctx.user?.id,
+      );
+      const data = await getTreeData(tree.id);
       if (role) {
-        return { tree: { ...tree, myRole: role }, ...data };
+        return {
+          tree: { ...tree, myRole: role },
+          ...data,
+          people: filterPersonsForMember(data.people, role, ctx.user!.id),
+        };
       }
-      // زائر: طبّق الخصوصية، واحذف العلاقات المرتبطة بأشخاص مخفيين
       const visible = applyPublicPrivacy(data.people, tree);
       const visibleIds = new Set(visible.map((p) => p.id));
       const rels = data.rels.filter(
@@ -779,6 +790,14 @@ export const personRouter = createRouter({
       const db = getDb();
       await requireTreeRole(ctx.user.id, input.treeId, "editor");
       const { id, treeId, motherId, fatherId, ...fields } = input;
+
+      const existing = await db.query.persons.findFirst({
+        where: and(eq(persons.id, id), eq(persons.treeId, treeId)),
+      });
+      if (!existing || existing.deletedAt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الشخص غير موجود" });
+      }
+
       const clean: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(fields)) {
         if (v !== undefined) clean[k] = v;
@@ -877,6 +896,33 @@ export const personRouter = createRouter({
         personId: id,
         action: "update_person",
         details: `عدّل "${input.givenName}"`,
+      });
+      return { ok: true };
+    }),
+
+  restore: authedQuery
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        treeId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await requireTreeRole(ctx.user.id, input.treeId, "admin");
+      const person = await db.query.persons.findFirst({
+        where: and(eq(persons.id, input.id), eq(persons.treeId, input.treeId)),
+      });
+      if (!person || !person.deletedAt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد شخص محذوف" });
+      }
+      await db.update(persons).set({ deletedAt: null }).where(eq(persons.id, input.id));
+      await logChange({
+        treeId: input.treeId,
+        userId: ctx.user.id,
+        personId: input.id,
+        action: "restore_person",
+        details: `استُرجع "${person.givenName}"`,
       });
       return { ok: true };
     }),

@@ -3,10 +3,13 @@ import { setCookie } from "hono/cookie";
 import { env } from "../lib/env";
 import { getSessionCookieOptions } from "../lib/cookies";
 import { Session } from "@contracts/constants";
-import { signSessionToken } from "../kimi/session";
 import { upsertUser, findUserByUnionId } from "../queries/users";
 import { getClientIp } from "../lib/client-ip";
 import { ensureUserIdentity } from "../couponService";
+import { createOAuthState, verifyOAuthState } from "../lib/oauth-state";
+import { getRequestOrigin } from "../lib/request-origin";
+import { issueSessionForUser } from "../lib/issue-session";
+import { rateLimit, clientRateKey } from "../lib/rate-limit";
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
@@ -21,14 +24,23 @@ export function createGoogleAuthHandler() {
     if (!env.googleClientId) {
       return c.json({ error: "Google login غير مفعّل" }, 503);
     }
-    const origin = new URL(c.req.url).origin;
+
+    const ip = getClientIp(c.req.raw.headers);
+    const rl = rateLimit({ key: clientRateKey("oauth-google", ip), limit: 30, windowMs: 60_000 });
+    if (!rl.ok) return c.json({ error: "Too many requests" }, 429);
+
+    const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
+    const redirectUri = googleRedirectUri(origin);
+    const state = createOAuthState("google", redirectUri, origin);
+
     const params = new URLSearchParams({
       client_id: env.googleClientId,
-      redirect_uri: googleRedirectUri(origin),
+      redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid email profile",
       access_type: "online",
       prompt: "select_account",
+      state,
     });
     return c.redirect(`${GOOGLE_AUTH}?${params}`, 302);
   };
@@ -41,12 +53,16 @@ export function createGoogleCallbackHandler() {
     }
 
     const code = c.req.query("code");
+    const state = c.req.query("state");
     const error = c.req.query("error");
     if (error) return c.redirect("/login?error=google", 302);
-    if (!code) return c.json({ error: "code required" }, 400);
+    if (!code || !state) return c.json({ error: "code and state required" }, 400);
+
+    const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
+    const verified = verifyOAuthState(state, "google", origin);
+    if (!verified) return c.redirect("/login?error=google", 302);
 
     try {
-      const origin = new URL(c.req.url).origin;
       const tokenResp = await fetch(GOOGLE_TOKEN, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -54,7 +70,7 @@ export function createGoogleCallbackHandler() {
           code,
           client_id: env.googleClientId,
           client_secret: env.googleClientSecret,
-          redirect_uri: googleRedirectUri(origin),
+          redirect_uri: verified.redirectUri,
           grant_type: "authorization_code",
         }),
       });
@@ -84,12 +100,10 @@ export function createGoogleCallbackHandler() {
       });
 
       const user = await findUserByUnionId(unionId);
-      if (user) await ensureUserIdentity(user.id);
+      if (!user) throw new Error("User not found after Google login");
+      await ensureUserIdentity(user.id);
 
-      const token = await signSessionToken({
-        unionId,
-        clientId: env.googleClientId,
-      });
+      const token = await issueSessionForUser(user.id, unionId, env.googleClientId);
       const cookieOpts = getSessionCookieOptions(c.req.raw.headers);
       setCookie(c, Session.cookieName, token, {
         ...cookieOpts,

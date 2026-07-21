@@ -2,7 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./queries/connection";
 import { changeLogs, treeMembers, trees } from "@db/tables";
-import type { TreeRole, TreeStatus } from "@contracts/constants";
+import type { PersonPrivacy, TreeRole, TreeStatus } from "@contracts/constants";
+import { generateShareToken } from "./lib/share-token";
 
 const ROLE_RANK: Record<TreeRole, number> = {
   viewer: 1,
@@ -71,7 +72,65 @@ export async function requireTreeRole(
   return role;
 }
 
-/** جلب الشجرة مع التحقق من إمكانية العرض (عضو أو شجرة عامة/برابط) */
+/** جلب الشجرة عبر رمز المشاركة الآمن */
+export async function getViewableTreeByShareToken(shareToken: string, userId?: number) {
+  const db = getDb();
+  const tree = await db.query.trees.findFirst({
+    where: eq(trees.shareToken, shareToken),
+  });
+  if (!tree) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "الشجرة غير موجودة" });
+  }
+
+  const role = userId ? await getMemberRole(userId, tree.id) : null;
+
+  if (tree.visibility === "private" && !role) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "هذه الشجرة خاصة",
+    });
+  }
+
+  const status = (tree.status ?? "active") as TreeStatus;
+  if (status === "archived") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "هذه الشجرة مؤرشفة",
+    });
+  }
+
+  return { tree: { ...tree, status }, role };
+}
+
+export async function ensureTreeShareToken(treeId: number): Promise<string> {
+  const db = getDb();
+  const tree = await db.query.trees.findFirst({ where: eq(trees.id, treeId) });
+  if (!tree) throw new TRPCError({ code: "NOT_FOUND" });
+  if (tree.shareToken) return tree.shareToken;
+  const token = generateShareToken();
+  await db.update(trees).set({ shareToken: token }).where(eq(trees.id, treeId));
+  return token;
+}
+
+/** فلترة الأشخاص حسب الخصوصية لأعضاء الشجرة */
+export function filterPersonsForMember<
+  T extends { privacy: string; createdById: number },
+>(people: T[], role: TreeRole, userId: number): T[] {
+  if (roleAtLeast(role, "admin")) return people;
+
+  return people.filter((p) => {
+    const privacy = p.privacy as PersonPrivacy;
+    if (privacy === "public" || privacy === "family" || privacy === "linked") {
+      return true;
+    }
+    if (privacy === "private") {
+      return p.createdById === userId;
+    }
+    return false;
+  });
+}
+
+/** @deprecated استخدم getViewableTreeByShareToken للمشاركة العامة */
 export async function getViewableTree(treeId: number, userId?: number) {
   const db = getDb();
   const tree = await db.query.trees.findFirst({

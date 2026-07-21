@@ -208,7 +208,9 @@ export default function TreeWorkspace() {
     );
   }
 
-  const shareUrl = `${window.location.origin}/share/${treeId}`;
+  const shareUrl = tree.shareToken
+    ? `${window.location.origin}/share/${tree.shareToken}`
+    : "";
 
   return (
     <div className="min-h-screen bg-muted/30">

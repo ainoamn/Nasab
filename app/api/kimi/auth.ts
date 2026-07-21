@@ -6,15 +6,16 @@ import { env } from "../lib/env";
 import { getSessionCookieOptions } from "../lib/cookies";
 import { Session } from "@contracts/constants";
 import { Errors } from "@contracts/errors";
-import { signSessionToken, verifySessionToken } from "./session";
+import { verifySessionToken } from "./session";
 import { users as kimiUsers } from "./platform";
 import { findUserByUnionId, upsertUser } from "../queries/users";
 import { getClientIp } from "../lib/client-ip";
 import type { TokenResponse } from "./types";
-import {
-  getLocalDevUser,
-  isLocalDevUnionId,
-} from "./local-auth";
+import { isLocalDevUnionId, getLocalDevUser } from "./local-auth";
+import { createOAuthState, verifyOAuthState } from "../lib/oauth-state";
+import { getRequestOrigin } from "../lib/request-origin";
+import { issueSessionForUser } from "../lib/issue-session";
+import { rateLimit, clientRateKey } from "../lib/rate-limit";
 
 async function exchangeAuthCode(
   code: string,
@@ -72,7 +73,6 @@ export async function authenticateRequest(headers: Headers) {
   const cookies = cookie.parse(headers.get("cookie") || "");
   const token = cookies[Session.cookieName];
   if (!token) {
-    console.warn("[auth] No session cookie found in request.");
     throw Errors.forbidden("Invalid authentication token.");
   }
   const claim = await verifySessionToken(token);
@@ -91,7 +91,31 @@ export async function authenticateRequest(headers: Headers) {
   if (user.isBanned) {
     throw Errors.forbidden(user.banReason ?? "تم حظر حسابك — تواصل مع الدعم");
   }
+  if ((claim.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
+    throw Errors.forbidden("انتهت الجلسة — سجّل الدخول مجدداً");
+  }
   return user;
+}
+
+export function createKimiStartHandler() {
+  return (c: Context) => {
+    const ip = getClientIp(c.req.raw.headers);
+    const rl = rateLimit({ key: clientRateKey("oauth-kimi", ip), limit: 30, windowMs: 60_000 });
+    if (!rl.ok) return c.json({ error: "Too many requests" }, 429);
+
+    const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
+    const redirectUri = `${origin}/api/oauth/callback`;
+    const state = createOAuthState("kimi", redirectUri, origin);
+
+    const url = new URL(`${env.kimiAuthUrl}/api/oauth/authorize`);
+    url.searchParams.set("client_id", env.appId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "profile");
+    url.searchParams.set("state", state);
+
+    return c.redirect(url.toString(), 302);
+  };
 }
 
 export function createOAuthCallbackHandler() {
@@ -105,19 +129,21 @@ export function createOAuthCallbackHandler() {
       if (error === "access_denied") {
         return c.redirect("/", 302);
       }
-      return c.json(
-        { error, error_description: errorDescription },
-        400,
-      );
+      return c.json({ error, error_description: errorDescription }, 400);
     }
 
     if (!code || !state) {
       return c.json({ error: "code and state are required" }, 400);
     }
 
+    const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
+    const verified = verifyOAuthState(state, "kimi", origin);
+    if (!verified) {
+      return c.json({ error: "Invalid OAuth state" }, 400);
+    }
+
     try {
-      const redirectUri = atob(state);
-      const tokenResp = await exchangeAuthCode(code, redirectUri);
+      const tokenResp = await exchangeAuthCode(code, verified.redirectUri);
       const { userId } = await verifyAccessToken(tokenResp.access_token);
       const userProfile = await kimiUsers.getProfile(tokenResp.access_token);
       if (!userProfile) {
@@ -133,15 +159,11 @@ export function createOAuthCallbackHandler() {
       });
 
       const user = await findUserByUnionId(userId);
-      if (user) {
-        const { ensureUserIdentity } = await import("../couponService");
-        await ensureUserIdentity(user.id);
-      }
+      if (!user) throw new Error("User not found after Kimi login");
+      const { ensureUserIdentity } = await import("../couponService");
+      await ensureUserIdentity(user.id);
 
-      const token = await signSessionToken({
-        unionId: userId,
-        clientId: env.appId,
-      });
+      const token = await issueSessionForUser(user.id, userId, env.appId);
 
       const cookieOpts = getSessionCookieOptions(c.req.raw.headers);
       setCookie(c, Session.cookieName, token, {
@@ -152,9 +174,9 @@ export function createOAuthCallbackHandler() {
       return c.redirect("/", 302);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
-      const details =
-        error instanceof Error ? error.message : "Unknown OAuth error";
       if (!env.isProduction) {
+        const details =
+          error instanceof Error ? error.message : "Unknown OAuth error";
         return c.json({ error: "OAuth callback failed", details }, 500);
       }
       return c.json({ error: "OAuth callback failed" }, 500);

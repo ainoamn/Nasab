@@ -5,7 +5,8 @@ import { createRouter, authedQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { persons, relationships, treeMembers, trees } from "@db/tables";
 import { insertReturningId } from "./queries/insert-id";
-import { logChange, requireTreeRole, getMemberRole } from "./permissions";
+import { logChange, requireTreeRole, getMemberRole, ensureTreeShareToken } from "./permissions";
+import { generateShareToken } from "./lib/share-token";
 import { TREE_VISIBILITY, FEMALE_DISPLAY, TREE_STATUS } from "@contracts/constants";
 import { assertCanCreateTree } from "./planLimits";
 
@@ -61,6 +62,7 @@ export const treeRouter = createRouter({
         region: input.region ?? null,
         description: input.description ?? null,
         ownerId: ctx.user.id,
+        shareToken: generateShareToken(),
       });
     await db.insert(treeMembers).values({
       treeId: id,
@@ -93,7 +95,8 @@ export const treeRouter = createRouter({
           message: "هذه الشجرة مؤرشفة",
         });
       }
-      return { ...tree, status, myRole: role };
+      const shareToken = await ensureTreeShareToken(input.id);
+      return { ...tree, status, myRole: role, shareToken };
     }),
 
   update: authedQuery

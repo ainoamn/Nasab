@@ -20,6 +20,7 @@ export const paymentGateways = active.paymentGateways;
 export const platformSequences = active.platformSequences;
 export const coupons = active.coupons;
 export const couponRedemptions = active.couponRedemptions;
+export const adminAuditLogs = active.adminAuditLogs;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

@@ -62,3 +62,27 @@ export async function upsertUser(
     .values(values)
     .onDuplicateKeyUpdate({ set: updateSet });
 }
+
+export async function incrementSessionVersion(userId: number) {
+  const db = getDb();
+  const user = await db
+    .select({ sessionVersion: schema.users.sessionVersion })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .then((r) => r[0]);
+  const next = (user?.sessionVersion ?? 0) + 1;
+  await db
+    .update(schema.users)
+    .set({ sessionVersion: next })
+    .where(eq(schema.users.id, userId));
+  return next;
+}
+
+export async function getUserSessionVersion(userId: number) {
+  const row = await getDb()
+    .select({ sessionVersion: schema.users.sessionVersion })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .then((r) => r[0]);
+  return row?.sessionVersion ?? 0;
+}

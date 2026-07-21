@@ -3,7 +3,9 @@ import type { PaymentGatewaySlug } from "@contracts/constants";
 import { PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
 import { getPaymentAdapter } from "./index";
 import { getGatewayBySlug } from "./gatewayConfig";
-import { fulfillInvoiceByNumber } from "./fulfillment";
+import { secureFulfillPayment } from "./paymentVerify";
+import { getClientIp } from "../lib/client-ip";
+import { rateLimit, clientRateKey } from "../lib/rate-limit";
 
 function slugFromPath(path: string): PaymentGatewaySlug | null {
   const match = path.match(/\/api\/webhooks\/([a-z_]+)/);
@@ -18,6 +20,16 @@ export function createWebhookHandler() {
   return async (c: Context) => {
     const slug = slugFromPath(c.req.path);
     if (!slug) return c.json({ error: "Unknown gateway" }, 404);
+
+    const ip = getClientIp(c.req.raw.headers);
+    const rl = rateLimit({
+      key: clientRateKey("webhook", ip, slug),
+      limit: 120,
+      windowMs: 60_000,
+    });
+    if (!rl.ok) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
 
     try {
       const gateway = await getGatewayBySlug(slug);
@@ -40,8 +52,11 @@ export function createWebhookHandler() {
       );
 
       if (result?.paid && result.invoiceNumber) {
-        await fulfillInvoiceByNumber(result.invoiceNumber, {
+        await secureFulfillPayment(result.invoiceNumber, slug, {
+          paid: true,
+          invoiceNumber: result.invoiceNumber,
           externalId: result.externalId,
+          amountPaid: result.amountPaid,
         });
       }
 
@@ -76,7 +91,7 @@ export function createCheckoutCompleteHandler() {
         query,
       });
 
-      const status = result.paid ? "paid" : "pending";
+      const status = result.paid ? "paid" : result.ok === false ? "error" : "pending";
       return c.redirect(
         `/checkout/success?invoice=${encodeURIComponent(invoiceNumber)}&status=${status}`,
         302,

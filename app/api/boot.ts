@@ -5,7 +5,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
-import { createOAuthCallbackHandler } from "./kimi/auth";
+import { createOAuthCallbackHandler, createKimiStartHandler } from "./kimi/auth";
 import {
   createGoogleAuthHandler,
   createGoogleCallbackHandler,
@@ -14,12 +14,20 @@ import {
   createWebhookHandler,
   createCheckoutCompleteHandler,
 } from "./payments/webhooks";
-import { Paths } from "@contracts/constants";
-import { PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
+import { securityHeadersMiddleware } from "./lib/security-headers";
+import { Paths, PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
-app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
+app.use("*", securityHeadersMiddleware);
+
+app.use("/api/webhooks/*", bodyLimit({ maxSize: 256 * 1024 }));
+app.use("/api/trpc/*", bodyLimit({ maxSize: 5 * 1024 * 1024 }));
+app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
+
+app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
+
+app.get("/api/oauth/kimi/start", createKimiStartHandler());
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.get("/api/oauth/google", createGoogleAuthHandler());
 app.get("/api/oauth/google/callback", createGoogleCallbackHandler());

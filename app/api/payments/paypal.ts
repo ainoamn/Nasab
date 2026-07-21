@@ -26,6 +26,45 @@ async function paypalAccessToken(config: Record<string, string>, isTestMode: boo
   return { token: body.access_token, base };
 }
 
+async function verifyPayPalWebhook(
+  config: Record<string, string>,
+  rawBody: string,
+  headers: Record<string, string>,
+  isTestMode: boolean,
+): Promise<boolean> {
+  const webhookId = config.webhookId?.trim();
+  if (!webhookId) return false;
+
+  const { token, base } = await paypalAccessToken(config, isTestMode);
+  let event: unknown;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return false;
+  }
+
+  const resp = await fetch(`${base}/v1/notifications/verify-webhook-signature`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      auth_algo: headers["paypal-auth-algo"],
+      cert_url: headers["paypal-cert-url"],
+      transmission_id: headers["paypal-transmission-id"],
+      transmission_sig: headers["paypal-transmission-sig"],
+      transmission_time: headers["paypal-transmission-time"],
+      webhook_id: webhookId,
+      webhook_event: event,
+    }),
+  });
+
+  if (!resp.ok) return false;
+  const result = (await resp.json()) as { verification_status?: string };
+  return result.verification_status === "SUCCESS";
+}
+
 export const paypalAdapter: PaymentAdapter = {
   slug: "paypal",
 
@@ -100,21 +139,45 @@ export const paypalAdapter: PaymentAdapter = {
 
     if (!resp.ok) return { paid: false, externalId: token };
 
-    const body = (await resp.json()) as { status?: string; id?: string };
+    const body = (await resp.json()) as {
+      status?: string;
+      id?: string;
+      purchase_units?: Array<{
+        custom_id?: string;
+        reference_id?: string;
+        payments?: { captures?: Array<{ amount?: { value?: string } }> };
+      }>;
+    };
+    const unit = body.purchase_units?.[0];
+    const captureAmount = unit?.payments?.captures?.[0]?.amount?.value;
+    const amountPaid = captureAmount
+      ? Math.round(parseFloat(captureAmount) * 1000)
+      : undefined;
+
     return {
       paid: body.status === "COMPLETED",
       externalId: body.id ?? token,
+      invoiceNumber: unit?.custom_id ?? unit?.reference_id,
+      amountPaid,
     };
   },
 
-  async handleWebhook(_config, rawBody) {
+  async handleWebhook(config, rawBody, headers, isTestMode) {
+    const verified = await verifyPayPalWebhook(config, rawBody, headers, isTestMode);
+    if (!verified) return null;
+
     try {
       const event = JSON.parse(rawBody) as {
         event_type?: string;
         resource?: {
           id?: string;
           status?: string;
-          purchase_units?: Array<{ custom_id?: string; reference_id?: string }>;
+          purchase_units?: Array<{
+            custom_id?: string;
+            reference_id?: string;
+            amount?: { value?: string };
+          }>;
+          amount?: { value?: string };
         };
       };
 
@@ -130,11 +193,14 @@ export const paypalAdapter: PaymentAdapter = {
       const invoiceNumber = unit?.custom_id ?? unit?.reference_id;
       const paid =
         resource?.status === "COMPLETED" || event.event_type === "PAYMENT.CAPTURE.COMPLETED";
+      const amountStr = resource?.amount?.value ?? unit?.amount?.value;
+      const amountPaid = amountStr ? Math.round(parseFloat(amountStr) * 1000) : undefined;
 
       return {
         invoiceNumber,
         externalId: resource?.id,
         paid,
+        amountPaid,
       };
     } catch {
       return null;

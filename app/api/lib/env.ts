@@ -29,4 +29,10 @@ export const env = {
   devLoginPassword: process.env.DEV_LOGIN_PASSWORD ?? "admin123",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  appPublicUrl: process.env.APP_PUBLIC_URL ?? "",
+  trustProxy: process.env.TRUST_PROXY === "true",
+  allowedOrigins: (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 };

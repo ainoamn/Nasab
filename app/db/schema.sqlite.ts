@@ -34,6 +34,7 @@ export const users = sqliteTable("users", {
   isBanned: integer("isBanned", { mode: "boolean" }).default(false).notNull(),
   banReason: text("banReason"),
   bannedAt: integer("bannedAt", { mode: "timestamp" }),
+  sessionVersion: integer("sessionVersion").default(0).notNull(),
   createdAt: integer("createdAt", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -72,6 +73,7 @@ export const trees = sqliteTable(
     status: text("status", { enum: ["active", "paused", "archived"] })
       .default("active")
       .notNull(),
+    shareToken: text("shareToken").unique(),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -436,3 +438,24 @@ export const couponRedemptions = sqliteTable("coupon_redemptions", {
 
 export type PersonLink = typeof personLinks.$inferSelect;
 export type InsertPersonLink = typeof personLinks.$inferInsert;
+
+export const adminAuditLogs = sqliteTable(
+  "admin_audit_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    adminUserId: integer("adminUserId").notNull(),
+    action: text("action").notNull(),
+    targetType: text("targetType"),
+    targetId: text("targetId"),
+    details: text("details"),
+    ip: text("ip"),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    adminIdx: index("admin_audit_admin_idx").on(table.adminUserId),
+  }),
+);
+
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;

@@ -14,6 +14,7 @@ import {
   calculateCheckoutPricing,
   createSubscriptionCheckout,
 } from "./payments/checkoutService";
+import { getRequestOrigin } from "./lib/request-origin";
 
 export const paymentRouter = createRouter({
   listGateways: authedQuery.query(async () => {
@@ -70,7 +71,6 @@ export const paymentRouter = createRouter({
         planSlug: z.enum(SUBSCRIPTION_PLANS),
         gatewaySlug: z.enum(PAYMENT_GATEWAY_SLUGS),
         couponCode: z.string().max(64).optional(),
-        origin: z.string().url().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -78,12 +78,7 @@ export const paymentRouter = createRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "الخطة المجانية لا تحتاج دفع" });
       }
 
-      const origin =
-        input.origin ??
-        (typeof globalThis !== "undefined" && "location" in globalThis
-          ? (globalThis as { location?: { origin?: string } }).location?.origin
-          : undefined) ??
-        "http://localhost:5173";
+      const origin = getRequestOrigin(ctx.req.headers);
 
       try {
         return await createSubscriptionCheckout({

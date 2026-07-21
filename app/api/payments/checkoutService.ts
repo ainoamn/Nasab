@@ -11,7 +11,7 @@ import {
 import { formatInvoiceNumber, nextSequence } from "../sequences";
 import { getPaymentAdapter } from "./index";
 import { getGatewayBySlug } from "./gatewayConfig";
-import { fulfillInvoice } from "./fulfillment";
+import { secureFulfillPayment } from "./paymentVerify";
 import type { CheckoutContext, CheckoutResult, InvoiceMetadata } from "./types";
 
 export type PricingPreview = {
@@ -168,6 +168,7 @@ export async function createSubscriptionCheckout(opts: {
   });
 
   if (pricing.finalAmount === 0) {
+    const { fulfillInvoice } = await import("./fulfillment");
     await fulfillInvoice(invoiceId);
     return {
       invoiceId,
@@ -219,30 +220,26 @@ export async function completeCheckoutReturn(params: {
   const gateway = await getGatewayBySlug(params.gatewaySlug);
   const adapter = getPaymentAdapter(params.gatewaySlug);
 
-  let paid = false;
-  let externalId: string | undefined;
-
-  if (adapter.verifyReturn) {
-    const verified = await adapter.verifyReturn(
-      gateway.config,
-      params.query,
-      gateway.isTestMode,
-    );
-    paid = verified.paid;
-    externalId = verified.externalId;
+  if (!adapter.verifyReturn) {
+    return { paid: false, invoiceNumber: params.invoiceNumber };
   }
 
-  if (paid) {
-    const db = getDb();
-    const invoice = await db
-      .select()
-      .from(invoices)
-      .where(eq(invoices.number, params.invoiceNumber))
-      .then((r) => r[0]);
-    if (invoice) {
-      await fulfillInvoice(invoice.id, { externalId });
-    }
-  }
+  const verified = await adapter.verifyReturn(
+    gateway.config,
+    params.query,
+    gateway.isTestMode,
+  );
 
-  return { paid, invoiceNumber: params.invoiceNumber };
+  const result = await secureFulfillPayment(
+    params.invoiceNumber,
+    params.gatewaySlug,
+    {
+      paid: verified.paid,
+      invoiceNumber: verified.invoiceNumber,
+      externalId: verified.externalId,
+      amountPaid: verified.amountPaid,
+    },
+  );
+
+  return { paid: result.paid, invoiceNumber: params.invoiceNumber, ok: result.ok };
 }

@@ -7,10 +7,12 @@ import { getSessionCookieOptions } from "./lib/cookies";
 import { createRouter, authedQuery, publicQuery } from "./middleware";
 import { signSessionToken } from "./kimi/session";
 import { LOCAL_DEV_UNION_ID } from "./kimi/local-auth";
-import { upsertUser, findUserByUnionId } from "./queries/users";
+import { upsertUser, findUserByUnionId, incrementSessionVersion } from "./queries/users";
 import { getClientIp } from "./lib/client-ip";
 import { ensureUserIdentity } from "./couponService";
 import { isGoogleAuthEnabled } from "./google/auth";
+import { issueSessionForUser } from "./lib/issue-session";
+import { rateLimit, clientRateKey } from "./lib/rate-limit";
 
 export const authRouter = createRouter({
   config: publicQuery.query(() => ({
@@ -32,6 +34,20 @@ export const authRouter = createRouter({
           message: "تسجيل الدخول المحلي غير مفعّل",
         });
       }
+
+      const ip = getClientIp(ctx.req.headers);
+      const rl = rateLimit({
+        key: clientRateKey("login-local", ip),
+        limit: 10,
+        windowMs: 15 * 60 * 1000,
+      });
+      if (!rl.ok) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "محاولات كثيرة — حاول لاحقاً",
+        });
+      }
+
       if (
         input.username !== env.devLoginUser ||
         input.password !== env.devLoginPassword
@@ -54,10 +70,13 @@ export const authRouter = createRouter({
       const user = await findUserByUnionId(LOCAL_DEV_UNION_ID);
       if (user) await ensureUserIdentity(user.id);
 
-      const token = await signSessionToken({
-        unionId: LOCAL_DEV_UNION_ID,
-        clientId: env.appId || "local-dev",
-      });
+      const token = user
+        ? await issueSessionForUser(user.id, LOCAL_DEV_UNION_ID, env.appId || "local-dev")
+        : await signSessionToken({
+            unionId: LOCAL_DEV_UNION_ID,
+            clientId: env.appId || "local-dev",
+            sessionVersion: 0,
+          });
       const cookieOpts = getSessionCookieOptions(ctx.req.headers);
       ctx.resHeaders.append(
         "set-cookie",
@@ -72,6 +91,7 @@ export const authRouter = createRouter({
       return { success: true };
     }),
   logout: authedQuery.mutation(async ({ ctx }) => {
+    await incrementSessionVersion(ctx.user.id);
     const opts = getSessionCookieOptions(ctx.req.headers);
     ctx.resHeaders.append(
       "set-cookie",

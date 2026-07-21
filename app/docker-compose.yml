@@ -1,0 +1,49 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-nasab_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nasab}
+      MYSQL_USER: ${MYSQL_USER:-nasab}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nasab_secret}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_KIMI_AUTH_URL: ${VITE_KIMI_AUTH_URL}
+        VITE_APP_ID: ${VITE_APP_ID}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_ID: ${APP_ID}
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: mysql://${MYSQL_USER:-nasab}:${MYSQL_PASSWORD:-nasab_secret}@db:3306/${MYSQL_DATABASE:-nasab}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      KIMI_AUTH_URL: ${KIMI_AUTH_URL}
+      KIMI_OPEN_URL: ${KIMI_OPEN_URL}
+      OWNER_UNION_ID: ${OWNER_UNION_ID:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+
+volumes:
+  mysql_data:

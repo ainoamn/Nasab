@@ -51,11 +51,16 @@ export type PaymentAdapter = {
     config: Record<string, string>,
     params: Record<string, string>,
     isTestMode: boolean,
-  ): Promise<{ paid: boolean; externalId?: string }>;
+  ): Promise<{
+    paid: boolean;
+    externalId?: string;
+    invoiceNumber?: string;
+    amountPaid?: number;
+  }>;
   handleWebhook?(
     config: Record<string, string>,
     rawBody: string,
     headers: Record<string, string>,
     isTestMode: boolean,
-  ): Promise<{ invoiceNumber?: string; externalId?: string; paid: boolean } | null>;
+  ): Promise<{ invoiceNumber?: string; externalId?: string; paid: boolean; amountPaid?: number } | null>;
 };

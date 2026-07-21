@@ -98,7 +98,6 @@ export default function Checkout() {
       planSlug: planParam,
       gatewaySlug,
       couponCode: appliedCoupon || undefined,
-      origin: window.location.origin,
     });
   };
 

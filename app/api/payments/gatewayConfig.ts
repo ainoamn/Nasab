@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import type { PaymentGatewaySlug } from "@contracts/constants";
 import { getDb } from "../queries/connection";
 import { paymentGateways } from "@db/tables";
+import { decryptGatewayConfig } from "../lib/crypto";
 import { ensurePlatformDefaults } from "../seedDefaults";
 
 export type GatewayRow = {
@@ -38,7 +39,7 @@ export async function listEnabledGateways(): Promise<GatewayRow[]> {
       nameEn: g.nameEn,
       isEnabled: g.isEnabled,
       isTestMode: g.isTestMode,
-      config: parseGatewayConfig(g.configJson),
+      config: decryptGatewayConfig(parseGatewayConfig(g.configJson)),
       sortOrder: g.sortOrder,
     }));
 }
@@ -63,7 +64,7 @@ export async function getGatewayBySlug(slug: PaymentGatewaySlug): Promise<Gatewa
     nameEn: row.nameEn,
     isEnabled: row.isEnabled,
     isTestMode: row.isTestMode,
-    config: parseGatewayConfig(row.configJson),
+    config: decryptGatewayConfig(parseGatewayConfig(row.configJson)),
     sortOrder: row.sortOrder,
   };
 }

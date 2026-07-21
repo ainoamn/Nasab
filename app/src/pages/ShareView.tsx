@@ -21,15 +21,15 @@ import {
 
 /** عرض عام للقراءة فقط — يحترم كل قواعد الخصوصية */
 export default function ShareView() {
-  const { id } = useParams<{ id: string }>();
-  const treeId = parseInt(id ?? "0", 10);
+  const { token } = useParams<{ token: string }>();
+  const shareToken = token ?? "";
   const [detail, setDetail] = useState<Person | null>(null);
   const { t } = useTranslation();
   const L = useLabels();
 
   const query = trpc.person.listPublic.useQuery(
-    { treeId },
-    { enabled: treeId > 0, retry: false },
+    { shareToken },
+    { enabled: shareToken.length >= 16, retry: false },
   );
 
   if (query.isLoading) {
@@ -56,6 +56,7 @@ export default function ShareView() {
 
   const { tree, people, rels } = query.data;
   const isMember = !!tree.myRole;
+  const treeId = tree.id;
 
   return (
     <div className="min-h-screen bg-muted/30">

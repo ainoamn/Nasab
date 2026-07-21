@@ -7,6 +7,8 @@ import { getDb } from "./queries/connection";
 import { invites, treeMembers, trees, users } from "@db/tables";
 import { getMemberRole, logChange, requireTreeRole, roleAtLeast } from "./permissions";
 import { INVITE_ROLES, TREE_ROLES, type TreeRole } from "@contracts/constants";
+import { rateLimit, clientRateKey } from "./lib/rate-limit";
+import { getClientIp } from "./lib/client-ip";
 
 export const memberRouter = createRouter({
   /** أعضاء الشجرة مع أسمائهم */
@@ -41,6 +43,18 @@ export const memberRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const ip = getClientIp(ctx.req.headers);
+      const rl = rateLimit({
+        key: clientRateKey("create-invite", ip ?? String(ctx.user.id)),
+        limit: 20,
+        windowMs: 60 * 60 * 1000,
+      });
+      if (!rl.ok) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "محاولات كثيرة — حاول لاحقاً",
+        });
+      }
       const db = getDb();
       await requireTreeRole(ctx.user.id, input.treeId, "admin");
       const token = randomBytes(24).toString("hex");
@@ -120,6 +134,18 @@ export const memberRouter = createRouter({
   acceptInvite: authedQuery
     .input(z.object({ token: z.string().min(10).max(64) }))
     .mutation(async ({ ctx, input }) => {
+      const ip = getClientIp(ctx.req.headers);
+      const rl = rateLimit({
+        key: clientRateKey("accept-invite", ip ?? String(ctx.user.id)),
+        limit: 30,
+        windowMs: 60 * 60 * 1000,
+      });
+      if (!rl.ok) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "محاولات كثيرة — حاول لاحقاً",
+        });
+      }
       const db = getDb();
       const invite = await db.query.invites.findFirst({
         where: eq(invites.token, input.token),
@@ -135,6 +161,27 @@ export const memberRouter = createRouter({
           message: "هذه الدعوة غير صالحة أو منتهية",
         });
       }
+
+      const tree = await db.query.trees.findFirst({
+        where: eq(trees.id, invite.treeId),
+      });
+      if (!tree) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الشجرة غير موجودة" });
+      }
+      const status = tree.status ?? "active";
+      if (status === "archived") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "الشجرة مؤرشفة — لا يمكن قبول الدعوة",
+        });
+      }
+      if (status === "paused") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "الشجرة موقوفة مؤقتاً",
+        });
+      }
+
       const existingRole = await getMemberRole(ctx.user.id, invite.treeId);
       if (!existingRole) {
         await db.insert(treeMembers).values({

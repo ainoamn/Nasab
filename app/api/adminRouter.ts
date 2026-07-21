@@ -25,6 +25,11 @@ import { ensurePlatformDefaults } from "./seedDefaults";
 import { formatInvoiceNumber, nextSequence } from "./sequences";
 import { applySubscriptionPlan } from "./subscriptionHelpers";
 import { fulfillInvoice } from "./payments/fulfillment";
+import { logAdminAction } from "./lib/admin-audit";
+import { getClientIp } from "./lib/client-ip";
+import { encryptGatewayConfig, decryptGatewayConfig } from "./lib/crypto";
+import { parseGatewayConfig } from "./payments/gatewayConfig";
+import { incrementSessionVersion } from "./queries/users";
 
 function userSummary(user: typeof users.$inferSelect, ownedTrees = 0) {
   return {
@@ -302,8 +307,31 @@ export const adminRouter = createRouter({
       }
       if (input.banReason !== undefined) patch.banReason = input.banReason;
 
+      const banning = input.isBanned === true && !existing.isBanned;
+      const unbanning = input.isBanned === false && existing.isBanned;
+
       if (Object.keys(patch).length > 0) {
         await db.update(users).set(patch).where(eq(users.id, input.id));
+      }
+
+      if (banning) {
+        await incrementSessionVersion(input.id);
+        await logAdminAction({
+          adminUserId: ctx.user.id,
+          action: "ban_user",
+          targetType: "user",
+          targetId: String(input.id),
+          details: input.banReason ?? undefined,
+          ip: getClientIp(ctx.req.headers),
+        });
+      } else if (unbanning) {
+        await logAdminAction({
+          adminUserId: ctx.user.id,
+          action: "unban_user",
+          targetType: "user",
+          targetId: String(input.id),
+          ip: getClientIp(ctx.req.headers),
+        });
       }
 
       if (planChanged && input.plan) {
@@ -374,7 +402,7 @@ export const adminRouter = createRouter({
         number: z.string().max(64).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const user = await db.query.users.findFirst({
         where: eq(users.id, input.userId),
@@ -405,6 +433,14 @@ export const adminRouter = createRouter({
       if (input.status === "paid") {
         await fulfillInvoice(id);
       }
+      await logAdminAction({
+        adminUserId: ctx.user.id,
+        action: "create_invoice",
+        targetType: "invoice",
+        targetId: number,
+        details: `${input.amount} ${input.currency} — ${input.description}`,
+        ip: getClientIp(ctx.req.headers),
+      });
       return (
         (await db.select().from(invoices).where(eq(invoices.id, id)).then((r) => r[0])) ??
         row
@@ -421,7 +457,7 @@ export const adminRouter = createRouter({
         paidAt: z.coerce.date().nullish(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const existing = await db
         .select()
@@ -449,6 +485,13 @@ export const adminRouter = createRouter({
         await fulfillInvoice(input.id);
         delete patch.status;
         delete patch.paidAt;
+        await logAdminAction({
+          adminUserId: ctx.user.id,
+          action: "mark_invoice_paid",
+          targetType: "invoice",
+          targetId: existing.number,
+          ip: getClientIp(ctx.req.headers),
+        });
       }
 
       if (Object.keys(patch).length === 0) return { ok: true };
@@ -617,7 +660,7 @@ export const adminRouter = createRouter({
       .orderBy(paymentGateways.sortOrder);
     return rows.map((g) => ({
       ...g,
-      config: JSON.parse(g.configJson || "{}") as Record<string, string>,
+      config: decryptGatewayConfig(parseGatewayConfig(g.configJson)),
     }));
   }),
 
@@ -630,7 +673,7 @@ export const adminRouter = createRouter({
         config: z.record(z.string(), z.string()).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const existing = await db
         .select()
@@ -644,13 +687,35 @@ export const adminRouter = createRouter({
       if (input.isEnabled !== undefined) patch.isEnabled = input.isEnabled;
       if (input.isTestMode !== undefined) patch.isTestMode = input.isTestMode;
       if (input.config !== undefined) {
-        patch.configJson = JSON.stringify(input.config);
+        const stored = parseGatewayConfig(existing.configJson);
+        const current = decryptGatewayConfig(stored);
+        const merged: Record<string, string> = { ...current };
+        for (const [k, v] of Object.entries(input.config)) {
+          const isSecret = /secret|webhooksecret/i.test(k);
+          if (isSecret && !v.trim()) continue;
+          merged[k] = v;
+        }
+        patch.configJson = JSON.stringify(encryptGatewayConfig(merged));
       }
       if (Object.keys(patch).length === 0) return { ok: true };
       await db
         .update(paymentGateways)
         .set(patch)
         .where(eq(paymentGateways.id, input.id));
+      await logAdminAction({
+        adminUserId: ctx.user.id,
+        action: "update_payment_gateway",
+        targetType: "gateway",
+        targetId: existing.slug,
+        details: [
+          input.isEnabled !== undefined ? `enabled=${input.isEnabled}` : null,
+          input.isTestMode !== undefined ? `test=${input.isTestMode}` : null,
+          input.config !== undefined ? "config_updated" : null,
+        ]
+          .filter(Boolean)
+          .join(", "),
+        ip: getClientIp(ctx.req.headers),
+      });
       return { ok: true };
     }),
 
@@ -669,7 +734,7 @@ export const adminRouter = createRouter({
       }
       return {
         ...row,
-        config: JSON.parse(row.configJson || "{}") as Record<string, string>,
+        config: decryptGatewayConfig(parseGatewayConfig(row.configJson)),
       };
     }),
 

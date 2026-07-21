@@ -11,24 +11,6 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { trpc } from "@/providers/trpc";
 import { toast } from "sonner";
 
-const devLocalAuth = import.meta.env.VITE_DEV_LOCAL_AUTH === "true";
-
-function getOAuthUrl() {
-  const kimiAuthUrl = import.meta.env.VITE_KIMI_AUTH_URL;
-  const appID = import.meta.env.VITE_APP_ID;
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
-
-  const url = new URL(`${kimiAuthUrl}/api/oauth/authorize`);
-  url.searchParams.set("client_id", appID);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "profile");
-  url.searchParams.set("state", state);
-
-  return url.toString();
-}
-
 function GoogleIcon() {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
@@ -49,6 +31,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const authConfig = trpc.auth.config.useQuery();
+  const devLocalAuth = authConfig.data?.devLocalAuth ?? false;
 
   const loginLocal = trpc.auth.loginLocal.useMutation({
     onSuccess: async () => {
@@ -157,7 +140,7 @@ export default function Login() {
               size="lg"
               variant={devLocalAuth || authConfig.data?.googleEnabled ? "outline" : "default"}
               onClick={() => {
-                window.location.href = getOAuthUrl();
+                window.location.href = "/api/oauth/kimi/start";
               }}
             >
               {t("login.button")}

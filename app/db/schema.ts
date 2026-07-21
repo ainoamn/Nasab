@@ -38,6 +38,7 @@ export const users = mysqlTable("users", {
   isBanned: boolean("isBanned").default(false).notNull(),
   banReason: text("banReason"),
   bannedAt: timestamp("bannedAt"),
+  sessionVersion: int("sessionVersion").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -73,6 +74,7 @@ export const trees = mysqlTable(
     status: mysqlEnum("status", ["active", "paused", "archived"])
       .default("active")
       .notNull(),
+    shareToken: varchar("shareToken", { length: 64 }).unique(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -450,4 +452,21 @@ export const couponRedemptions = mysqlTable("coupon_redemptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type PersonLink = typeof personLinks.$inferSelect;
+export const adminAuditLogs = mysqlTable(
+  "admin_audit_logs",
+  {
+    id: serial("id").primaryKey(),
+    adminUserId: bigint("adminUserId", { mode: "number", unsigned: true }).notNull(),
+    action: varchar("action", { length: 128 }).notNull(),
+    targetType: varchar("targetType", { length: 64 }),
+    targetId: varchar("targetId", { length: 128 }),
+    details: text("details"),
+    ip: varchar("ip", { length: 45 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    adminIdx: index("admin_audit_admin_idx").on(table.adminUserId),
+  }),
+);
+
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;

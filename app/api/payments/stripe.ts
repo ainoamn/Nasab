@@ -68,10 +68,18 @@ export const stripeAdapter: PaymentAdapter = {
     );
     if (!resp.ok) return { paid: false };
 
-    const body = (await resp.json()) as { payment_status?: string; id?: string };
+    const body = (await resp.json()) as {
+      payment_status?: string;
+      id?: string;
+      metadata?: { invoice_number?: string };
+      amount_total?: number;
+    };
+
     return {
       paid: body.payment_status === "paid",
       externalId: body.id,
+      invoiceNumber: body.metadata?.invoice_number,
+      amountPaid: body.amount_total,
     };
   },
 
@@ -85,7 +93,14 @@ export const stripeAdapter: PaymentAdapter = {
     try {
       const event = JSON.parse(rawBody) as {
         type?: string;
-        data?: { object?: { id?: string; payment_status?: string; metadata?: Record<string, string> } };
+        data?: {
+          object?: {
+            id?: string;
+            payment_status?: string;
+            metadata?: Record<string, string>;
+            amount_total?: number;
+          };
+        };
       };
       if (event.type !== "checkout.session.completed") return null;
       const session = event.data?.object;
@@ -95,6 +110,7 @@ export const stripeAdapter: PaymentAdapter = {
         invoiceNumber: session.metadata?.invoice_number,
         externalId: session.id,
         paid: true,
+        amountPaid: session.amount_total,
       };
     } catch {
       return null;

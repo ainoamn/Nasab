@@ -153,7 +153,7 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route path="/share/:id" element={<ShareView />} />
+        <Route path="/share/:token" element={<ShareView />} />
         <Route path="/invite/:token" element={<InviteAccept />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
