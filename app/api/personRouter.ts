@@ -3,7 +3,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { createRouter, authedQuery, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
-import { persons, relationships, treeBranches, personLinks, trees } from "@db/tables";
+import { persons, relationships, treeBranches, personLinks, trees, type Person, type Relationship } from "@db/tables";
 import { insertReturningId } from "./queries/insert-id";
 import {
   applyPublicPrivacy,
@@ -109,12 +109,12 @@ async function fetchOppositeSpouses(
         ),
       ),
     );
-  const people = await db
+  const people = (await db
     .select()
     .from(persons)
-    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)));
+    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)))) as Person[];
   const byId = new Map(people.map((p) => [p.id, p]));
-  const result: (typeof people)[0][] = [];
+  const result: Person[] = [];
   for (const sr of spouseRels) {
     const sid =
       sr.fromPersonId === personId ? sr.toPersonId : sr.fromPersonId;
@@ -489,14 +489,14 @@ async function applyKinshipLink(
 }
 
 async function repairDuplicateParentLinks(db: Db, treeId: number) {
-  const people = await db
+  const people = (await db
     .select()
     .from(persons)
-    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)));
-  const rels = await db
+    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)))) as Person[];
+  const rels = (await db
     .select()
     .from(relationships)
-    .where(eq(relationships.treeId, treeId));
+    .where(eq(relationships.treeId, treeId))) as Relationship[];
   const byId = new Map(people.map((p) => [p.id, p]));
   const spousesOf = buildSpousesOf(rels);
 
@@ -532,14 +532,14 @@ async function repairDuplicateParentLinks(db: Db, treeId: number) {
 async function getTreeData(treeId: number) {
   const db = getDb();
   await repairDuplicateParentLinks(db, treeId);
-  const people = await db
+  const people = (await db
     .select()
     .from(persons)
-    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)));
-  const rels = await db
+    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)))) as Person[];
+  const rels = (await db
     .select()
     .from(relationships)
-    .where(eq(relationships.treeId, treeId));
+    .where(eq(relationships.treeId, treeId))) as Relationship[];
   const branches = await db
     .select()
     .from(treeBranches)
@@ -549,9 +549,8 @@ async function getTreeData(treeId: number) {
     .from(personLinks)
     .where(eq(personLinks.treeId, treeId));
 
-  const remotePeople: Array<
-    (typeof people)[0] & { linkId: number; forPersonId: number }
-  > = [];
+  const remotePeople: Array<Person & { linkId: number; forPersonId: number }> =
+    [];
   for (const link of links) {
     const remote = await db.query.persons.findFirst({
       where: and(
@@ -562,7 +561,7 @@ async function getTreeData(treeId: number) {
     });
     if (remote) {
       remotePeople.push({
-        ...remote,
+        ...(remote as Person),
         linkId: link.id,
         forPersonId: link.localPersonId,
       });

@@ -8,7 +8,7 @@ import {
   useContext,
   type PointerEvent as REPointerEvent,
 } from "react";
-import type { Person, Relationship } from "@db/schema";
+import type { Person, Relationship } from "@db/tables";
 import type { TreeBranch } from "@db/tables";
 import { useLabels } from "@/lib/labels";
 import { useTranslation } from "react-i18next";

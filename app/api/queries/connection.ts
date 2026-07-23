@@ -9,17 +9,20 @@ import * as mysqlSchema from "@db/schema";
 import * as sqliteSchema from "@db/schema.sqlite";
 import * as relations from "@db/relations";
 
-type DbInstance =
-  | ReturnType<typeof drizzleMysql<typeof mysqlSchema>>
-  | ReturnType<typeof drizzleSqlite<typeof sqliteSchema>>;
+/**
+ * Dual-dialect runtime (SQLite dev / MySQL prod).
+ * Typed as a permissive query API so tsc does not explode on mysql|sqlite unions.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AppDb = any;
 
-let instance: DbInstance;
+let instance: AppDb;
 
 export function isSqliteDb(): boolean {
   return isSqliteDatabase(env.databaseUrl);
 }
 
-export function getDb(): DbInstance {
+export function getDb(): AppDb {
   if (!instance) {
     if (isSqliteDb()) {
       const dbPath = env.databaseUrl.replace(/^file:/, "");

@@ -2,9 +2,11 @@ import crypto from "node:crypto";
 import type { PaymentAdapter } from "./types";
 
 function stripeForm(data: Record<string, string | number>): string {
-  return new URLSearchParams(
-    Object.entries(data).map(([k, v]) => [k, String(v)]),
-  ).toString();
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(data)) {
+    params.set(k, String(v));
+  }
+  return params.toString();
 }
 
 export const stripeAdapter: PaymentAdapter = {

@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./queries/connection";
-import { changeLogs, treeMembers, trees } from "@db/tables";
+import { changeLogs, treeMembers, trees, type Person } from "@db/tables";
 import type { PersonPrivacy, TreeRole, TreeStatus } from "@contracts/constants";
 import { generateShareToken } from "./lib/share-token";
 
@@ -113,9 +113,11 @@ export async function ensureTreeShareToken(treeId: number): Promise<string> {
 }
 
 /** فلترة الأشخاص حسب الخصوصية لأعضاء الشجرة */
-export function filterPersonsForMember<
-  T extends { privacy: string; createdById: number },
->(people: T[], role: TreeRole, userId: number): T[] {
+export function filterPersonsForMember(
+  people: Person[],
+  role: TreeRole,
+  userId: number,
+): Person[] {
   if (roleAtLeast(role, "admin")) return people;
 
   return people.filter((p) => {
@@ -165,22 +167,10 @@ export async function getViewableTree(treeId: number, userId?: number) {
  * - إخفاء الأحياء حسب إعداد الشجرة
  * - عرض الإناث حسب إعداد الشجرة (كامل / اسم أول / إخفاء)
  */
-export function applyPublicPrivacy<
-  T extends {
-    privacy: string;
-    isLiving: boolean;
-    gender: string;
-    givenName: string;
-    fatherName: string | null;
-    kunya: string | null;
-    laqab: string | null;
-    clan: string | null;
-    birthYear: number | null;
-    deathYear: number | null;
-    notes: string | null;
-    photoUrl: string | null;
-  },
->(list: T[], tree: { hideLiving: boolean; femaleDisplay: string }): T[] {
+export function applyPublicPrivacy(
+  list: Person[],
+  tree: { hideLiving: boolean; femaleDisplay: string },
+): Person[] {
   return list
     .filter((p) => p.privacy === "public")
     .filter((p) => !(tree.hideLiving && p.isLiving))

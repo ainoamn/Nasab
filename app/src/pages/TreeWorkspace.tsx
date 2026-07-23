@@ -25,7 +25,7 @@ import type {
   FemaleDisplay,
   PersonPrivacy,
 } from "@contracts/constants";
-import type { Person } from "@db/schema";
+import type { Person } from "@db/tables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

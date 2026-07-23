@@ -19,7 +19,7 @@ function generationListLabel(
 }
 
 export default function PedigreeRollPrint(props: PrintTemplateProps) {
-  const { tree, people, levels, scopeSummary, accent, designName, today } = props;
+  const { tree, people, rels, levels, scopeSummary, accent, designName, today } = props;
   const { t } = useTranslation();
 
   const columns = useMemo(() => pedigreeColumns(people, levels), [people, levels]);

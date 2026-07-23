@@ -157,11 +157,21 @@ export async function ensurePlatformDefaults() {
         slug,
         nameAr: meta.nameAr,
         nameEn: meta.nameEn,
-        isEnabled: false,
-        isTestMode: true,
+        // التحويل البنكي جاهز كبوابة حية بدون مفاتيح خارجية — أكمل بيانات الحساب من المشرف
+        isEnabled: slug === "bank_transfer",
+        isTestMode: slug !== "bank_transfer",
         configJson: JSON.stringify(meta.config),
         sortOrder: meta.sortOrder,
       });
+    } else if (
+      slug === "bank_transfer" &&
+      existing.isTestMode === true &&
+      !existing.isEnabled
+    ) {
+      await db
+        .update(paymentGateways)
+        .set({ isEnabled: true, isTestMode: false })
+        .where(eq(paymentGateways.slug, slug));
     }
   }
 

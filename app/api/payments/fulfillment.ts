@@ -29,7 +29,7 @@ export async function fulfillInvoice(
   if (!invoice) return { ok: false };
   if (invoice.status === "paid") return { ok: true, alreadyPaid: true };
 
-  const metadata =
+  const metadata: InvoiceMetadata =
     parseInvoiceMetadata(invoice.metadataJson) ??
     (invoice.planSlug
       ? {
@@ -38,7 +38,12 @@ export async function fulfillInvoice(
           originalAmount: invoice.amount,
           discountApplied: 0,
         }
-      : null);
+      : {
+          planSlug: "free" as SubscriptionPlan,
+          context: "new" as const,
+          originalAmount: invoice.amount,
+          discountApplied: 0,
+        });
 
   await db
     .update(invoices)
@@ -49,11 +54,11 @@ export async function fulfillInvoice(
     })
     .where(eq(invoices.id, invoiceId));
 
-  if (metadata?.couponId && metadata.discountApplied > 0) {
+  if (metadata.couponId && metadata.discountApplied > 0) {
     await redeemCoupon(metadata.couponId, invoice.userId, metadata.discountApplied);
   }
 
-  if (metadata?.planSlug) {
+  if (metadata.planSlug) {
     await applySubscriptionPlan(invoice.userId, metadata.planSlug, {
       extendFromCurrent: metadata.context === "renewal",
     });

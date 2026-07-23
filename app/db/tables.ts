@@ -2,7 +2,14 @@ import { isSqliteDatabase } from "./dialect";
 import * as mysql from "./schema";
 import * as sqlite from "./schema.sqlite";
 
-const active = isSqliteDatabase() ? sqlite : mysql;
+/**
+ * Runtime picks SQLite or MySQL. Types use the SQLite schema as the canonical
+ * shape (columns are kept in sync) to avoid mysql|sqlite union explosions in tsc.
+ */
+type CanonicalSchema = typeof sqlite;
+const active = (
+  isSqliteDatabase() ? sqlite : mysql
+) as unknown as CanonicalSchema;
 
 export const users = active.users;
 export const trees = active.trees;

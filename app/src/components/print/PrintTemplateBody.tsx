@@ -1,4 +1,4 @@
-import type { ComponentType, CSSProperties } from "react";
+import type { ComponentType } from "react";
 import type { PrintTemplateId, PrintTemplateProps } from "./types";
 import PalmTreePrint from "./PalmTreePrint";
 import ManuscriptPrint from "./ManuscriptPrint";

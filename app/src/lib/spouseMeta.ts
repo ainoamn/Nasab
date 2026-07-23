@@ -26,8 +26,8 @@ export type SpouseDateParts = {
 export function formatSpouseDates(
   rel: SpouseDateParts | undefined | null,
   t: (k: string, o?: Record<string, unknown>) => string,
-): { marriage: string | null; divorce: string | null } {
-  if (!rel) return { marriage: null, divorce: null };
+): { marriage?: string; divorce?: string } {
+  if (!rel) return {};
 
   const marriage = rel.marriageYear
     ? formatBirthDate(
@@ -38,7 +38,7 @@ export function formatSpouseDates(
         },
         "ar-OM",
       ) ?? String(rel.marriageYear)
-    : null;
+    : undefined;
 
   const divorce = rel.divorceYear
     ? formatBirthDate(
@@ -49,11 +49,11 @@ export function formatSpouseDates(
         },
         "ar-OM",
       ) ?? String(rel.divorceYear)
-    : null;
+    : undefined;
 
   return {
-    marriage: marriage ? t("chart.marriedOn", { date: marriage }) : null,
-    divorce: divorce ? t("chart.divorcedOn", { date: divorce }) : null,
+    ...(marriage ? { marriage: t("chart.marriedOn", { date: marriage }) } : {}),
+    ...(divorce ? { divorce: t("chart.divorcedOn", { date: divorce }) } : {}),
   };
 }
 

@@ -382,10 +382,10 @@ export async function resolveFatherForMotherChild(
       ),
     );
 
-  const allPeople = await db
+  const allPeople = (await db
     .select()
     .from(persons)
-    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)));
+    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)))) as import("@db/tables").Person[];
   const byId = new Map(allPeople.map((p) => [p.id, p]));
 
   for (const sr of spouseRels) {

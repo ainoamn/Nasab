@@ -8,6 +8,8 @@ app/node_modules/.tmp/
 # Environment & secrets
 app/.env
 app/.env.local
+app/.env.production
+app/.env.docker
 app/.env.*.local
 
 # Database files

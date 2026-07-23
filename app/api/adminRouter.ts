@@ -361,7 +361,7 @@ export const adminRouter = createRouter({
     )
     .query(async ({ input }) => {
       const db = getDb();
-      const filters = [];
+      const filters: ReturnType<typeof eq>[] = [];
       if (input.status) filters.push(eq(invoices.status, input.status));
       if (input.userId) filters.push(eq(invoices.userId, input.userId));
       const where = filters.length > 0 ? and(...filters) : undefined;

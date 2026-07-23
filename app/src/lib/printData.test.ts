@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Person, Relationship } from "@db/schema";
+import type { Person, Relationship } from "@db/tables";
 import { assignGenerationsStable, groupByGeneration, buildPalmTreeLayout, formatPalmCouple, computePrintStats, assignGenerationsFromPrintRoot } from "@/lib/printData";
 import { buildPrintSubgraph, DEFAULT_PRINT_SCOPE } from "@/lib/printFilter";
 
@@ -18,16 +18,24 @@ function person(
     laqab: null,
     clan: null,
     gender,
+    birthDay: null,
+    birthMonth: null,
     birthYear: null,
-    deathYear: null,
     birthPlace: null,
+    deathDay: null,
+    deathMonth: null,
+    deathYear: null,
     deathPlace: null,
     isLiving: true,
-    story: null,
+    privacy: "family",
+    photoUrl: null,
+    notes: null,
     branchId: null,
+    createdById: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as Person;
+    deletedAt: null,
+  };
 }
 
 function parentRel(from: number, to: number): Relationship {
