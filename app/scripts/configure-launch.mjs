@@ -55,6 +55,16 @@ if (args["union-id"]) {
 
 content = upsertEnv(content, "BOOTSTRAP_FIRST_ADMIN", "true");
 
+// مزامنة VITE_* من قيم الـ backend إن وُجدت
+const appIdMatch = content.match(/^APP_ID=(.+)$/m);
+const kimiMatch = content.match(/^KIMI_AUTH_URL=(.+)$/m);
+if (appIdMatch?.[1]?.trim()) {
+  content = upsertEnv(content, "VITE_APP_ID", appIdMatch[1].trim());
+}
+if (kimiMatch?.[1]?.trim()) {
+  content = upsertEnv(content, "VITE_KIMI_AUTH_URL", kimiMatch[1].trim());
+}
+
 if (args["bank-name"]) content = upsertEnv(content, "BANK_NAME", String(args["bank-name"]));
 if (args["account-name"])
   content = upsertEnv(content, "BANK_ACCOUNT_NAME", String(args["account-name"]));

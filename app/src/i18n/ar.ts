@@ -305,6 +305,16 @@ export const ar = {
       paidCount: "{{count}} مدفوعة",
       revenue: "إجمالي الإيرادات",
       plansTitle: "توزيع خطط الاشتراك",
+      launchTitle: "جاهزية الإطلاق",
+      launchOk: "جاهز",
+      launchTodo: "مطلوب",
+      launchItems: {
+        https: "نطاق HTTPS حقيقي (APP_PUBLIC_URL)",
+        admin: "حساب مشرف جاهز",
+        company: "اسم/شعار الشركة",
+        bank: "بيانات التحويل البنكي الحقيقية",
+        plans: "أسعار الخطط",
+      },
     },
     plans: {
       title: "خطط الاشتراك",

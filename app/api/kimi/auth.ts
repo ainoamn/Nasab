@@ -127,19 +127,22 @@ export function createOAuthCallbackHandler() {
 
     if (error) {
       if (error === "access_denied") {
-        return c.redirect("/", 302);
+        return c.redirect("/login?error=access_denied", 302);
       }
-      return c.json({ error, error_description: errorDescription }, 400);
+      return c.redirect(
+        `/login?error=${encodeURIComponent(error)}`,
+        302,
+      );
     }
 
     if (!code || !state) {
-      return c.json({ error: "code and state are required" }, 400);
+      return c.redirect("/login?error=missing_code", 302);
     }
 
     const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
     const verified = verifyOAuthState(state, "kimi", origin);
     if (!verified) {
-      return c.json({ error: "Invalid OAuth state" }, 400);
+      return c.redirect("/login?error=invalid_state", 302);
     }
 
     try {
@@ -147,7 +150,7 @@ export function createOAuthCallbackHandler() {
       const { userId } = await verifyAccessToken(tokenResp.access_token);
       const userProfile = await kimiUsers.getProfile(tokenResp.access_token);
       if (!userProfile) {
-        throw new Error("Failed to fetch user profile from Kimi Open");
+        return c.redirect("/login?error=profile", 302);
       }
 
       await upsertUser({
@@ -171,15 +174,10 @@ export function createOAuthCallbackHandler() {
         maxAge: Session.maxAgeMs / 1000,
       });
 
-      return c.redirect("/", 302);
+      return c.redirect("/dashboard", 302);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
-      if (!env.isProduction) {
-        const details =
-          error instanceof Error ? error.message : "Unknown OAuth error";
-        return c.json({ error: "OAuth callback failed", details }, 500);
-      }
-      return c.json({ error: "OAuth callback failed" }, 500);
+      return c.redirect("/login?error=oauth_failed", 302);
     }
   };
 }

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,8 @@ import {
   Crown,
   Banknote,
   TrendingUp,
+  CheckCircle2,
+  CircleAlert,
 } from "lucide-react";
 
 function formatMoney(amount: number, locale: string) {
@@ -29,6 +32,7 @@ export default function AdminOverview() {
   const locale = localeTag(i18n.language);
 
   const statsQuery = trpc.admin.getStats.useQuery();
+  const checklistQuery = trpc.admin.getLaunchChecklist.useQuery();
 
   if (statsQuery.isLoading) {
     return (
@@ -82,8 +86,56 @@ export default function AdminOverview() {
     },
   ];
 
+  const checklist = checklistQuery.data?.items ?? [];
+
   return (
     <div className="space-y-6">
+      {checklist.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("admin.stats.launchTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {checklist.map((item) => {
+              const label = t(`admin.stats.launchItems.${item.id}`);
+              const row = (
+                <div className="flex items-start gap-3 rounded-lg border px-3 py-2.5">
+                  {item.ok ? (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <CircleAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{label}</p>
+                    {item.detail && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.detail}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={item.ok ? "secondary" : "outline"}>
+                    {item.ok
+                      ? t("admin.stats.launchOk")
+                      : t("admin.stats.launchTodo")}
+                  </Badge>
+                </div>
+              );
+              return item.href && !item.ok ? (
+                <Link
+                  key={item.id}
+                  to={item.href}
+                  className="block hover:opacity-90"
+                >
+                  {row}
+                </Link>
+              ) : (
+                <div key={item.id}>{row}</div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {statCards.map(({ title, value, sub, icon: Icon, isText }) => (
           <Card key={title}>

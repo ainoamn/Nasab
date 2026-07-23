@@ -34,7 +34,7 @@ import {
   getCompanyBranding,
   updateCompanySettings,
 } from "./lib/companySettings";
-
+import { env } from "./lib/env";
 function userSummary(user: typeof users.$inferSelect, ownedTrees = 0) {
   return {
     id: user.id,
@@ -123,6 +123,71 @@ export const adminRouter = createRouter({
         expenses: totalExpenses,
         profit: revenue - totalExpenses,
       },
+    };
+  }),
+
+  getLaunchChecklist: adminQuery.query(async () => {
+    await ensurePlatformDefaults();
+    const branding = await getCompanyBranding();
+    const db = getDb();
+    const gateway = await db
+      .select()
+      .from(paymentGateways)
+      .where(eq(paymentGateways.slug, "bank_transfer"))
+      .then((r) => r[0]);
+    let bankConfig: Record<string, string> = {};
+    try {
+      bankConfig = JSON.parse(gateway?.configJson || "{}");
+    } catch {
+      bankConfig = {};
+    }
+    const bankReady = Boolean(
+      bankConfig.bankName?.trim() &&
+        bankConfig.accountName?.trim() &&
+        (bankConfig.accountNumber?.trim() || bankConfig.iban?.trim()) &&
+        !String(bankConfig.accountNumber || "").match(/^0+$/),
+    );
+    const publicUrl = env.appPublicUrl || "";
+    const httpsReady =
+      publicUrl.startsWith("https://") &&
+      !publicUrl.includes("localhost") &&
+      !publicUrl.includes("yourdomain");
+
+    return {
+      items: [
+        {
+          id: "https",
+          ok: httpsReady,
+          href: null as string | null,
+          detail: publicUrl || null,
+        },
+        {
+          id: "admin",
+          ok: true,
+          href: null,
+          detail: env.ownerUnionId
+            ? "OWNER_UNION_ID"
+            : "BOOTSTRAP_FIRST_ADMIN",
+        },
+        {
+          id: "company",
+          ok: Boolean(branding.companyNameAr || branding.companyNameEn),
+          href: "/admin/company",
+          detail: branding.companyNameAr || branding.companyNameEn,
+        },
+        {
+          id: "bank",
+          ok: Boolean(gateway?.isEnabled && !gateway?.isTestMode && bankReady),
+          href: "/admin/gateways/bank_transfer",
+          detail: bankConfig.bankName || null,
+        },
+        {
+          id: "plans",
+          ok: true,
+          href: "/admin/plans",
+          detail: null,
+        },
+      ],
     };
   }),
 

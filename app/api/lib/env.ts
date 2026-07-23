@@ -4,6 +4,17 @@ import path from "path";
 // Vite SSR does not always load .env via import "dotenv/config".
 const appRoot = path.resolve(import.meta.dirname, "../..");
 dotenv.config({ path: path.join(appRoot, ".env") });
+if (process.env.NODE_ENV === "production") {
+  dotenv.config({
+    path: path.join(appRoot, ".env.production"),
+    override: true,
+  });
+} else {
+  dotenv.config({
+    path: path.join(appRoot, ".env.production"),
+    override: false,
+  });
+}
 
 function required(name: string): string {
   const value = process.env[name];
@@ -14,11 +25,11 @@ function required(name: string): string {
 }
 
 export const env = {
-  appId: required("APP_ID"),
+  appId: required("APP_ID") || process.env.VITE_APP_ID || "",
   appSecret: required("APP_SECRET"),
   isProduction: process.env.NODE_ENV === "production",
   databaseUrl: required("DATABASE_URL"),
-  kimiAuthUrl: required("KIMI_AUTH_URL"),
+  kimiAuthUrl: required("KIMI_AUTH_URL") || process.env.VITE_KIMI_AUTH_URL || "",
   kimiOpenUrl: required("KIMI_OPEN_URL"),
   ownerUnionId: process.env.OWNER_UNION_ID ?? "",
   /** إذا لم يُضبط OWNER_UNION_ID: أول مستخدم يُنشأ يصبح مشرفاً */

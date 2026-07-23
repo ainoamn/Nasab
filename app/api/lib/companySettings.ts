@@ -34,7 +34,23 @@ export async function ensurePlatformSettingsRow(): Promise<void> {
     .where(eq(platformSettings.id, SETTINGS_ID))
     .then((r) => r[0]);
   if (!existing) {
-    await db.insert(platformSettings).values({ id: SETTINGS_ID });
+    await db.insert(platformSettings).values({
+      id: SETTINGS_ID,
+      companyNameAr: "نَسَب",
+      companyNameEn: "Nasab",
+    });
+  } else {
+    const row = await db
+      .select()
+      .from(platformSettings)
+      .where(eq(platformSettings.id, SETTINGS_ID))
+      .then((r) => r[0]);
+    if (row && !row.companyNameAr && !row.companyNameEn) {
+      await db
+        .update(platformSettings)
+        .set({ companyNameAr: "نَسَب", companyNameEn: "Nasab" })
+        .where(eq(platformSettings.id, SETTINGS_ID));
+    }
   }
 }
 

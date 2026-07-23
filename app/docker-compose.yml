@@ -23,8 +23,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_KIMI_AUTH_URL: ${VITE_KIMI_AUTH_URL}
-        VITE_APP_ID: ${VITE_APP_ID}
+        VITE_KIMI_AUTH_URL: ${VITE_KIMI_AUTH_URL:-${KIMI_AUTH_URL}}
+        VITE_APP_ID: ${VITE_APP_ID:-${APP_ID}}
     restart: unless-stopped
     depends_on:
       db:
@@ -43,6 +43,12 @@ services:
       KIMI_AUTH_URL: ${KIMI_AUTH_URL}
       KIMI_OPEN_URL: ${KIMI_OPEN_URL}
       OWNER_UNION_ID: ${OWNER_UNION_ID:-}
+      BOOTSTRAP_FIRST_ADMIN: ${BOOTSTRAP_FIRST_ADMIN:-true}
+      BANK_NAME: ${BANK_NAME:-}
+      BANK_ACCOUNT_NAME: ${BANK_ACCOUNT_NAME:-}
+      BANK_ACCOUNT_NUMBER: ${BANK_ACCOUNT_NUMBER:-}
+      BANK_IBAN: ${BANK_IBAN:-}
+      BANK_INSTRUCTIONS: ${BANK_INSTRUCTIONS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       DEV_LOCAL_AUTH: "false"

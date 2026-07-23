@@ -305,6 +305,16 @@ export const en = {
       paidCount: "{{count}} paid",
       revenue: "Total revenue",
       plansTitle: "Subscription plan breakdown",
+      launchTitle: "Launch readiness",
+      launchOk: "Ready",
+      launchTodo: "Needed",
+      launchItems: {
+        https: "Real HTTPS domain (APP_PUBLIC_URL)",
+        admin: "Admin account ready",
+        company: "Company name / logo",
+        bank: "Real bank transfer details",
+        plans: "Plan prices",
+      },
     },
     plans: {
       title: "Subscription plans",
