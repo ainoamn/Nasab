@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "start": "NODE_ENV=production node dist/boot.js",
     "prod:check": "node scripts/prod-check.mjs --strict",
+    "launch:configure": "node scripts/configure-launch.mjs",
+    "admin:promote": "node scripts/promote-admin.mjs",
     "check": "tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",

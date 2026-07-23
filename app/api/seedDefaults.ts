@@ -7,7 +7,19 @@ import {
 import type { PaymentGatewaySlug, SubscriptionPlan } from "@contracts/constants";
 import { PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
 import { ensurePlatformSettingsRow } from "./lib/companySettings";
+import { env } from "./lib/env";
 
+function bankTransferConfig(): Record<string, string> {
+  return {
+    bankName: env.bankName,
+    accountName: env.bankAccountName,
+    accountNumber: env.bankAccountNumber,
+    iban: env.bankIban,
+    instructions:
+      env.bankInstructions ||
+      "حوّل المبلغ إلى الحساب البنكي أعلاه، ثم أرفق إيصال التحويل أو تواصل مع الدعم لتأكيد الاشتراك.",
+  };
+}
 const DEFAULT_PLANS: Array<{
   slug: SubscriptionPlan;
   nameAr: string;
@@ -147,6 +159,8 @@ export async function ensurePlatformDefaults() {
 
   for (const slug of PAYMENT_GATEWAY_SLUGS) {
     const meta = GATEWAY_META[slug];
+    const config =
+      slug === "bank_transfer" ? bankTransferConfig() : meta.config;
     const existing = await db
       .select()
       .from(paymentGateways)
@@ -157,21 +171,45 @@ export async function ensurePlatformDefaults() {
         slug,
         nameAr: meta.nameAr,
         nameEn: meta.nameEn,
-        // التحويل البنكي جاهز كبوابة حية بدون مفاتيح خارجية — أكمل بيانات الحساب من المشرف
+        // التحويل البنكي جاهز كبوابة حية بدون مفاتيح خارجية
         isEnabled: slug === "bank_transfer",
         isTestMode: slug !== "bank_transfer",
-        configJson: JSON.stringify(meta.config),
+        configJson: JSON.stringify(config),
         sortOrder: meta.sortOrder,
       });
-    } else if (
-      slug === "bank_transfer" &&
-      existing.isTestMode === true &&
-      !existing.isEnabled
-    ) {
-      await db
-        .update(paymentGateways)
-        .set({ isEnabled: true, isTestMode: false })
-        .where(eq(paymentGateways.slug, slug));
+    } else if (slug === "bank_transfer") {
+      const patch: {
+        isEnabled?: boolean;
+        isTestMode?: boolean;
+        configJson?: string;
+      } = {};
+      if (existing.isTestMode === true && !existing.isEnabled) {
+        patch.isEnabled = true;
+        patch.isTestMode = false;
+      }
+      // املأ الحقول الفارغة من متغيرات البيئة دون الكتابة فوق ما ضبطه المشرف
+      try {
+        const current = JSON.parse(existing.configJson || "{}") as Record<
+          string,
+          string
+        >;
+        let changed = false;
+        for (const [k, v] of Object.entries(config)) {
+          if (v && !current[k]?.trim()) {
+            current[k] = v;
+            changed = true;
+          }
+        }
+        if (changed) patch.configJson = JSON.stringify(current);
+      } catch {
+        /* ignore */
+      }
+      if (Object.keys(patch).length > 0) {
+        await db
+          .update(paymentGateways)
+          .set(patch)
+          .where(eq(paymentGateways.slug, slug));
+      }
     }
   }
 

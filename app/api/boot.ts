@@ -49,9 +49,15 @@ export default app;
 
 if (env.isProduction) {
   if (!env.ownerUnionId) {
-    console.warn(
-      "[nasab] OWNER_UNION_ID is empty — no user will be auto-promoted to admin on first login",
-    );
+    if (env.bootstrapFirstAdmin) {
+      console.warn(
+        "[nasab] OWNER_UNION_ID empty — BOOTSTRAP_FIRST_ADMIN is on: first login becomes admin",
+      );
+    } else {
+      console.warn(
+        "[nasab] OWNER_UNION_ID is empty — no user will be auto-promoted to admin on first login",
+      );
+    }
   }
   if (!env.appSecret || env.appSecret.length < 32) {
     console.warn(

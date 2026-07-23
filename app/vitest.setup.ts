@@ -3,3 +3,7 @@ process.env.APP_ID ??= "test-app";
 process.env.DATABASE_URL ??= "file:./.data/test.sqlite";
 process.env.KIMI_AUTH_URL ??= "http://localhost";
 process.env.KIMI_OPEN_URL ??= "http://localhost";
+process.env.APP_PUBLIC_URL = "http://localhost:5173";
+process.env.ALLOWED_ORIGINS = "http://localhost:5173";
+process.env.NODE_ENV = "test";
+process.env.DEV_LOCAL_AUTH = "true";

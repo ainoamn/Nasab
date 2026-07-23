@@ -36,6 +36,8 @@ export async function upsertUser(
   delete (values as { signInIp?: unknown }).signInIp;
   delete (updateSet as { signInIp?: unknown }).signInIp;
 
+  const db = getDb();
+
   if (
     values.role === undefined &&
     values.unionId &&
@@ -43,9 +45,24 @@ export async function upsertUser(
   ) {
     values.role = "admin";
     updateSet.role = "admin";
+  } else if (
+    !existing &&
+    values.role === undefined &&
+    !env.ownerUnionId &&
+    env.bootstrapFirstAdmin
+  ) {
+    const adminCount = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.role, "admin"))
+      .limit(1)
+      .then((r) => r.length);
+    if (adminCount === 0) {
+      values.role = "admin";
+      updateSet.role = "admin";
+    }
   }
 
-  const db = getDb();
   if (isSqliteDb()) {
     await db
       .insert(schema.users)

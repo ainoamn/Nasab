@@ -21,6 +21,8 @@ export const env = {
   kimiAuthUrl: required("KIMI_AUTH_URL"),
   kimiOpenUrl: required("KIMI_OPEN_URL"),
   ownerUnionId: process.env.OWNER_UNION_ID ?? "",
+  /** إذا لم يُضبط OWNER_UNION_ID: أول مستخدم يُنشأ يصبح مشرفاً */
+  bootstrapFirstAdmin: process.env.BOOTSTRAP_FIRST_ADMIN !== "false",
   devLocalAuthEnabled:
     !process.env.NODE_ENV || process.env.NODE_ENV !== "production"
       ? process.env.DEV_LOCAL_AUTH === "true"
@@ -35,4 +37,9 @@ export const env = {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
+  bankName: process.env.BANK_NAME ?? "",
+  bankAccountName: process.env.BANK_ACCOUNT_NAME ?? "",
+  bankAccountNumber: process.env.BANK_ACCOUNT_NUMBER ?? "",
+  bankIban: process.env.BANK_IBAN ?? "",
+  bankInstructions: process.env.BANK_INSTRUCTIONS ?? "",
 };

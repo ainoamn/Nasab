@@ -108,11 +108,23 @@ npm start
 
 ## بعد الإطلاق (تشغيل تشغيلي)
 
-1. ادخل بحسابك الذي يطابق `OWNER_UNION_ID` → تصبح مشرفاً.
-2. `/admin/company` — شعار واسم الشركة للمستندات.
-3. `/admin/plans` — تأكيد الأسعار والحدود.
-4. `/admin/gateways` — تفعيل بوابة + مفاتيح حية (ليس UAT إن أمكن).
-5. اختبر مسار شراء كامل: `/checkout?plan=plus`.
+1. ادخل بحسابك (أول دخول يصبح مشرفاً إن كان `OWNER_UNION_ID` فارغاً و`BOOTSTRAP_FIRST_ADMIN=true`).
+2. أو عيّن مشرفاً يدوياً:
+   ```bash
+   node scripts/promote-admin.mjs --union-id=YOUR_ID
+   # أو بعد معرفة الـ ID: node scripts/configure-launch.mjs --union-id=YOUR_ID --domain=https://yourdomain.com
+   ```
+3. `/admin/company` — شعار واسم الشركة للمستندات.
+4. `/admin/plans` — تأكيد الأسعار والحدود.
+5. `/admin/gateways` — راجع التحويل البنكي (بيانات `BANK_*` من `.env`) أو فعّل Thawani/Stripe بمفاتيح حية.
+6. اختبر مسار شراء كامل: `/checkout?plan=plus`.
+
+### ضبط الإطلاق بسرعة
+
+```bash
+cd app
+node scripts/configure-launch.mjs --domain=https://yourdomain.com --union-id=YOUR_KIMI_UNION_ID --bank-name="..." --account-name="..." --account-number="..." --iban="OM..."
+```
 
 ---
 
