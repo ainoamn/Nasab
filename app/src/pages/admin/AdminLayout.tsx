@@ -14,6 +14,7 @@ import {
   Calculator,
   CreditCard,
   Ticket,
+  Building2,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { to: "/admin/accounting", end: false, icon: Calculator, key: "accounting" },
   { to: "/admin/invoices", end: false, icon: Receipt, key: "invoices" },
   { to: "/admin/gateways", end: false, icon: CreditCard, key: "gateways" },
+  { to: "/admin/company", end: false, icon: Building2, key: "company" },
 ] as const;
 
 export default function AdminLayout() {
@@ -49,7 +51,7 @@ export default function AdminLayout() {
       <AppHeader />
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
-        <div className="mb-6">
+        <div className="mb-6 no-print">
           <Link
             to="/dashboard"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-2"
@@ -71,7 +73,7 @@ export default function AdminLayout() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          <aside className="lg:w-56 shrink-0">
+          <aside className="lg:w-56 shrink-0 no-print">
             <nav className="flex lg:flex-col gap-1 overflow-x-auto pb-2 lg:pb-0">
               {navItems.map(({ to, end, icon: Icon, key }) => (
                 <NavLink

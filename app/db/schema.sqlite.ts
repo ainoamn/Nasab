@@ -459,3 +459,21 @@ export const adminAuditLogs = sqliteTable(
 );
 
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+
+export const platformSettings = sqliteTable("platform_settings", {
+  id: integer("id").primaryKey().default(1),
+  companyNameAr: text("companyNameAr"),
+  companyNameEn: text("companyNameEn"),
+  logoUrl: text("logoUrl"),
+  address: text("address"),
+  phone: text("phone"),
+  email: text("email"),
+  taxNumber: text("taxNumber"),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date()),
+});
+
+export type PlatformSettings = typeof platformSettings.$inferSelect;
+export type InsertPlatformSettings = typeof platformSettings.$inferInsert;

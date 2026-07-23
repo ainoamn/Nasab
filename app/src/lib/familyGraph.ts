@@ -167,15 +167,18 @@ export function collectFocusedSubgraph(
   const spousesOf = buildSpousesOf(rels);
 
   const walkUp = (startId: number) => {
+    const queue = [startId];
     const seen = new Set<number>();
-    let current = startId;
-    for (let i = 0; i < 40; i++) {
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (seen.has(current)) continue;
+      seen.add(current);
       const { fatherId, motherId } = getParents(current, rels, byId);
-      const parentId = fatherId ?? motherId;
-      if (!parentId || seen.has(parentId) || !byId.has(parentId)) break;
-      seen.add(parentId);
-      included.add(parentId);
-      current = parentId;
+      for (const parentId of [fatherId, motherId]) {
+        if (parentId == null || !byId.has(parentId) || seen.has(parentId)) continue;
+        included.add(parentId);
+        queue.push(parentId);
+      }
     }
   };
 

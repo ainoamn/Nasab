@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, Clock, TreePalm, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { CompanyDocumentHeader } from "@/components/CompanyDocumentHeader";
 
 function formatOmr(amount: number) {
   return `${(amount / 1000).toFixed(3)} ر.ع.`;
@@ -44,9 +45,8 @@ export default function CheckoutSuccess() {
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       <header className="border-b bg-background/90 backdrop-blur py-4">
-        <div className="mx-auto max-w-lg px-4 flex items-center gap-2 font-display font-bold text-primary">
-          <TreePalm className="h-5 w-5" />
-          {t("brand")}
+        <div className="mx-auto max-w-lg px-4">
+          <CompanyDocumentHeader compact align="start" />
         </div>
       </header>
 

@@ -147,14 +147,34 @@ export default function TreeWorkspace() {
 
   const focusOnPerson = (personId: number) => {
     setChartFocusId(personId);
+    setChartRevision((n) => n + 1);
     setDetailPerson(null);
   };
+
   const myRole = (tree?.myRole ?? "viewer") as TreeRole;
   const treeStatus = (tree?.status ?? "active") as TreeStatus;
   const canEdit = myRole === "owner" || myRole === "admin" || myRole === "editor";
   const canWrite = canEdit && treeStatus === "active";
   const canAdmin = myRole === "owner" || myRole === "admin";
 
+  const ensureLineageMut = trpc.person.ensurePersonLineage.useMutation({
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openPersonTree = async (personId: number) => {
+    if (canWrite) {
+      try {
+        const res = await ensureLineageMut.mutateAsync({ treeId, personId });
+        if (res.linked) {
+          await utils.person.list.invalidate({ treeId });
+          await utils.person.list.refetch({ treeId });
+        }
+      } catch {
+        // نفتح الشجرة حتى لو فشل الربط
+      }
+    }
+    focusOnPerson(personId);
+  };
   const toggleBranchMut = trpc.person.toggleBranch.useMutation({
     onSuccess: async () => {
       await utils.person.list.invalidate({ treeId });
@@ -354,7 +374,9 @@ export default function TreeWorkspace() {
                   rels={chartRels}
                   branches={branches}
                   remotePeople={remotePeople}
+                  focusMode={chartFocusId != null}
                   onPersonClick={(p) => setDetailPerson(p)}
+                  onOpenSideTree={(p) => void openPersonTree(p.id)}
                   onToggleBranch={
                     canWrite
                       ? (branchId, isHidden) =>
@@ -589,7 +611,7 @@ export default function TreeWorkspace() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => focusOnPerson(father.id)}
+                        onClick={() => void openPersonTree(father.id)}
                       >
                         {t("detail.father")}: {father.givenName}
                       </Button>
@@ -599,7 +621,7 @@ export default function TreeWorkspace() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => focusOnPerson(mother.id)}
+                        onClick={() => void openPersonTree(mother.id)}
                       >
                         {t("detail.mother")}: {mother.givenName}
                       </Button>
@@ -617,7 +639,7 @@ export default function TreeWorkspace() {
                         type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => focusOnPerson(sp.id)}
+                        onClick={() => void openPersonTree(sp.id)}
                       >
                         {sp.givenName}
                         <span className="ms-1 opacity-70">→ {t("detail.viewSpouseTree")}</span>
@@ -641,12 +663,15 @@ export default function TreeWorkspace() {
                 <Button
                   className="gap-2 w-full sm:w-auto"
                   variant={chartFocusId === detailPerson.id ? "secondary" : "default"}
-                  onClick={() => focusOnPerson(detailPerson.id)}
+                  onClick={() => void openPersonTree(detailPerson.id)}
+                  disabled={ensureLineageMut.isPending}
                 >
                   <Focus className="h-4 w-4" />
                   {chartFocusId === detailPerson.id
                     ? t("detail.viewingFocusedTree")
-                    : t("detail.viewPersonTree")}
+                    : ensureLineageMut.isPending
+                      ? t("common.saving")
+                      : t("detail.viewPersonTree")}
                 </Button>
                 {chartFocusId && (
                   <Button

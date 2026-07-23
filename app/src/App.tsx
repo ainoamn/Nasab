@@ -21,6 +21,7 @@ const AdminAccounting = lazy(() => import("./pages/admin/AdminAccounting"));
 const AdminPaymentGateways = lazy(() => import("./pages/admin/AdminPaymentGateways"));
 const AdminGatewaySettings = lazy(() => import("./pages/admin/AdminGatewaySettings"));
 const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons"));
+const AdminCompanySettings = lazy(() => import("./pages/admin/AdminCompanySettings"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 
@@ -125,6 +126,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <AdminCoupons />
+              </Suspense>
+            }
+          />
+          <Route
+            path="company"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <AdminCompanySettings />
               </Suspense>
             }
           />

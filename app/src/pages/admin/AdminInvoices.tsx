@@ -30,9 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { localeTag } from "@/i18n";
+import { InvoiceReceiptDocument } from "@/components/InvoiceReceiptDocument";
+import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 
 function formatDate(d: Date | string | null | undefined, locale: string) {
   if (!d) return "—";
@@ -73,6 +75,9 @@ export default function AdminInvoices() {
     limit: 50,
     offset: 0,
   });
+
+  type InvoiceRow = NonNullable<typeof listQuery.data>["items"][number];
+  const [printInvoice, setPrintInvoice] = useState<InvoiceRow | null>(null);
 
   const usersQuery = trpc.admin.listUsers.useQuery({ limit: 100, offset: 0 });
 
@@ -221,9 +226,14 @@ export default function AdminInvoices() {
                       {formatDate(inv.issuedAt, locale)}
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(inv)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(inv)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setPrintInvoice(inv)}>
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -337,6 +347,19 @@ export default function AdminInvoices() {
               {updateMut.isPending ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={printInvoice != null} onOpenChange={(open) => !open && setPrintInvoice(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="no-print">
+            <DialogTitle>{t("admin.invoices.printReceipt")}</DialogTitle>
+          </DialogHeader>
+          {printInvoice && (
+            <PrintableDocumentShell title={`${t("admin.company.receiptTitle")} ${printInvoice.number}`}>
+              <InvoiceReceiptDocument invoice={printInvoice} />
+            </PrintableDocumentShell>
+          )}
         </DialogContent>
       </Dialog>
     </div>

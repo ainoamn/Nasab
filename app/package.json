@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "NODE_ENV=production node dist/boot.js",
+    "prod:check": "node scripts/prod-check.mjs --strict",
     "check": "tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",

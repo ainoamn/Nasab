@@ -470,3 +470,21 @@ export const adminAuditLogs = mysqlTable(
 );
 
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+
+export const platformSettings = mysqlTable("platform_settings", {
+  id: int("id").primaryKey().default(1),
+  companyNameAr: varchar("companyNameAr", { length: 255 }),
+  companyNameEn: varchar("companyNameEn", { length: 255 }),
+  logoUrl: text("logoUrl"),
+  address: text("address"),
+  phone: varchar("phone", { length: 32 }),
+  email: varchar("email", { length: 320 }),
+  taxNumber: varchar("taxNumber", { length: 64 }),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type PlatformSettings = typeof platformSettings.$inferSelect;
+export type InsertPlatformSettings = typeof platformSettings.$inferInsert;

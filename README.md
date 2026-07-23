@@ -19,7 +19,7 @@
 - [لوحة المشرف](#لوحة-المشرف)
 - [الأمان والأرشفة](#الأمان-والأرشفة)
 - [النشر للإنتاج](#النشر-للإنتاج)
-- [ما يُخطط إصلاحه قبل الإطلاق العام](#ما-يُخطط-إصلاحه-قبل-الإطلاق-العام)
+- [ما بعد الإطلاق (تحسينات اختيارية)](#ما-بعد-الإطلاق-تحسينات-اختيارية)
 
 ---
 
@@ -337,52 +337,54 @@ http://localhost:5173/api/oauth/google/callback
 - Drizzle ORM (حماية SQL injection)
 - Zod للتحقق من المدخلات
 - دعوات: token عشوائي + انتهاء صلاحية
-- Stripe webhook: التحقق من التوقيع
-
-### نقاط تحتاج تحسين قبل الإطلاق العام
-
-- ربط جلسة الدفع برقم الفاتورة (checkout return)
-- توقيع webhooks لـ PayPal و Thawani
-- OAuth `state` لـ Google و Kimi
-- Rate limiting على login/webhooks
-- تطبيق خصوصية الأفراد بين أعضاء الشجرة
-- Security headers (CSP, HSTS)
+- توقيع webhooks للبوابات + ربط جلسة الدفع بالفاتورة
+- OAuth `state` موقّع + `ALLOWED_ORIGINS`
+- Rate limiting على login / OAuth / webhooks / الدعوات
+- Security headers
 
 ---
 
 ## النشر للإنتاج
 
-### Checklist
+الدليل التفصيلي: [`app/DEPLOY.md`](app/DEPLOY.md)
+
+### Checklist سريع
 
 - [ ] `NODE_ENV=production`
-- [ ] `APP_SECRET` قوي وم unique
+- [ ] `APP_SECRET` قوي (≥ 32 حرفاً)
 - [ ] `DATABASE_URL` → MySQL
-- [ ] `npm run db:push` أو `db:migrate` على السيرفر
-- [ ] `npm run build` مع `VITE_*` vars
-- [ ] HTTPS أمام التطبيق (cookies تتطلب HTTPS)
 - [ ] `OWNER_UNION_ID` للمشرف الأول
-- [ ] تفعيل بوابات الدفع + webhooks
-- [ ] **عدم** تفعيل `DEV_LOCAL_AUTH` في الإنتاج
+- [ ] `APP_PUBLIC_URL` + `ALLOWED_ORIGINS` على HTTPS
+- [ ] `npm run build` مع `VITE_*`
+- [ ] تفعيل بوابة دفع + webhooks
+- [ ] `npm run prod:check` داخل `app/`
+- [ ] **عدم** تفعيل `DEV_LOCAL_AUTH`
 
-### التشغيل
+### Docker
 
 ```bash
 cd app
-npm run build
-NODE_ENV=production node dist/boot.js
-# أو PORT=3000 NODE_ENV=production node dist/boot.js
+cp .env.production.example .env
+# املأ الأسرار ثم:
+docker compose up -d --build
+```
+
+### بدون Docker
+
+```bash
+cd app
+npm ci && npm run build
+npm run db:push
+NODE_ENV=production npm start
 ```
 
 ---
 
-## ما يُخطط إصلاحه قبل الإطلاق العام
+## ما بعد الإطلاق (تحسينات اختيارية)
 
-1. ثغرات أمان الدفع (ربط invoice + webhooks)
-2. OAuth CSRF (`state` parameter)
-3. MySQL migrations مُلتزمة في Git
-4. Rate limiting
-5. استرجاع الأفراد المحذوفين (اختياري)
-6. اختبارات آلية
+1. استرجاع الأفراد المحذوفين ناعماً
+2. توسيع اختبارات آلية (`npm test`)
+3. migrations مُصدَّرة في Git بدل الاعتماد على `db:push` فقط في بيئات حساسة جداً
 
 ---
 
@@ -398,4 +400,4 @@ NODE_ENV=production node dist/boot.js
 
 ---
 
-*آخر تحديث: مارس 2026*
+*آخر تحديث: يوليو 2026*

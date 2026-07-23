@@ -21,6 +21,7 @@ export const platformSequences = active.platformSequences;
 export const coupons = active.coupons;
 export const couponRedemptions = active.couponRedemptions;
 export const adminAuditLogs = active.adminAuditLogs;
+export const platformSettings = active.platformSettings;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -50,5 +51,6 @@ export type PaymentGateway = typeof paymentGateways.$inferSelect;
 export type InsertPaymentGateway = typeof paymentGateways.$inferInsert;
 export type Coupon = typeof coupons.$inferSelect;
 export type InsertCoupon = typeof coupons.$inferInsert;
+export type PlatformSettings = typeof platformSettings.$inferSelect;
 
 export { isSqliteDatabase };

@@ -6,6 +6,7 @@ import {
 } from "@db/tables";
 import type { PaymentGatewaySlug, SubscriptionPlan } from "@contracts/constants";
 import { PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
+import { ensurePlatformSettingsRow } from "./lib/companySettings";
 
 const DEFAULT_PLANS: Array<{
   slug: SubscriptionPlan;
@@ -38,9 +39,10 @@ const DEFAULT_PLANS: Array<{
     maxTrees: null,
     maxPersonsPerTree: null,
     maxPersonsTotal: null,
-    priceYearly: 0,
+    // الأسعار بالبيسة (1 ر.ع. = 1000) — قابلة للتعديل من لوحة المشرف
+    priceYearly: 9900,
     includesPrint: false,
-    requiresPayment: false,
+    requiresPayment: true,
     sortOrder: 1,
   },
   {
@@ -50,9 +52,9 @@ const DEFAULT_PLANS: Array<{
     maxTrees: null,
     maxPersonsPerTree: null,
     maxPersonsTotal: null,
-    priceYearly: 0,
+    priceYearly: 19900,
     includesPrint: true,
-    requiresPayment: false,
+    requiresPayment: true,
     sortOrder: 2,
   },
 ];
@@ -101,7 +103,8 @@ const GATEWAY_META: Record<
       accountName: "",
       accountNumber: "",
       iban: "",
-      instructions: "",
+      instructions:
+        "حوّل المبلغ إلى الحساب البنكي أعلاه، ثم أرفق إيصال التحويل أو تواصل مع الدعم لتأكيد الاشتراك.",
     },
   },
   manual: {
@@ -109,7 +112,8 @@ const GATEWAY_META: Record<
     nameEn: "Manual payment",
     sortOrder: 4,
     config: {
-      instructions: "",
+      instructions:
+        "تواصل مع إدارة المنصة لتفعيل الاشتراك يدوياً بعد الاتفاق على طريقة الدفع.",
     },
   },
 };
@@ -125,6 +129,19 @@ export async function ensurePlatformDefaults() {
       .then((r) => r[0]);
     if (!existing) {
       await db.insert(subscriptionPlans).values(plan);
+    } else if (
+      (plan.slug === "plus" || plan.slug === "print") &&
+      existing.priceYearly === 0 &&
+      plan.priceYearly > 0
+    ) {
+      // ترقية القيم الافتراضية القديمة (سعر 0) دون الكتابة فوق أسعار عدّلها المشرف
+      await db
+        .update(subscriptionPlans)
+        .set({
+          priceYearly: plan.priceYearly,
+          requiresPayment: plan.requiresPayment,
+        })
+        .where(eq(subscriptionPlans.slug, plan.slug));
     }
   }
 
@@ -147,6 +164,8 @@ export async function ensurePlatformDefaults() {
       });
     }
   }
+
+  await ensurePlatformSettingsRow();
 }
 
 export function gatewayFieldLabels(slug: PaymentGatewaySlug): Record<string, string> {

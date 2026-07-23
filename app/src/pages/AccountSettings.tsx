@@ -33,9 +33,18 @@ import {
   Calendar,
   ExternalLink,
   ArrowRight,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { localeTag } from "@/i18n";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { InvoiceReceiptDocument } from "@/components/InvoiceReceiptDocument";
+import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 
 function formatDate(d: Date | string | null | undefined, locale: string) {
   if (!d) return "—";
@@ -77,6 +86,17 @@ export default function AccountSettings() {
   const [activeTab, setActiveTab] = useState("profile");
   const [couponCode, setCouponCode] = useState("");
   const [referralInput, setReferralInput] = useState("");
+  const [printInvoice, setPrintInvoice] = useState<{
+    id: number;
+    number: string;
+    description: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    issuedAt: Date | string;
+    paidAt?: Date | string | null;
+    planSlug?: string | null;
+  } | null>(null);
 
   const profileQuery = useAccountProfile();
   const usageQuery = useAccountUsage();
@@ -523,6 +543,7 @@ export default function AccountSettings() {
                             <TableHead>{t("account.billing.cols.amount")}</TableHead>
                             <TableHead>{t("account.billing.cols.status")}</TableHead>
                             <TableHead>{t("account.billing.cols.date")}</TableHead>
+                            <TableHead className="w-12" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -541,6 +562,16 @@ export default function AccountSettings() {
                               <TableCell className="text-sm text-muted-foreground">
                                 {formatDate(inv.issuedAt, locale)}
                               </TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setPrintInvoice(inv)}
+                                  aria-label={t("admin.invoices.printReceipt")}
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -552,6 +583,27 @@ export default function AccountSettings() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={printInvoice != null} onOpenChange={(open) => !open && setPrintInvoice(null)}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="no-print">
+              <DialogTitle>{t("admin.invoices.printReceipt")}</DialogTitle>
+            </DialogHeader>
+            {printInvoice && (
+              <PrintableDocumentShell
+                title={`${t("admin.company.receiptTitle")} ${printInvoice.number}`}
+              >
+                <InvoiceReceiptDocument
+                  invoice={{
+                    ...printInvoice,
+                    userName: profile?.name ?? null,
+                    userEmail: profile?.billingEmail ?? profile?.email ?? null,
+                  }}
+                />
+              </PrintableDocumentShell>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

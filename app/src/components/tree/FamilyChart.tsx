@@ -4,6 +4,8 @@ import {
   useMemo,
   useRef,
   useState,
+  createContext,
+  useContext,
   type PointerEvent as REPointerEvent,
 } from "react";
 import type { Person, Relationship } from "@db/schema";
@@ -27,7 +29,6 @@ import {
   BranchColumn,
   CoupleBridge,
   CoupleToChildrenConnector,
-  PolygamyLayout,
   SiblingFork,
   SpouseHeart,
   VLine,
@@ -35,8 +36,25 @@ import {
 import { Baby, Heart, Minus, Plus, RotateCcw, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { displayGenerationNumber, printGenerationLevel } from "@/lib/printData";
+import { parseLineageChain } from "@/lib/lineageParser";
 
 type Labels = ReturnType<typeof useLabels>;
+
+const PrintLevelsContext = createContext<Map<number, number> | null>(null);
+
+type PrintChartMeta = {
+  levels: Map<number, number>;
+  rels: Relationship[];
+  byId: Map<number, Person>;
+} | null;
+
+const PrintChartContext = createContext<PrintChartMeta>(null);
+
+const SideTreeContext = createContext<{
+  personIds: Set<number>;
+  onOpen: (person: Person) => void;
+} | null>(null);
 
 type RemotePerson = Person & { linkId: number; forPersonId: number };
 
@@ -46,9 +64,17 @@ type Props = {
   branches?: TreeBranch[];
   remotePeople?: RemotePerson[];
   onPersonClick?: (person: Person) => void;
+  /** فتح شجرة شخص له فرع نسب جانبي (آباء خارج الشجرة الرئيسية) */
+  onOpenSideTree?: (person: Person) => void;
   onToggleBranch?: (branchId: number, isHidden: boolean) => void;
   compact?: boolean;
   disablePanZoom?: boolean;
+  /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
+  focusMode?: boolean;
+  /** جذر الشجرة في الطباعة — بدلاً من اكتشاف أعلى جد تلقائياً */
+  rootPersonId?: number;
+  /** أجيال الطباعة — الجذر = 0 */
+  printLevels?: Map<number, number>;
 };
 
 function isFemale(gender: string) {
@@ -77,9 +103,13 @@ export default function FamilyChart({
   branches = [],
   remotePeople = [],
   onPersonClick,
+  onOpenSideTree,
   onToggleBranch,
   compact,
   disablePanZoom,
+  focusMode,
+  rootPersonId,
+  printLevels,
 }: Props) {
   const L = useLabels();
   const { t } = useTranslation();
@@ -128,13 +158,16 @@ export default function FamilyChart({
     const hiddenBranchIds = new Set(
       branches.filter((b) => b.isHidden).map((b) => b.id),
     );
-    const branchRootIds = new Set(
-      branches.filter((b) => !b.isHidden).map((b) => b.rootPersonId),
+    const branchRootIds = new Set(branches.map((b) => b.rootPersonId));
+    const branchMemberIds = new Set(
+      people.filter((p) => p.branchId != null).map((p) => p.id),
     );
 
     const rawRoots = people.filter((p) => {
       if (childIds.has(p.id)) return false;
-      if (p.branchId && hiddenBranchIds.has(p.branchId)) {
+      // جذور فروع النسب لا تظهر كشجرة منفصلة في الصفحة الرئيسية
+      if (!printLevels && !focusMode && branchRootIds.has(p.id)) return false;
+      if (p.branchId && hiddenBranchIds.has(p.branchId) && !focusMode) {
         const hasSpouseInMain = (spousesOf.get(p.id) ?? []).some((sid) => {
           const s = byId.get(sid);
           return s && (!s.branchId || !hiddenBranchIds.has(s.branchId));
@@ -163,17 +196,24 @@ export default function FamilyChart({
         if (!childIds.has(sid)) shownAsSpouse.add(sid);
       }
     }
-    if (orderedRoots.length === 0 && people.length > 0) orderedRoots.push(people[0]);
+    if (orderedRoots.length === 0 && people.length > 0) {
+      const fallback = people.find((p) => !branchRootIds.has(p.id)) ?? people[0];
+      orderedRoots.push(fallback);
+    }
 
-    for (const br of branches) {
-      if (br.isHidden) continue;
-      const rootPerson = byId.get(br.rootPersonId);
-      if (
-        rootPerson &&
-        !childIds.has(rootPerson.id) &&
-        !orderedRoots.some((r) => r.id === rootPerson.id)
-      ) {
-        orderedRoots.push(rootPerson);
+    // لا نضيف جذور الفروع كأشجار مكدّسة في الأسفل — تُفتح من مؤشر الدائرة
+    // (في وضع التركيز أو الطباعة نسمح بها لتظهر سلسلة النسب كاملة)
+    if (printLevels || focusMode) {
+      for (const br of branches) {
+        if (br.isHidden && !focusMode) continue;
+        const rootPerson = byId.get(br.rootPersonId);
+        if (
+          rootPerson &&
+          !childIds.has(rootPerson.id) &&
+          !orderedRoots.some((r) => r.id === rootPerson.id)
+        ) {
+          orderedRoots.push(rootPerson);
+        }
       }
     }
 
@@ -241,26 +281,103 @@ export default function FamilyChart({
       people.map((p) => [p.id, computePersonRanks(p, people, rels)]),
     );
 
-    const displayRoots = dedupedRoots.length > 0 ? dedupedRoots : finalRoots.length > 0 ? finalRoots : orderedRoots;
+    const displayRoots = (() => {
+      if (rootPersonId != null && !focusMode) {
+        const rp = byId.get(rootPersonId);
+        if (rp) return [rp];
+      }
+      const base =
+        dedupedRoots.length > 0
+          ? dedupedRoots
+          : finalRoots.length > 0
+            ? finalRoots
+            : orderedRoots;
+      if (printLevels || focusMode) return base;
+      // الصفحة الرئيسية: الشجرة الرئيسية فقط (بدون جذور فروع النسب)
+      return base.filter((r) => !branchRootIds.has(r.id));
+    })();
     const reachable = collectReachableFromRoots(
       displayRoots.map((r) => r.id),
       childrenOf,
       spousesOf,
     );
-    const orphans = people.filter((p) => !reachable.has(p.id));
+
+    // أشخاص في الشجرة الرئيسية لديهم آباء خارجها أو نسب متسلسل غير مربوط → مؤشر فرع نسب
+    const sideTreePersonIds = new Set<number>();
+    if (!printLevels) {
+      for (const id of reachable) {
+        const person = byId.get(id);
+        if (!person) continue;
+        const { fatherId, motherId } = getParents(id, rels, byId);
+        const outsideParent = [fatherId, motherId].some(
+          (pid) => pid != null && byId.has(pid) && !reachable.has(pid),
+        );
+        if (outsideParent) {
+          sideTreePersonIds.add(id);
+          continue;
+        }
+        // نسب مكتوب دون أب مربوط بعلاقة — يظهر المؤشر ويُنشأ الربط عند الفتح
+        if (
+          !fatherId &&
+          person.fatherName?.trim() &&
+          parseLineageChain(person.fatherName).segments.length > 0
+        ) {
+          sideTreePersonIds.add(id);
+        }
+      }
+    }
+
+    const branchOnlyIds = new Set<number>();
+    for (const br of branches) {
+      const brReach = collectReachableFromRoots([br.rootPersonId], childrenOf, spousesOf);
+      // أضف أيضاً سلسلة الآباء من جذر الفرع
+      let cur: number | undefined = br.rootPersonId;
+      const seen = new Set<number>();
+      while (cur && byId.has(cur) && !seen.has(cur)) {
+        seen.add(cur);
+        brReach.add(cur);
+        const { fatherId, motherId } = getParents(cur, rels, byId);
+        cur = fatherId ?? motherId ?? undefined;
+      }
+      for (const id of brReach) {
+        if (!reachable.has(id)) branchOnlyIds.add(id);
+      }
+    }
+    for (const id of branchMemberIds) {
+      if (!reachable.has(id)) branchOnlyIds.add(id);
+    }
+
+    const orphans = printLevels
+      ? []
+      : people.filter((p) => !reachable.has(p.id) && !branchOnlyIds.has(p.id));
 
     return {
       byId,
       childrenOf,
       spousesOf,
-      roots: displayRoots,
+      roots:
+        displayRoots.length > 0
+          ? displayRoots
+          : orderedRoots.filter((r) => !branchRootIds.has(r.id)).slice(0, 1),
       orphans,
       ranks,
       remoteByLocal,
       branchRootIds,
       branches,
+      sideTreePersonIds,
     };
-  }, [people, rels, branches, remotePeople]);
+  }, [people, rels, branches, remotePeople, rootPersonId, printLevels, focusMode]);
+
+  const sideTreeCtx = useMemo(
+    () =>
+      onOpenSideTree
+        ? {
+            personIds: graph.sideTreePersonIds,
+            onOpen: onOpenSideTree,
+          }
+        : null,
+    [graph.sideTreePersonIds, onOpenSideTree],
+  );
 
   const resetView = useCallback(() => {
     setZoom(1);
@@ -294,10 +411,13 @@ export default function FamilyChart({
 
     fit();
     const id = window.requestAnimationFrame(fit);
+    const onBeforePrint = () => fit();
     window.addEventListener("resize", fit);
+    window.addEventListener("beforeprint", onBeforePrint);
     return () => {
       window.cancelAnimationFrame(id);
       window.removeEventListener("resize", fit);
+      window.removeEventListener("beforeprint", onBeforePrint);
       content.style.transform = "";
     };
   }, [disablePanZoom, people, rels, branches, compact]);
@@ -356,6 +476,15 @@ export default function FamilyChart({
   const hasRels = rels.length > 0;
 
   return (
+    <PrintLevelsContext.Provider value={printLevels ?? null}>
+    <PrintChartContext.Provider
+      value={
+        printLevels
+          ? { levels: printLevels, rels, byId: graph.byId }
+          : null
+      }
+    >
+    <SideTreeContext.Provider value={sideTreeCtx}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
       {!disablePanZoom && (
@@ -416,23 +545,6 @@ export default function FamilyChart({
         </p>
       )}
 
-      {!disablePanZoom && branches.length > 0 && onToggleBranch && (
-        <div className="mb-2 flex flex-wrap gap-2 px-1">
-          {branches.map((br) => (
-            <Button
-              key={br.id}
-              type="button"
-              size="sm"
-              variant={br.isHidden ? "outline" : "secondary"}
-              className="h-7 text-[11px] gap-1"
-              onClick={() => onToggleBranch(br.id, !br.isHidden)}
-            >
-              {br.isHidden ? t("chart.showBranch") : t("chart.hideBranch")}: {br.name}
-            </Button>
-          ))}
-        </div>
-      )}
-
       {/* منطقة العرض: عرض ثابت، تمركز بـ flex (آمن مع RTL) */}
       <div
         ref={viewportRef}
@@ -476,9 +588,7 @@ export default function FamilyChart({
               {graph.roots.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-10">{t("tree.emptyChart")}</p>
               ) : (
-                graph.roots.map((root, i) => {
-                  const branch = branches.find((b) => b.rootPersonId === root.id);
-                  return (
+                graph.roots.map((root, i) => (
                   <div
                     key={root.id}
                     className={cn(
@@ -486,31 +596,36 @@ export default function FamilyChart({
                       i > 0 && "mt-12 border-t border-dashed border-slate-200 pt-8",
                     )}
                   >
-                    {branch && (
-                      <p className="mb-3 text-[10px] sm:text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-3 py-1">
-                        {t("chart.branchLabel")}: {branch.name}
-                      </p>
+                    {printLevels && (
+                      <PrintAncestorsAboveRoot
+                        rootId={root.id}
+                        graph={graph}
+                        rels={rels}
+                        compact={compact}
+                        onPersonClick={onPersonClick}
+                        L={L}
+                        t={t}
+                      />
                     )}
-                <CoupleNode
-                  focusId={root.id}
-                  depth={0}
-                  byId={graph.byId}
-                  childrenOf={graph.childrenOf}
-                  spousesOf={graph.spousesOf}
-                  rels={rels}
-                  ranks={graph.ranks}
-                  remoteByLocal={graph.remoteByLocal}
-                  onPersonClick={onPersonClick}
-                  compact={compact}
-                  visited={new Set()}
-                  L={L}
-                  t={t}
-                />
+                    <CoupleNode
+                      focusId={root.id}
+                      depth={0}
+                      byId={graph.byId}
+                      childrenOf={graph.childrenOf}
+                      spousesOf={graph.spousesOf}
+                      rels={rels}
+                      ranks={graph.ranks}
+                      remoteByLocal={graph.remoteByLocal}
+                      onPersonClick={onPersonClick}
+                      compact={compact}
+                      visited={new Set()}
+                      L={L}
+                      t={t}
+                    />
                   </div>
-                  );
-                })
+                ))
               )}
-              {graph.orphans.length > 0 && (
+              {graph.orphans.length > 0 && !printLevels && (
                 <div className="mt-10 w-full border-t border-dashed border-amber-300 pt-6">
                   <p className="mb-3 text-center text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                     {t("chart.unlinkedPeople", { count: graph.orphans.length })}
@@ -535,6 +650,63 @@ export default function FamilyChart({
           </div>
         </div>
       </div>
+    </div>
+    </SideTreeContext.Provider>
+    </PrintChartContext.Provider>
+    </PrintLevelsContext.Provider>
+  );
+}
+
+function PrintAncestorsAboveRoot({
+  rootId,
+  graph,
+  rels,
+  compact,
+  onPersonClick,
+  L,
+  t,
+}: {
+  rootId: number;
+  graph: {
+    byId: Map<number, Person>;
+    ranks: Map<number, ReturnType<typeof computePersonRanks>>;
+  };
+  rels: Relationship[];
+  compact?: boolean;
+  onPersonClick?: (person: Person) => void;
+  L: Labels;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  const printLevels = useContext(PrintLevelsContext);
+  if (!printLevels) return null;
+
+  const { fatherId, motherId } = getParents(rootId, rels, graph.byId);
+  const parents = [fatherId, motherId]
+    .map((id) => (id != null ? graph.byId.get(id) : undefined))
+    .filter((p): p is Person => !!p && printLevels.has(p.id));
+
+  const unique = [...new Map(parents.map((p) => [p.id, p])).values()];
+  if (unique.length === 0) return null;
+
+  unique.sort((a, b) => {
+    if (a.gender !== b.gender) return isFemale(a.gender) ? 1 : -1;
+    return a.givenName.localeCompare(b.givenName, "ar");
+  });
+
+  return (
+    <div className="flex flex-col items-center mb-0">
+      <CoupleCardsRow
+        couple={unique}
+        depth={-1}
+        ranks={graph.ranks}
+        onPersonClick={onPersonClick}
+        compact={compact}
+        spouseDates={{}}
+        externalSpouses={[]}
+        L={L}
+        t={t}
+      />
+      <VLine h={18} />
     </div>
   );
 }
@@ -589,11 +761,37 @@ function PersonCard({
   t: (k: string, o?: Record<string, unknown>) => string;
   chartMode?: boolean;
 }) {
+  const printLevels = useContext(PrintLevelsContext);
+  const printChart = useContext(PrintChartContext);
+  const sideTree = useContext(SideTreeContext);
+  const printLevel =
+    printChart != null
+      ? printGenerationLevel(person, printChart.levels, printChart.rels, printChart.byId)
+      : printLevels?.get(person.id);
   const living = isAlive(person);
   const theme = genderTheme(person.gender, living);
   const years = L.formatYears(person.birthYear, person.deathYear, living);
+  const hasSideTree = Boolean(sideTree?.personIds.has(person.id));
 
   return (
+    <div className="relative flex flex-col items-center">
+      {hasSideTree && sideTree && (
+        <button
+          type="button"
+          data-no-pan
+          title={t("chart.openSideTree")}
+          aria-label={t("chart.openSideTree")}
+          onClick={(e) => {
+            e.stopPropagation();
+            sideTree.onOpen(person);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="z-[2] mb-0.5 flex flex-col items-center gap-0 rounded-md px-1 pt-0.5 hover:bg-violet-50 transition group"
+        >
+          <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-violet-500 bg-white shadow-sm group-hover:bg-violet-100 group-hover:scale-110 transition" />
+          <span className="h-2.5 w-px bg-violet-400" />
+        </button>
+      )}
     <button
       type="button"
       data-no-pan
@@ -649,7 +847,15 @@ function PersonCard({
             {person.givenName}
           </p>
           <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-px leading-none">
-            {depth === 0 ? t("chart.generationRoot") : t("chart.generationN", { n: depth + 1 })}
+            {printLevel != null
+              ? printLevel < 0
+                ? t("printPage.ancestorLabel", { n: Math.abs(printLevel) })
+                : printLevel === 0
+                  ? t("chart.generationRoot")
+                  : t("chart.generationN", { n: displayGenerationNumber(printLevel) })
+              : depth === 0
+                ? t("chart.generationRoot")
+                : t("chart.generationN", { n: depth + 1 })}
           </p>
         </div>
       </div>
@@ -668,6 +874,7 @@ function PersonCard({
         <p className="mt-1 text-[8px] text-slate-500 leading-none truncate">{years}</p>
       )}
     </button>
+    </div>
   );
 }
 
@@ -876,7 +1083,7 @@ function CoupleNode({
     );
   }
 
-  // ذكر بعدة زوجات: الأب في الأعلى، الزوجة الأولى يميناً والثانية يساراً
+  // ذكر بعدة زوجات: الجميع في نفس الصف (نفس الجيل)، الأبناء تحت كل زوجة
   if (!isFemale(focus.gender) && oppositeSpouses.length > 1) {
     const orderedWives = sortSpouses(oppositeSpouses, rels, focus.id);
     const orphanKids = childrenWithFatherOnly(
@@ -887,79 +1094,143 @@ function CoupleNode({
       byId,
     );
 
-    const colCount = orderedWives.length + (orphanKids.length > 0 ? 1 : 0);
-
-    return (
-      <div className="flex flex-col items-center w-max max-w-none">
-        <PersonCard
-          person={focus}
-          depth={depth}
-          compact={compact}
-          ranks={ranks.get(focus.id)}
-          onPersonClick={onPersonClick}
-          L={L}
-          t={t}
-        />
-        <VLine h={18} />
-        <PolygamyLayout wifeCount={colCount} className="mt-0">
-          {orderedWives.map((wife) => {
-            const spouseRel = findSpouseRel(rels, focus.id, wife.id);
-            const dates = formatSpouseDates(spouseRel, t);
-            const kids = childrenOfPair(
-              focus.id,
-              wife.id,
-              childrenOf,
-              rels,
-              byId,
-              true,
-            );
-
-            return (
-              <BranchColumn key={wife.id}>
-                <SpouseHeart
-                  marriageLabel={dates.marriage}
-                  divorceLabel={dates.divorce}
-                />
-                <PersonCard
-                  person={wife}
+    const wifeColumn = (wife: Person) => {
+      const spouseRel = findSpouseRel(rels, focus.id, wife.id);
+      const dates = formatSpouseDates(spouseRel, t);
+      const kids = childrenOfPair(focus.id, wife.id, childrenOf, rels, byId, true);
+      return (
+        <div key={wife.id} className="flex flex-nowrap items-start shrink-0">
+          <div className="flex flex-col items-center shrink-0">
+            <PersonCard
+              person={wife}
+              depth={depth}
+              compact={compact}
+              ranks={ranks.get(wife.id)}
+              onPersonClick={onPersonClick}
+              L={L}
+              t={t}
+            />
+            {kids.length > 0 && (
+              <>
+                <CoupleToChildrenConnector h={20} />
+                <ChildrenRow
+                  kidIds={kids}
                   depth={depth}
-                  compact={compact}
-                  ranks={ranks.get(wife.id)}
+                  byId={byId}
+                  childrenOf={childrenOf}
+                  spousesOf={spousesOf}
+                  rels={rels}
+                  ranks={ranks}
                   onPersonClick={onPersonClick}
+                  compact={compact}
+                  visited={nextVisited}
+                  remoteByLocal={remoteByLocal}
                   L={L}
                   t={t}
                 />
-                {kids.length > 0 && (
-                  <>
-                    <CoupleToChildrenConnector h={20} />
-                    <ChildrenRow
-                      kidIds={kids}
-                      depth={depth}
-                      byId={byId}
-                      childrenOf={childrenOf}
-                      spousesOf={spousesOf}
-                      rels={rels}
-                      ranks={ranks}
-                      onPersonClick={onPersonClick}
-                      compact={compact}
-                      visited={nextVisited}
-                      remoteByLocal={remoteByLocal}
-                      L={L}
-                      t={t}
-                    />
-                  </>
-                )}
-              </BranchColumn>
-            );
-          })}
-          {orphanKids.length > 0 && (
-            <BranchColumn>
-              <p className="text-[9px] text-muted-foreground mb-1 text-center px-1">
-                {t("chart.noMotherListed")}
-              </p>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const heart = (wife: Person) => {
+      const spouseRel = findSpouseRel(rels, focus.id, wife.id);
+      const dates = formatSpouseDates(spouseRel, t);
+      return (
+        <div key={`h-${wife.id}`} className="flex flex-nowrap items-start shrink-0 self-start">
+          <CoupleBridge />
+          <SpouseHeart
+            marriageLabel={dates.marriage}
+            divorceLabel={dates.divorce}
+            className="mt-6 mx-0.5"
+          />
+          <CoupleBridge />
+        </div>
+      );
+    };
+
+    // RTL: الأولى يميناً ← زوجة١ ♥ زوج ♥ زوجة٢ …
+    const firstWife = orderedWives[0]!;
+    const restWives = orderedWives.slice(1);
+
+    return (
+      <div className="flex flex-col items-center w-max max-w-none">
+        <div className="flex flex-nowrap items-start justify-center" dir="rtl">
+          {wifeColumn(firstWife)}
+          {heart(firstWife)}
+          <div className="flex flex-col items-center shrink-0">
+            <PersonCard
+              person={focus}
+              depth={depth}
+              compact={compact}
+              ranks={ranks.get(focus.id)}
+              onPersonClick={onPersonClick}
+              L={L}
+              t={t}
+            />
+            {orphanKids.length > 0 && (
+              <>
+                <CoupleToChildrenConnector h={20} />
+                <p className="text-[9px] text-muted-foreground mb-1 text-center px-1">
+                  {t("chart.noMotherListed")}
+                </p>
+                <ChildrenRow
+                  kidIds={orphanKids}
+                  depth={depth}
+                  byId={byId}
+                  childrenOf={childrenOf}
+                  spousesOf={spousesOf}
+                  rels={rels}
+                  ranks={ranks}
+                  onPersonClick={onPersonClick}
+                  compact={compact}
+                  visited={nextVisited}
+                  remoteByLocal={remoteByLocal}
+                  L={L}
+                  t={t}
+                />
+              </>
+            )}
+          </div>
+          {restWives.map((wife) => (
+            <div key={`wrap-${wife.id}`} className="flex flex-nowrap items-start shrink-0">
+              {heart(wife)}
+              {wifeColumn(wife)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // أنثى بعدة أزواج: الجميع في نفس الصف
+  if (isFemale(focus.gender) && oppositeSpouses.length > 1) {
+    const orderedHusbands = sortSpouses(oppositeSpouses, rels, focus.id);
+    const firstHusband = orderedHusbands[0]!;
+    const restHusbands = orderedHusbands.slice(1);
+
+    const husbandColumn = (husband: Person) => {
+      const spouseRel = findSpouseRel(rels, focus.id, husband.id);
+      const dates = formatSpouseDates(spouseRel, t);
+      const kids = childrenOfPair(husband.id, focus.id, childrenOf, rels, byId);
+      return (
+        <div key={husband.id} className="flex flex-col items-center shrink-0">
+          <PersonCard
+            person={husband}
+            depth={depth}
+            compact={compact}
+            ranks={ranks.get(husband.id)}
+            onPersonClick={onPersonClick}
+            L={L}
+            t={t}
+          />
+          {kids.length > 0 && (
+            <>
               <CoupleToChildrenConnector h={20} />
               <ChildrenRow
-                kidIds={orphanKids}
+                kidIds={kids}
                 depth={depth}
                 byId={byId}
                 childrenOf={childrenOf}
@@ -973,73 +1244,49 @@ function CoupleNode({
                 L={L}
                 t={t}
               />
-            </BranchColumn>
+            </>
           )}
-        </PolygamyLayout>
-      </div>
-    );
-  }
+        </div>
+      );
+    };
 
-  // أنثى بعدة أزواج
-  if (isFemale(focus.gender) && oppositeSpouses.length > 1) {
-    const orderedHusbands = sortSpouses(oppositeSpouses, rels, focus.id);
+    const heart = (husband: Person) => {
+      const spouseRel = findSpouseRel(rels, focus.id, husband.id);
+      const dates = formatSpouseDates(spouseRel, t);
+      return (
+        <div key={`h-${husband.id}`} className="flex flex-nowrap items-start shrink-0 self-start">
+          <CoupleBridge />
+          <SpouseHeart
+            marriageLabel={dates.marriage}
+            divorceLabel={dates.divorce}
+            className="mt-6 mx-0.5"
+          />
+          <CoupleBridge />
+        </div>
+      );
+    };
 
     return (
       <div className="flex flex-col items-center w-max max-w-none">
-        <PersonCard
-          person={focus}
-          depth={depth}
-          compact={compact}
-          ranks={ranks.get(focus.id)}
-          onPersonClick={onPersonClick}
-          L={L}
-          t={t}
-        />
-        <VLine h={18} />
-        <PolygamyLayout wifeCount={orderedHusbands.length}>
-          {orderedHusbands.map((husband) => {
-            const spouseRel = findSpouseRel(rels, focus.id, husband.id);
-            const dates = formatSpouseDates(spouseRel, t);
-            const kids = childrenOfPair(husband.id, focus.id, childrenOf, rels, byId);
-            return (
-              <BranchColumn key={husband.id}>
-                <SpouseHeart
-                  marriageLabel={dates.marriage}
-                  divorceLabel={dates.divorce}
-                />
-                <PersonCard
-                  person={husband}
-                  depth={depth}
-                  compact={compact}
-                  ranks={ranks.get(husband.id)}
-                  onPersonClick={onPersonClick}
-                  L={L}
-                  t={t}
-                />
-                {kids.length > 0 && (
-                  <>
-                    <CoupleToChildrenConnector h={20} />
-                    <ChildrenRow
-                      kidIds={kids}
-                      depth={depth}
-                      byId={byId}
-                      childrenOf={childrenOf}
-                      spousesOf={spousesOf}
-                      rels={rels}
-                      ranks={ranks}
-                      onPersonClick={onPersonClick}
-                      compact={compact}
-                      visited={nextVisited}
-                      remoteByLocal={remoteByLocal}
-                      L={L}
-                      t={t}
-                    />
-                  </>
-                )}
-              </BranchColumn>
-            );
-          })}
-        </PolygamyLayout>
+        <div className="flex flex-nowrap items-start justify-center" dir="rtl">
+          {husbandColumn(firstHusband)}
+          {heart(firstHusband)}
+          <PersonCard
+            person={focus}
+            depth={depth}
+            compact={compact}
+            ranks={ranks.get(focus.id)}
+            onPersonClick={onPersonClick}
+            L={L}
+            t={t}
+          />
+          {restHusbands.map((husband) => (
+            <div key={`wrap-${husband.id}`} className="flex flex-nowrap items-start shrink-0">
+              {heart(husband)}
+              {husbandColumn(husband)}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

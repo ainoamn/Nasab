@@ -33,6 +33,8 @@ import {
 import { Banknote, TrendingDown, TrendingUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { localeTag } from "@/i18n";
+import { CompanyDocumentHeader } from "@/components/CompanyDocumentHeader";
+import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 
 function formatMoney(amount: number, locale: string) {
   return new Intl.NumberFormat(locale, {
@@ -110,8 +112,10 @@ export default function AdminAccounting() {
   if (!a) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <PrintableDocumentShell title={t("admin.company.reportTitle")}>
+      <CompanyDocumentHeader showContact />
+      <div className="space-y-6 no-print-header-adjust">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
         <div>
           <h2 className="font-display text-xl font-bold">{t("admin.accounting.title")}</h2>
           <p className="text-sm text-muted-foreground">{t("admin.accounting.subtitle")}</p>
@@ -268,6 +272,7 @@ export default function AdminAccounting() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PrintableDocumentShell>
   );
 }

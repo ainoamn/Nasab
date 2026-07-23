@@ -242,12 +242,7 @@ export async function ensureBranchFromLineage(
     );
     if (reuse) {
       branchId = reuse.id;
-      if (reuse.isHidden) {
-        await db
-          .update(treeBranches)
-          .set({ isHidden: false })
-          .where(eq(treeBranches.id, reuse.id));
-      }
+      // يبقى الفرع مخفياً من العرض المكدّس — يُفتح عبر مؤشر الدائرة
     } else {
       const rootName = ancestors[ancestors.length - 1].givenName;
       const parsed = parseLineageChain(fatherNameLine);
@@ -263,7 +258,7 @@ export async function ensureBranchFromLineage(
         treeId,
         name: branchLabel.trim(),
         rootPersonId: topAncestorId,
-        isHidden: false,
+        isHidden: true,
       });
     }
   }
@@ -424,13 +419,6 @@ export async function resolveFatherForMotherChild(
     });
   }
 
-  // لا تخفِ الفرع تلقائياً — كان يُسبب اختفاء الأشخاص المضافين من المخطط
-  if (branch.branchId) {
-    await db
-      .update(treeBranches)
-      .set({ isHidden: false })
-      .where(eq(treeBranches.id, branch.branchId));
-  }
-
+  // الفرع يبقى مخفياً من العرض المكدّس؛ الأشخاص المرتبطون بالشجرة الرئيسية يظهرون عبر صلة الزوجية
   return fatherId;
 }

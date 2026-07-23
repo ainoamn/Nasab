@@ -1,35 +1,80 @@
-# نشر نَسَب (Nasab)
+# نشر نَسَب (Nasab) — دليل الإطلاق
 
-## قبل النشر (إلزامي)
+## جاهزية الإطلاق (Checklist)
 
-1. **أمان الدفع**: ربط جلسة الدفع برقم الفاتورة + التحقق من توقيع webhooks (Stripe / PayPal / Thawani).
-2. **OAuth**: `state` موقّع لـ Google و Kimi + `ALLOWED_ORIGINS` لمنع open redirect.
-3. **قاعدة البيانات**: MySQL في الإنتاج — `npm run db:push` أو `npm run db:migrate` بعد `db:generate`.
-4. **أسرار الإنتاج**: `APP_SECRET` قوي، `DATABASE_URL`، مفاتيح Kimi/Google، `OWNER_UNION_ID`.
-5. **Build**: مرّر `VITE_KIMI_AUTH_URL` و `VITE_APP_ID` عند `npm run build`.
-6. **HTTPS**: إلزامي — cookies الجلسة تستخدم `Secure` + `SameSite=None` خلف HTTPS.
-7. **Proxy**: `TRUST_PROXY=true` خلف nginx/Caddy/Cloudflare فقط.
-8. **Rate limiting**: login، OAuth، webhooks، الدعوات (مفعّل في الكود).
+### إلزامي قبل فتح الموقع للجمهور
 
-## متغيرات البيئة (إنتاج)
+1. انسخ `app/.env.production.example` → `.env` واملأ كل القيم.
+2. أنشئ `APP_SECRET` قوياً (≥ 32 حرفاً):
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+   ```
+3. MySQL جاهز و`DATABASE_URL` يشير إليه (ليس SQLite).
+4. اضبط `OWNER_UNION_ID` لاتحاد حسابك (أول دخول بهذا الـ ID يصبح مشرفاً).
+5. اضبط `APP_PUBLIC_URL` و`ALLOWED_ORIGINS` على نطاق HTTPS الفعلي.
+6. مرّر `VITE_KIMI_AUTH_URL` و`VITE_APP_ID` عند البناء.
+7. فعّل بوابة دفع واحدة على الأقل من `/admin/gateways` (تحويل بنكي أو Thawani/Stripe/PayPal).
+8. راجع أسعار الخطط في `/admin/plans` (الافتراضي: بلس 9.9 ر.ع. / طباعة 19.9 ر.ع. سنوياً).
+9. شغّل فحص الجاهزية:
+   ```bash
+   cd app
+   NODE_ENV=production npm run prod:check
+   ```
+
+### ممنوع في الإنتاج
+
+- `DEV_LOCAL_AUTH=true`
+- `DATABASE_URL=file:...`
+- أسرار ضعيفة أو مشاركة ملف `.env` في Git
+
+---
+
+## متغيرات البيئة
+
+انظر `app/.env.production.example` للنموذج الكامل.
 
 ```env
 NODE_ENV=production
 PORT=3000
 APP_ID=...
-APP_SECRET=...                    # 32+ bytes random
-DATABASE_URL=mysql://...
+APP_SECRET=...                    # 32+ characters
+DATABASE_URL=mysql://user:pass@host:3306/nasab
 APP_PUBLIC_URL=https://yourdomain.com
 TRUST_PROXY=true
 ALLOWED_ORIGINS=https://yourdomain.com
 KIMI_AUTH_URL=...
 KIMI_OPEN_URL=...
 OWNER_UNION_ID=...
-GOOGLE_CLIENT_ID=...              # optional
+GOOGLE_CLIENT_ID=...              # اختياري
 GOOGLE_CLIENT_SECRET=...
+DEV_LOCAL_AUTH=false
 ```
 
-## Build & تشغيل
+---
+
+## Docker (المسار الموصى به)
+
+```bash
+cd app
+cp .env.production.example .env
+# عدّل .env ثم:
+docker compose up -d --build
+```
+
+عند الإقلاع يقوم الـ entrypoint تلقائياً بـ:
+
+1. انتظار جاهزية MySQL
+2. `drizzle-kit push --force` لتطبيق الـ schema
+3. تشغيل الخادم وبذر الخطط/البوابات/إعدادات الشركة
+
+- التطبيق: المنفذ `3000` (أو `APP_PUBLISH_PORT`)
+- MySQL: المنفذ `3306` محلياً (أو `MYSQL_PUBLISH_PORT`)
+
+فحص الصحة: `GET http://localhost:3000/api/health`
+
+---
+
+## تشغيل بدون Docker
 
 ```bash
 cd app
@@ -37,20 +82,12 @@ npm ci
 export VITE_KIMI_AUTH_URL=...
 export VITE_APP_ID=...
 npm run build
-npm run db:push    # or db:migrate on MySQL
+npm run db:push
+NODE_ENV=production npm run prod:check
 npm start
 ```
 
-## Docker
-
-```bash
-cd app
-docker compose up -d --build
-```
-
-- التطبيق: المنفذ `3000`
-- MySQL: المنفذ `3306` (محلي)
-- عدّل `.env` قبل التشغيل
+---
 
 ## Webhooks الدفع
 
@@ -61,14 +98,25 @@ docker compose up -d --build
 | PayPal | `https://yourdomain.com/api/webhooks/paypal` |
 | إرجاع الدفع | `https://yourdomain.com/api/checkout/complete?invoice=...` |
 
-## الصحة والمراقبة
+سجّل هذه الروابط في لوحات البوابات بعد تفعيل كل بوابة.
 
-- `GET /api/health` — فحص جاهزية الخادم
-- لا تستخدم endpoint عام للـ ping عبر tRPC
+---
 
-## بعد الإطلاق (موصى به)
+## بعد الإطلاق (تشغيل تشغيلي)
 
-- تطبيق خصوصية الأفراد بين أعضاء الشجرة (مفعّل جزئياً)
-- تقليل مدة JWT + إبطال الجلسة عند logout (7 أيام + `sessionVersion`)
-- سجل تدقيق المشرف (`admin_audit_logs`)
-- اختبارات: `npm test`
+1. ادخل بحسابك الذي يطابق `OWNER_UNION_ID` → تصبح مشرفاً.
+2. `/admin/company` — شعار واسم الشركة للمستندات.
+3. `/admin/plans` — تأكيد الأسعار والحدود.
+4. `/admin/gateways` — تفعيل بوابة + مفاتيح حية (ليس UAT إن أمكن).
+5. اختبر مسار شراء كامل: `/checkout?plan=plus`.
+
+---
+
+## ملاحظات أمان مفعّلة في الكود
+
+- JWT في cookie `httpOnly` (+ `Secure` خلف HTTPS)
+- OAuth `state` موقّع + `ALLOWED_ORIGINS`
+- Rate limiting على login / OAuth / webhooks / الدعوات
+- التحقق من توقيع webhooks للبوابات المدعومة
+- Security headers
+- `DEV_LOCAL_AUTH` معطّل تلقائياً عندما `NODE_ENV=production`

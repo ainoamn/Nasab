@@ -48,6 +48,29 @@ app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 export default app;
 
 if (env.isProduction) {
+  if (!env.ownerUnionId) {
+    console.warn(
+      "[nasab] OWNER_UNION_ID is empty — no user will be auto-promoted to admin on first login",
+    );
+  }
+  if (!env.appSecret || env.appSecret.length < 32) {
+    console.warn(
+      "[nasab] APP_SECRET should be at least 32 characters in production",
+    );
+  }
+  if (!env.appPublicUrl) {
+    console.warn("[nasab] APP_PUBLIC_URL is empty — OAuth redirects may fail");
+  }
+
+  try {
+    const { ensurePlatformDefaults } = await import("./seedDefaults");
+    await ensurePlatformDefaults();
+    console.log("[nasab] platform defaults ready (plans, gateways, settings)");
+  } catch (err) {
+    console.error("[nasab] failed to seed platform defaults:", err);
+    throw err;
+  }
+
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
   serveStaticFiles(app);

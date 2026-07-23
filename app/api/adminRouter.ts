@@ -30,6 +30,10 @@ import { getClientIp } from "./lib/client-ip";
 import { encryptGatewayConfig, decryptGatewayConfig } from "./lib/crypto";
 import { parseGatewayConfig } from "./payments/gatewayConfig";
 import { incrementSessionVersion } from "./queries/users";
+import {
+  getCompanyBranding,
+  updateCompanySettings,
+} from "./lib/companySettings";
 
 function userSummary(user: typeof users.$inferSelect, ownedTrees = 0) {
   return {
@@ -769,5 +773,35 @@ export const adminRouter = createRouter({
         validUntil: input.validUntil ?? null,
       });
       return { ok: true };
+    }),
+
+  getCompanySettings: adminQuery.query(async () => {
+    await ensurePlatformDefaults();
+    return getCompanyBranding();
+  }),
+
+  updateCompanySettings: adminQuery
+    .input(
+      z.object({
+        companyNameAr: z.string().max(255).nullable().optional(),
+        companyNameEn: z.string().max(255).nullable().optional(),
+        logoUrl: z.string().max(500_000).nullable().optional(),
+        address: z.string().max(2000).nullable().optional(),
+        phone: z.string().max(32).nullable().optional(),
+        email: z.string().max(320).nullable().optional(),
+        taxNumber: z.string().max(64).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const updated = await updateCompanySettings(input);
+      await logAdminAction({
+        adminUserId: ctx.user.id,
+        action: "update_company_settings",
+        targetType: "platform_settings",
+        targetId: "1",
+        details: "company_branding_updated",
+        ip: getClientIp(ctx.req.headers),
+      });
+      return updated;
     }),
 });

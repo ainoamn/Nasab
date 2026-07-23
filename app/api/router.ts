@@ -6,6 +6,7 @@ import { memberRouter } from "./memberRouter";
 import { logRouter } from "./logRouter";
 import { userRouter } from "./userRouter";
 import { adminRouter } from "./adminRouter";
+import { platformRouter } from "./platformRouter";
 
 import { paymentRouter } from "./paymentRouter";
 
@@ -13,6 +14,7 @@ export const appRouter = createRouter({
   auth: authRouter,
   user: userRouter,
   payment: paymentRouter,
+  platform: platformRouter,
   admin: adminRouter,
   tree: treeRouter,
   person: personRouter,
