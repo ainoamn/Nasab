@@ -31,6 +31,8 @@ import CsvImportDialog from "@/components/tree/CsvImportDialog";
 import GedcomImportDialog from "@/components/tree/GedcomImportDialog";
 import RecentPeopleStrip from "@/components/tree/RecentPeopleStrip";
 import FavoritesStrip from "@/components/tree/FavoritesStrip";
+import FavoriteRelatesStrip from "@/components/tree/FavoriteRelatesStrip";
+import ConsistencyTourStrip from "@/components/tree/ConsistencyTourStrip";
 import TreeGrowthChecklist from "@/components/tree/TreeGrowthChecklist";
 import SpouseDatesDialog from "@/components/tree/SpouseDatesDialog";
 import ShortcutsDialog from "@/components/tree/ShortcutsDialog";
@@ -77,6 +79,11 @@ import {
   setResearchTourState,
   type ResearchTourScope,
 } from "@/lib/researchTourState";
+import {
+  getConsistencyTourState,
+  setConsistencyTourState,
+  type ConsistencyTourScope,
+} from "@/lib/consistencyTourState";
 import {
   getFavoritePersonIds,
   toggleFavoritePersonId,
@@ -286,6 +293,8 @@ export default function TreeWorkspace() {
     useState<OccasionsScope>("close");
   const [researchTourScope, setResearchTourScope] =
     useState<ResearchTourScope>("close");
+  const [consistencyTourScope, setConsistencyTourScope] =
+    useState<ConsistencyTourScope>("close");
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
   const [urlRelateId, setUrlRelateId] = useState<number | null>(null);
@@ -315,6 +324,7 @@ export default function TreeWorkspace() {
       setRecentRelatePairs(getRecentRelates(treeId));
       setFavoriteRelatePairs(getFavoriteRelates(treeId));
       setResearchTourScope(getResearchTourState(treeId).scope);
+      setConsistencyTourScope(getConsistencyTourState(treeId).scope);
     }
   }, [treeId]);
 
@@ -488,6 +498,15 @@ export default function TreeWorkspace() {
         (
           document.querySelector(
             "[data-research-next]",
+          ) as HTMLButtonElement | null
+        )?.click();
+        return;
+      }
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        (
+          document.querySelector(
+            "[data-consistency-next]",
           ) as HTMLButtonElement | null
         )?.click();
       }
@@ -832,6 +851,29 @@ export default function TreeWorkspace() {
     );
   }, [
     researchTourScope,
+    favoriteIds,
+    homePersonId,
+    chartFocusId,
+    detailPerson?.id,
+    people,
+    rels,
+  ]);
+
+  const consistencyTourAllowedIds = useMemo(() => {
+    if (consistencyTourScope === "all") return null;
+    if (consistencyTourScope === "favorites") {
+      const ids = new Set(favoriteIds);
+      if (homePersonId != null) ids.add(homePersonId);
+      return ids;
+    }
+    const focus =
+      homePersonId ?? chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
+    if (focus == null) return null;
+    return new Set(
+      collectCloseFamily(focus, people, rels).people.map((p) => p.id),
+    );
+  }, [
+    consistencyTourScope,
     favoriteIds,
     homePersonId,
     chartFocusId,
@@ -1294,6 +1336,28 @@ export default function TreeWorkspace() {
           onSelect={(p) => revealOnChart(p)}
         />
 
+        <FavoriteRelatesStrip
+          people={people}
+          rels={rels}
+          pairs={favoriteRelatePairs}
+          onOpenCompare={(a, b) => {
+            setHowRelatedPair({ from: a, to: b });
+            setHowRelatedOpen(true);
+          }}
+          onShowPath={(ids) => {
+            setHighlightPathIds(ids);
+            setChartView("family");
+            setMainTab("chart");
+            if (ids.length >= 2) setUrlRelateId(ids[ids.length - 1]!);
+            if (ids[0] != null) requestCenterOn(ids[0]);
+            toast.success(t("tree.pathHighlightActive", { count: ids.length }));
+          }}
+          onPrintCert={(a, b) => {
+            setKinshipCertPair({ from: a, to: b });
+            setKinshipCertOpen(true);
+          }}
+        />
+
         <RecentPeopleStrip
           people={people}
           recentIds={recentIds}
@@ -1504,6 +1568,33 @@ export default function TreeWorkspace() {
               canWrite={canWrite}
               onFix={fixResearchGap}
               onShow={(p) => revealOnChart(p)}
+              onSkip={(key) => {
+                setDismissedDiscoveryKeys(dismissDiscoveryKey(treeId, key));
+              }}
+            />
+
+            <ConsistencyTourStrip
+              treeId={treeId}
+              people={people}
+              rels={rels}
+              dismissedKeys={dismissedDiscoveryKeys}
+              homePersonId={homePersonId}
+              favoriteIds={favoriteIds}
+              recentIds={recentIds}
+              allowedPersonIds={consistencyTourAllowedIds}
+              scope={consistencyTourScope}
+              onScopeChange={(s) => {
+                setConsistencyTourScope(s);
+                setConsistencyTourState(treeId, {
+                  scope: s,
+                  index: getConsistencyTourState(treeId).index,
+                });
+              }}
+              onShow={(p) => revealOnChart(p)}
+              onCompare={(a, b) => {
+                setHowRelatedPair({ from: a, to: b });
+                setHowRelatedOpen(true);
+              }}
               onSkip={(key) => {
                 setDismissedDiscoveryKeys(dismissDiscoveryKey(treeId, key));
               }}

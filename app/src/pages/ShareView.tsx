@@ -5,6 +5,8 @@ import FamilyChart from "@/components/tree/FamilyChart";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import EventsStrip from "@/components/tree/EventsStrip";
 import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
+import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
+import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ import {
   Link as LinkIcon,
   ChevronLeft,
   Eye,
+  Printer,
 } from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +39,7 @@ import {
 } from "@/lib/treeUrl";
 import {
   classifyRelationPath,
+  findCommonAncestorId,
   findRelationPath,
   type PathHop,
 } from "@/lib/relationPath";
@@ -86,6 +90,8 @@ export default function ShareView() {
   const [occasionsScope, setOccasionsScopeState] =
     useState<OccasionsScope>("close");
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [certOpen, setCertOpen] = useState(false);
+  const [profilePrintOpen, setProfilePrintOpen] = useState(false);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -199,7 +205,13 @@ export default function ShareView() {
       rels,
       hops,
     );
-    return { hops, label: t(`tree.rel.${key}`), relate: peopleById.get(relateId)! };
+    const mrcaId = findCommonAncestorId(hops);
+    return {
+      hops,
+      label: t(`tree.rel.${key}`),
+      relate: peopleById.get(relateId)!,
+      mrca: mrcaId != null ? peopleById.get(mrcaId) ?? null : null,
+    };
   }, [detail, relateId, people, rels, peopleById, t]);
 
   const openPerson = (p: Person) => {
@@ -228,10 +240,12 @@ export default function ShareView() {
       peopleById,
       viaLabel: (via) => viaLabel(via) ?? via,
       url,
+      commonAncestorName: pathInfo.mrca?.givenName ?? null,
       labels: {
         headline: t("tree.pathTextHeadline"),
         hopsHeader: t("tree.pathTextHops"),
         linkHeader: t("tree.pathTextLink"),
+        commonAncestor: t("tree.commonAncestorAt"),
       },
     });
     void navigator.clipboard.writeText(text);
@@ -471,6 +485,16 @@ export default function ShareView() {
                   size="sm"
                   variant="ghost"
                   className="h-7 gap-1 text-xs"
+                  onClick={() => setCertOpen(true)}
+                >
+                  <Printer className="h-3 w-3" />
+                  {t("tree.printKinshipCert")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
                   onClick={() => {
                     const url = absoluteUrl(
                       buildSharePersonPath(shareToken, detail.id, {
@@ -486,12 +510,22 @@ export default function ShareView() {
                 </Button>
               </div>
             </div>
+            {pathInfo.mrca && (
+              <button
+                type="button"
+                onClick={() => openPerson(pathInfo.mrca!)}
+                className="mb-1.5 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950 hover:bg-amber-100"
+              >
+                {t("tree.commonAncestorAt", { name: pathInfo.mrca.givenName })}
+              </button>
+            )}
             <div className="flex flex-wrap items-center gap-0.5">
               {pathInfo.hops.map((hop, i) => {
                 const p = peopleById.get(hop.personId);
                 if (!p) return null;
                 const isEnd = p.id === detail.id;
                 const isRelate = p.id === relateId;
+                const isMrca = pathInfo.mrca?.id === p.id;
                 return (
                   <span
                     key={`${hop.personId}-${i}`}
@@ -509,7 +543,9 @@ export default function ShareView() {
                           ? "bg-sky-600 text-white"
                           : isRelate
                             ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-300"
-                            : "bg-white/80 text-sky-950 ring-1 ring-sky-200",
+                            : isMrca
+                              ? "bg-amber-100 text-amber-950 ring-1 ring-amber-300"
+                              : "bg-white/80 text-sky-950 ring-1 ring-sky-200",
                       )}
                     >
                       {p.givenName}
@@ -653,6 +689,16 @@ export default function ShareView() {
                       <LinkIcon className="h-3.5 w-3.5" />
                       {t("detail.copyPersonLink")}
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => setProfilePrintOpen(true)}
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      {t("tree.printPersonProfile")}
+                    </Button>
                     {pathInfo && (
                       <Button
                         type="button"
@@ -663,6 +709,18 @@ export default function ShareView() {
                       >
                         <Copy className="h-3.5 w-3.5" />
                         {t("tree.copyPathText")}
+                      </Button>
+                    )}
+                    {pathInfo && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => setCertOpen(true)}
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        {t("tree.printKinshipCert")}
                       </Button>
                     )}
                   </div>
@@ -676,6 +734,39 @@ export default function ShareView() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <KinshipCertificateDialog
+        open={certOpen}
+        onOpenChange={setCertOpen}
+        fromId={detail?.id ?? null}
+        toId={relateId}
+        people={people}
+        rels={rels}
+        treeName={tree.name}
+        pathUrl={
+          detail
+            ? absoluteUrl(
+                buildSharePersonPath(shareToken, detail.id, {
+                  relate: relateId,
+                }),
+              )
+            : ""
+        }
+      />
+
+      <PersonProfilePrintDialog
+        open={profilePrintOpen}
+        onOpenChange={setProfilePrintOpen}
+        person={detail}
+        people={people}
+        rels={rels}
+        treeName={tree.name}
+        personUrl={
+          detail
+            ? absoluteUrl(buildSharePersonPath(shareToken, detail.id))
+            : ""
+        }
+      />
     </div>
   );
 }

@@ -19,6 +19,7 @@ const KEYS = [
   { keys: "H", labelKey: "shortcuts.home" },
   { keys: "R", labelKey: "shortcuts.related" },
   { keys: "N", labelKey: "shortcuts.researchNext" },
+  { keys: "C", labelKey: "shortcuts.consistencyNext" },
   { keys: "← →", labelKey: "shortcuts.siblings" },
   { keys: "2×", labelKey: "shortcuts.dblFocus" },
   { keys: "?", labelKey: "shortcuts.help" },
