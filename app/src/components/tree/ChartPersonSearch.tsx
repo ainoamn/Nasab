@@ -45,6 +45,7 @@ export default function ChartPersonSearch({ people, onSelect, className }: Props
         }}
         placeholder={t("chart.searchInTree")}
         className="h-8 pe-8 text-sm"
+        id="chart-person-search"
       />
       {open && results.length > 0 && (
         <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-xl border bg-card py-1 shadow-lg">

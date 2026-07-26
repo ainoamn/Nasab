@@ -19,6 +19,9 @@ import RelationPathDialog from "@/components/tree/RelationPathDialog";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
+import GedcomImportDialog from "@/components/tree/GedcomImportDialog";
+import RecentPeopleStrip from "@/components/tree/RecentPeopleStrip";
+import ShortcutsDialog from "@/components/tree/ShortcutsDialog";
 import { useLabels } from "@/lib/labels";
 import { computePersonRanks, formatBirthDate } from "@/lib/birthOrder";
 import PersonRankLines from "@/components/tree/PersonRankLines";
@@ -35,6 +38,10 @@ import { limitPeopleByGenerations } from "@/lib/generationLimit";
 import { buildGedcom, downloadGedcom } from "@/lib/gedcomExport";
 import { getHomePersonId, setHomePersonId } from "@/lib/homePerson";
 import { computeTreeCompleteness } from "@/lib/treeCompleteness";
+import {
+  getRecentPersonIds,
+  pushRecentPersonId,
+} from "@/lib/recentPeople";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -124,6 +131,8 @@ import {
   ArrowDownToLine,
   GitCompareArrows,
   House,
+  Keyboard,
+  FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -147,11 +156,14 @@ export default function TreeWorkspace() {
   const [deletePerson, setDeletePerson] = useState<Person | null>(null);
   const [linkAnchor, setLinkAnchor] = useState<Person | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [gedcomImportOpen, setGedcomImportOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [listGender, setListGender] = useState<"all" | "male" | "female">("all");
   const [listLiving, setListLiving] = useState<"all" | "living" | "deceased">("all");
   const [listUnlinkedOnly, setListUnlinkedOnly] = useState(false);
+  const [recentIds, setRecentIds] = useState<number[]>([]);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
   const [chartView, setChartView] = useState<
@@ -179,13 +191,14 @@ export default function TreeWorkspace() {
   }, [treeId]);
 
   useEffect(() => {
-    if (!chartFullscreen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setChartFullscreen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [chartFullscreen]);
+    if (treeId > 0) setRecentIds(getRecentPersonIds(treeId));
+  }, [treeId]);
+
+  useEffect(() => {
+    if (!detailPerson || treeId <= 0) return;
+    pushRecentPersonId(treeId, detailPerson.id);
+    setRecentIds(getRecentPersonIds(treeId));
+  }, [detailPerson?.id, treeId]);
 
   /** بعد إضافة/تعديل: اخرج من وضع التركيز دون إعادة تركيب المخطط (يحافظ على السحب والتكبير) */
   const refreshChart = () => {
@@ -206,6 +219,80 @@ export default function TreeWorkspace() {
     () => new Map(people.map((p) => [p.id, p])),
     [people],
   );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+      if (e.key === "Escape") {
+        if (chartFullscreen) {
+          setChartFullscreen(false);
+          return;
+        }
+        if (howRelatedOpen) {
+          setHowRelatedOpen(false);
+          return;
+        }
+        if (shortcutsOpen) {
+          setShortcutsOpen(false);
+          return;
+        }
+        if (highlightPathIds) {
+          setHighlightPathIds(null);
+          return;
+        }
+        if (detailPerson) {
+          setDetailPerson(null);
+          return;
+        }
+        return;
+      }
+      if (typing) return;
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        document.getElementById("chart-person-search")?.focus();
+        return;
+      }
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+      if (e.key === "h" || e.key === "H") {
+        const hid = homePersonId ?? getHomePersonId(treeId);
+        if (hid != null && peopleById.has(hid)) {
+          const p = peopleById.get(hid)!;
+          setDetailPerson(p);
+          setChartFocusId(hid);
+          requestCenterOn(hid);
+        } else {
+          toast.message(t("tree.noHomePerson"));
+        }
+        return;
+      }
+      if (e.key === "r" || e.key === "R") {
+        setHowRelatedOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    chartFullscreen,
+    howRelatedOpen,
+    shortcutsOpen,
+    highlightPathIds,
+    detailPerson,
+    homePersonId,
+    treeId,
+    peopleById,
+    t,
+  ]);
+
   const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
   const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
   const chartFocusPerson = chartFocusId
@@ -509,6 +596,27 @@ export default function TreeWorkspace() {
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("tree.exportGedcom")}</span>
               </Button>
+              {canWrite && treeStatus === "active" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  title={t("gedcomImport.title")}
+                  onClick={() => setGedcomImportOpen(true)}
+                >
+                  <FileDown className="h-4 w-4" />
+                  <span className="hidden lg:inline">{t("gedcomImport.short")}</span>
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="gap-2"
+                title={t("shortcuts.title")}
+                onClick={() => setShortcutsOpen(true)}
+              >
+                <Keyboard className="h-4 w-4" />
+              </Button>
               {canAdmin && treeStatus === "active" && (
                 <Button
                   size="sm"
@@ -554,6 +662,16 @@ export default function TreeWorkspace() {
           livingCount={people.filter((p) => p.isLiving).length}
           ownerName={myRole === "owner" ? (user?.name ?? null) : null}
           completenessScore={completeness.score}
+        />
+
+        <RecentPeopleStrip
+          people={people}
+          recentIds={recentIds}
+          onSelect={(p) => {
+            setDetailPerson(p);
+            setChartFocusId(p.id);
+            requestCenterOn(p.id);
+          }}
         />
 
         <EventsStrip
@@ -1197,6 +1315,12 @@ export default function TreeWorkspace() {
         onLinked={refreshChart}
       />
       <CsvImportDialog treeId={treeId} open={importOpen} onOpenChange={setImportOpen} />
+      <GedcomImportDialog
+        treeId={treeId}
+        open={gedcomImportOpen}
+        onOpenChange={setGedcomImportOpen}
+      />
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <RelationPathDialog
         open={howRelatedOpen}
         onOpenChange={setHowRelatedOpen}

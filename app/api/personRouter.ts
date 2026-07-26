@@ -1386,6 +1386,116 @@ export const personRouter = createRouter({
       return { created, linked };
     }),
 
+  /**
+   * استيراد GEDCOM: أفراد + روابط أب/زوج عبر مفاتيح مؤقتة من الملف.
+   */
+  importGedcom: authedQuery
+    .input(
+      z.object({
+        treeId: z.number().int().positive(),
+        people: z
+          .array(
+            z.object({
+              key: z.string().min(1).max(64),
+              givenName: z.string().min(1).max(255),
+              fatherName: z.string().max(500).nullish(),
+              gender: z.enum(["male", "female"]),
+              birthYear: z.number().int().min(0).max(2100).nullish(),
+              birthMonth: z.number().int().min(1).max(12).nullish(),
+              birthDay: z.number().int().min(1).max(31).nullish(),
+              birthPlace: z.string().max(255).nullish(),
+              deathYear: z.number().int().min(0).max(2100).nullish(),
+              deathMonth: z.number().int().min(1).max(12).nullish(),
+              deathDay: z.number().int().min(1).max(31).nullish(),
+              deathPlace: z.string().max(255).nullish(),
+              isLiving: z.boolean().default(true),
+              kunya: z.string().max(255).nullish(),
+              notes: z.string().max(10000).nullish(),
+            }),
+          )
+          .min(1)
+          .max(2000),
+        links: z
+          .array(
+            z.object({
+              type: z.enum(["parent", "spouse"]),
+              fromKey: z.string().min(1).max(64),
+              toKey: z.string().min(1).max(64),
+            }),
+          )
+          .max(5000)
+          .default([]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await requireTreeRole(ctx.user.id, input.treeId, "editor");
+      const treeRow = await db
+        .select({ ownerId: trees.ownerId })
+        .from(trees)
+        .where(eq(trees.id, input.treeId))
+        .then((r) => r[0]);
+      if (!treeRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الشجرة غير موجودة" });
+      }
+
+      await assertCanAddPerson(treeRow.ownerId, input.treeId, input.people.length);
+
+      const idByKey = new Map<string, number>();
+      let created = 0;
+      for (const row of input.people) {
+        const id = await insertReturningId(persons, {
+          treeId: input.treeId,
+          givenName: row.givenName,
+          fatherName: row.fatherName ?? null,
+          gender: row.gender,
+          birthYear: row.birthYear ?? null,
+          birthMonth: row.birthMonth ?? null,
+          birthDay: row.birthDay ?? null,
+          birthPlace: row.birthPlace ?? null,
+          deathYear: row.deathYear ?? null,
+          deathMonth: row.deathMonth ?? null,
+          deathDay: row.deathDay ?? null,
+          deathPlace: row.deathPlace ?? null,
+          isLiving: row.isLiving && !row.deathYear,
+          kunya: row.kunya ?? null,
+          notes: row.notes ?? null,
+          createdById: ctx.user.id,
+        });
+        idByKey.set(row.key, id);
+        created++;
+      }
+
+      let linked = 0;
+      const seen = new Set<string>();
+      for (const link of input.links) {
+        const fromId = idByKey.get(link.fromKey);
+        const toId = idByKey.get(link.toKey);
+        if (!fromId || !toId || fromId === toId) continue;
+        const dedupe =
+          link.type === "spouse"
+            ? `s:${[fromId, toId].sort((a, b) => a - b).join("-")}`
+            : `p:${fromId}-${toId}`;
+        if (seen.has(dedupe)) continue;
+        seen.add(dedupe);
+        await db.insert(relationships).values({
+          treeId: input.treeId,
+          fromPersonId: fromId,
+          toPersonId: toId,
+          type: link.type,
+        });
+        linked++;
+      }
+
+      await logChange({
+        treeId: input.treeId,
+        userId: ctx.user.id,
+        action: "import_gedcom",
+        details: `استورد GEDCOM: ${created} شخصاً و${linked} رابطاً`,
+      });
+      return { created, linked };
+    }),
+
   /** بحث عن أشخاص مشابهين بالاسم والنسب */
   searchLineage: authedQuery
     .input(
