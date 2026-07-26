@@ -23,6 +23,7 @@ import ResearchTourStrip from "@/components/tree/ResearchTourStrip";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
 import RelationPathDialog from "@/components/tree/RelationPathDialog";
+import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -256,6 +257,11 @@ export default function TreeWorkspace() {
     from: number | null;
     to: number | null;
   }>({ from: null, to: null });
+  const [kinshipCertPair, setKinshipCertPair] = useState<{
+    from: number | null;
+    to: number | null;
+  }>({ from: null, to: null });
+  const [kinshipCertOpen, setKinshipCertOpen] = useState(false);
   const [chartCompact, setChartCompact] = useState(false);
   const [spouseEdit, setSpouseEdit] = useState<{
     rel: Relationship;
@@ -797,6 +803,29 @@ export default function TreeWorkspace() {
     detailPerson?.id,
   ]);
 
+  const researchTourAllowedIds = useMemo(() => {
+    if (researchTourScope === "all") return null;
+    if (researchTourScope === "favorites") {
+      const ids = new Set(favoriteIds);
+      if (homePersonId != null) ids.add(homePersonId);
+      return ids;
+    }
+    const focus =
+      homePersonId ?? chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
+    if (focus == null) return null;
+    return new Set(
+      collectCloseFamily(focus, people, rels).people.map((p) => p.id),
+    );
+  }, [
+    researchTourScope,
+    favoriteIds,
+    homePersonId,
+    chartFocusId,
+    detailPerson?.id,
+    people,
+    rels,
+  ]);
+
   const copyPathText = (fromId: number, toId: number) => {
     const from = peopleById.get(fromId);
     const to = peopleById.get(toId);
@@ -956,7 +985,7 @@ export default function TreeWorkspace() {
     const today = all.filter((e) => e.daysUntil === 0);
     const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
     const gaps = buildPersonGapsMap(people, rels, { skipNoPhoto: true });
-    const researchCount = buildResearchTourItems(
+    const researchItems = buildResearchTourItems(
       gaps,
       peopleById,
       dismissedDiscoveryKeys,
@@ -964,12 +993,21 @@ export default function TreeWorkspace() {
         homeId: homePersonId,
         favoriteIds,
         recentIds,
+        allowedPersonIds: researchTourAllowedIds,
       },
-    ).length;
+    );
+    const top = researchItems.slice(0, 5);
     const text = formatFamilyBrief({
       today,
       week,
-      researchCount,
+      researchCount: researchItems.length,
+      researchItems: top.map((item) => ({
+        name: item.personName,
+        gapLabel: t(`detail.gap.${item.kind}`),
+        url: absoluteUrl(
+          buildTreePersonPath(treeId, item.personId, { tab: "chart" }),
+        ),
+      })),
       urlFor: (ev) =>
         ev.person
           ? absoluteUrl(
@@ -986,6 +1024,7 @@ export default function TreeWorkspace() {
         anniversary: t("tree.eventAnniversary"),
         todayTag: t("tree.eventToday"),
         inDays: t("tree.familyBriefInDays"),
+        researchHeader: t("tree.familyBriefResearchHeader"),
         researchFooter: t("tree.familyBriefResearch"),
       },
     });
@@ -1016,29 +1055,6 @@ export default function TreeWorkspace() {
     () => buildPersonGapsMap(people, rels, { skipNoPhoto: true }),
     [people, rels],
   );
-
-  const researchTourAllowedIds = useMemo(() => {
-    if (researchTourScope === "all") return null;
-    if (researchTourScope === "favorites") {
-      const ids = new Set(favoriteIds);
-      if (homePersonId != null) ids.add(homePersonId);
-      return ids;
-    }
-    const focus =
-      homePersonId ?? chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
-    if (focus == null) return null;
-    return new Set(
-      collectCloseFamily(focus, people, rels).people.map((p) => p.id),
-    );
-  }, [
-    researchTourScope,
-    favoriteIds,
-    homePersonId,
-    chartFocusId,
-    detailPerson?.id,
-    people,
-    rels,
-  ]);
 
   if (treeQuery.isLoading || dataQuery.isLoading) {
     return (
@@ -2214,10 +2230,35 @@ export default function TreeWorkspace() {
           rememberRelate(a, b);
           toast.success(t("tree.bothCardsCopied"));
         }}
+        onPrintCertificate={(a, b) => {
+          rememberRelate(a, b);
+          setKinshipCertPair({ from: a, to: b });
+          setKinshipCertOpen(true);
+        }}
         onSelectRecentPair={(a, b) => {
           rememberRelate(a, b);
           setHowRelatedPair({ from: a, to: b });
         }}
+      />
+
+      <KinshipCertificateDialog
+        open={kinshipCertOpen}
+        onOpenChange={setKinshipCertOpen}
+        fromId={kinshipCertPair.from}
+        toId={kinshipCertPair.to}
+        people={people}
+        rels={rels}
+        treeName={tree.name}
+        pathUrl={
+          kinshipCertPair.from != null && kinshipCertPair.to != null
+            ? absoluteUrl(
+                buildTreePersonPath(treeId, kinshipCertPair.from, {
+                  relate: kinshipCertPair.to,
+                  tab: "chart",
+                }),
+              )
+            : ""
+        }
       />
 
       {/* بطاقة الشخص */}

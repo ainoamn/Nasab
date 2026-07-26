@@ -32,6 +32,13 @@ describe("formatFamilyBrief", () => {
       today,
       week,
       researchCount: 3,
+      researchItems: [
+        {
+          name: "خالد",
+          gapLabel: "سنة الميلاد ناقصة",
+          url: "https://ex/p/9",
+        },
+      ],
       urlFor: (ev) => `https://ex/${ev.key}`,
       labels: {
         title: "ملخص العائلة",
@@ -43,12 +50,15 @@ describe("formatFamilyBrief", () => {
         anniversary: "زواج",
         todayTag: "اليوم",
         inDays: "خلال {{n}} يوم",
+        researchHeader: "أولويات البحث:",
         researchFooter: "{{count}} نقص بحث متبقٍ",
       },
     });
     expect(text).toContain("أحمد");
     expect(text).toContain("سعيد");
     expect(text).toContain("https://ex/b-1");
+    expect(text).toContain("خالد");
+    expect(text).toContain("سنة الميلاد ناقصة");
     expect(text).toContain("3 نقص بحث");
   });
 });

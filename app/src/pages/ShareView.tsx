@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import FamilyChart from "@/components/tree/FamilyChart";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import EventsStrip from "@/components/tree/EventsStrip";
+import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,13 @@ import {
 import { formatFamilyBrief } from "@/lib/familyBrief";
 import { buildTreeOccasions, type TreeOccasion } from "@/lib/treeOccasions";
 import {
+  getShareOccasionsScope,
+  setShareOccasionsScope,
+  type OccasionsScope,
+} from "@/lib/occasionsScope";
+import { collectCloseFamily } from "@/lib/closeFamily";
+import { getFavoritePersonIds } from "@/lib/favoritePeople";
+import {
   buildChildrenOf,
   buildSpousesOf,
   getParents,
@@ -75,6 +83,9 @@ export default function ShareView() {
   } | null>(null);
   const centerTokenRef = useRef(0);
   const bootstrapped = useRef(false);
+  const [occasionsScope, setOccasionsScopeState] =
+    useState<OccasionsScope>("close");
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -98,6 +109,37 @@ export default function ShareView() {
   const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
   const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
 
+  useEffect(() => {
+    if (shareToken) {
+      setOccasionsScopeState(getShareOccasionsScope(shareToken));
+    }
+  }, [shareToken]);
+
+  useEffect(() => {
+    const tid = query.data?.tree?.id;
+    if (tid) setFavoriteIds(getFavoritePersonIds(tid));
+  }, [query.data?.tree?.id]);
+
+  const { occasionsPeople, occasionsRels } = useMemo(() => {
+    if (occasionsScope === "all") {
+      return { occasionsPeople: people, occasionsRels: rels };
+    }
+    if (occasionsScope === "favorites") {
+      const ids = new Set(favoriteIds);
+      const anchor = detail?.id ?? people[0]?.id;
+      if (anchor != null) ids.add(anchor);
+      return {
+        occasionsPeople: people.filter((p) => ids.has(p.id)),
+        occasionsRels: rels.filter(
+          (r) => ids.has(r.fromPersonId) && ids.has(r.toPersonId),
+        ),
+      };
+    }
+    const focus = detail?.id ?? people[0]?.id ?? null;
+    if (focus == null) return { occasionsPeople: people, occasionsRels: rels };
+    const close = collectCloseFamily(focus, people, rels);
+    return { occasionsPeople: close.people, occasionsRels: close.rels };
+  }, [occasionsScope, people, rels, favoriteIds, detail?.id]);
   useEffect(() => {
     if (bootstrapped.current || !query.data || people.length === 0) return;
     bootstrapped.current = true;
@@ -264,7 +306,7 @@ export default function ShareView() {
   };
 
   const downloadUpcomingOccasionsCalendar = () => {
-    const upcoming = buildTreeOccasions(people, rels).filter(
+    const upcoming = buildTreeOccasions(occasionsPeople, occasionsRels).filter(
       (e) => e.daysUntil <= 90,
     );
     if (upcoming.length === 0) {
@@ -292,7 +334,7 @@ export default function ShareView() {
   };
 
   const copyFamilyBrief = () => {
-    const all = buildTreeOccasions(people, rels);
+    const all = buildTreeOccasions(occasionsPeople, occasionsRels);
     const today = all.filter((e) => e.daysUntil === 0);
     const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
     const text = formatFamilyBrief({
@@ -479,9 +521,18 @@ export default function ShareView() {
           </div>
         )}
 
+        <OccasionsScopeChips
+          className="mb-2"
+          value={occasionsScope}
+          onChange={(scope) => {
+            setShareOccasionsScope(shareToken, scope);
+            setOccasionsScopeState(scope);
+          }}
+        />
+
         <EventsStrip
-          people={people}
-          rels={rels}
+          people={occasionsPeople}
+          rels={occasionsRels}
           onPersonClick={(p) => openPerson(p)}
           onCopyPersonLink={(p) => {
             const url = absoluteUrl(buildSharePersonPath(shareToken, p.id));

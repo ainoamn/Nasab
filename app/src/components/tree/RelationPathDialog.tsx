@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   Link as LinkIcon,
   Copy,
+  Printer,
 } from "lucide-react";
 import type { RecentRelatePair } from "@/lib/recentRelates";
 
@@ -48,6 +49,7 @@ type Props = {
   onCopyPathText?: (fromId: number, toId: number) => void;
   onCopyPersonCard?: (person: Person) => void;
   onCopyBothCards?: (fromId: number, toId: number) => void;
+  onPrintCertificate?: (fromId: number, toId: number) => void;
   onSelectRecentPair?: (fromId: number, toId: number) => void;
 };
 
@@ -228,6 +230,7 @@ export default function RelationPathDialog({
   onCopyPathText,
   onCopyPersonCard,
   onCopyBothCards,
+  onPrintCertificate,
   onSelectRecentPair,
 }: Props) {
   const { t } = useTranslation();
@@ -485,6 +488,17 @@ export default function RelationPathDialog({
                   </div>
                 )}
 
+                {onPrintCertificate && path.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full gap-2"
+                    onClick={() => onPrintCertificate(fromNum, toNum)}
+                  >
+                    <Printer className="h-4 w-4" />
+                    {t("tree.printKinshipCert")}
+                  </Button>
+                )}
                 {onShowOnChart && path.length > 1 && (
                   <Button
                     type="button"

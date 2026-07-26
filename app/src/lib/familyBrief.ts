@@ -1,10 +1,17 @@
 import type { TreeOccasion } from "@/lib/treeOccasions";
 
-/** ملخص عائلي جاهز للنسخ في واتساب: اليوم + ٧ أيام + نواقص البحث */
+export type FamilyBriefResearchItem = {
+  name: string;
+  gapLabel: string;
+  url: string | null;
+};
+
+/** ملخص عائلي جاهز للنسخ في واتساب: اليوم + ٧ أيام + قائمة نواقص البحث */
 export function formatFamilyBrief(opts: {
   today: TreeOccasion[];
   week: TreeOccasion[];
   researchCount: number;
+  researchItems?: FamilyBriefResearchItem[];
   urlFor: (ev: TreeOccasion) => string | null;
   labels: {
     title: string;
@@ -17,6 +24,7 @@ export function formatFamilyBrief(opts: {
     todayTag: string;
     inDays: string; // "{{n}}"
     researchFooter: string; // "{{count}}"
+    researchHeader?: string;
   };
 }): string {
   const lines: string[] = [opts.labels.title, ""];
@@ -48,7 +56,29 @@ export function formatFamilyBrief(opts: {
     }
   }
 
-  if (opts.researchCount > 0) {
+  const items = opts.researchItems ?? [];
+  if (items.length > 0) {
+    lines.push(
+      "",
+      opts.labels.researchHeader ??
+        opts.labels.researchFooter.replace(
+          "{{count}}",
+          String(opts.researchCount || items.length),
+        ),
+    );
+    for (const item of items) {
+      lines.push(`• ${item.name} — ${item.gapLabel}`);
+      if (item.url) lines.push(`  ${item.url}`);
+    }
+    if (opts.researchCount > items.length) {
+      lines.push(
+        opts.labels.researchFooter.replace(
+          "{{count}}",
+          String(opts.researchCount),
+        ),
+      );
+    }
+  } else if (opts.researchCount > 0) {
     lines.push(
       "",
       opts.labels.researchFooter.replace(
