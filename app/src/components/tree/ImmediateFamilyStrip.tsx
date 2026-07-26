@@ -1,5 +1,11 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { Person } from "@db/tables";
+import type { Person, Relationship } from "@db/tables";
+import {
+  computePersonRanks,
+  formatAgeOrLifespan,
+  formatSiblingOrdinal,
+} from "@/lib/birthOrder";
 import { cn } from "@/lib/utils";
 
 type Member = {
@@ -9,6 +15,8 @@ type Member = {
 
 type Props = {
   members: Member[];
+  people?: Person[];
+  rels?: Relationship[];
   onSelect: (person: Person) => void;
   className?: string;
 };
@@ -16,19 +24,24 @@ type Props = {
 function AvatarChip({
   person,
   roleLabel,
+  meta,
   onClick,
 }: {
   person: Person;
   roleLabel: string;
+  meta?: string | null;
   onClick: () => void;
 }) {
   const female = person.gender === "female";
+  const title = meta
+    ? `${person.givenName} — ${roleLabel} · ${meta}`
+    : `${person.givenName} — ${roleLabel}`;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-white/80"
-      title={`${person.givenName} — ${roleLabel}`}
+      className="group flex w-[4.75rem] shrink-0 flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-white/80"
+      title={title}
     >
       <span
         className={cn(
@@ -58,17 +71,59 @@ function AvatarChip({
       <span className="w-full truncate text-center text-[9px] text-muted-foreground">
         {roleLabel}
       </span>
+      {meta && (
+        <span className="w-full truncate text-center text-[9px] font-medium tabular-nums text-sky-800/80">
+          {meta}
+        </span>
+      )}
     </button>
   );
 }
 
-/** شريط صور العائلة المباشرة في لوحة التفاصيل — تنقّل بنقرة */
+/** شريط صور العائلة المباشرة — مع عمر/مدى حياة وترتيب الإخوة */
 export default function ImmediateFamilyStrip({
   members,
+  people,
+  rels,
   onSelect,
   className,
 }: Props) {
   const { t } = useTranslation();
+
+  const metaById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!people || !rels || members.length === 0) {
+      for (const m of members) {
+        const age = formatAgeOrLifespan(m.person);
+        if (age) {
+          map.set(
+            m.person.id,
+            m.person.isLiving
+              ? t("detail.ageYears", { n: age })
+              : age,
+          );
+        }
+      }
+      return map;
+    }
+    for (const m of members) {
+      const parts: string[] = [];
+      if (m.role === "sibling" || m.role === "child") {
+        const ranks = computePersonRanks(m.person, people, rels);
+        const ord = formatSiblingOrdinal(ranks);
+        if (ord) parts.push(ord);
+      }
+      const age = formatAgeOrLifespan(m.person);
+      if (age) {
+        parts.push(
+          m.person.isLiving ? t("detail.ageYears", { n: age }) : age,
+        );
+      }
+      if (parts.length > 0) map.set(m.person.id, parts.join(" · "));
+    }
+    return map;
+  }, [members, people, rels, t]);
+
   if (members.length === 0) return null;
 
   const roleKey = (role: Member["role"]) => {
@@ -95,6 +150,7 @@ export default function ImmediateFamilyStrip({
             key={`${m.role}-${m.person.id}`}
             person={m.person}
             roleLabel={roleKey(m.role)}
+            meta={metaById.get(m.person.id)}
             onClick={() => onSelect(m.person)}
           />
         ))}

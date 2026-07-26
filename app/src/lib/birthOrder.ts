@@ -143,7 +143,51 @@ export function computePersonRanks(
     sameGenderTotal: genderRank?.total ?? 0,
     amongGenderInTree: treeGenderRank?.rank ?? null,
     genderInTreeTotal: treeGenderRank?.total ?? 0,
-    amongCousins: cousinsRank?.rank ?? null,
-    cousinsTotal: cousinsRank?.total ?? 0,
+  amongCousins: cousinsRank?.rank ?? null,
+  cousinsTotal: cousinsRank?.total ?? 0,
   };
 }
+
+export type AgeParts = {
+  birthDay?: number | null;
+  birthMonth?: number | null;
+  birthYear?: number | null;
+  deathDay?: number | null;
+  deathMonth?: number | null;
+  deathYear?: number | null;
+  isLiving?: boolean | null;
+};
+
+/** عمر للأحياء، أو مدى حياة للمتوفين — للعرض المختصر على البطاقات */
+export function formatAgeOrLifespan(
+  p: AgeParts,
+  now = new Date(),
+): string | null {
+  if (!p.birthYear) return null;
+
+  if (p.isLiving === false) {
+    if (p.deathYear) return `${p.birthYear}–${p.deathYear}`;
+    return String(p.birthYear);
+  }
+
+  let age = now.getFullYear() - p.birthYear;
+  if (p.birthMonth != null) {
+    const bm = p.birthMonth;
+    const bd = p.birthDay ?? 1;
+    const hadBirthday =
+      now.getMonth() + 1 > bm ||
+      (now.getMonth() + 1 === bm && now.getDate() >= bd);
+    if (!hadBirthday) age -= 1;
+  }
+  if (age < 0) return null;
+  return String(age);
+}
+
+/** ترتيب مختصر بين الإخوة: «٢/٥» */
+export function formatSiblingOrdinal(
+  ranks: Pick<PersonRanks, "amongSiblings" | "siblingsTotal">,
+): string | null {
+  if (!ranks.amongSiblings || ranks.siblingsTotal < 2) return null;
+  return `${ranks.amongSiblings}/${ranks.siblingsTotal}`;
+}
+

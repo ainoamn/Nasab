@@ -124,6 +124,10 @@ import {
   formatPersonShareCard,
   formatRelationPathText,
 } from "@/lib/relationShare";
+import {
+  downloadPersonJson,
+  downloadPersonVCard,
+} from "@/lib/personExport";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -224,6 +228,7 @@ import {
   MapPin,
   Gift,
   Copy,
+  Contact,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -2929,6 +2934,44 @@ export default function TreeWorkspace() {
                   <Copy className="h-3.5 w-3.5" />
                   {t("tree.copyPersonCard")}
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    downloadPersonVCard(detailPerson, {
+                      url: absoluteUrl(
+                        buildTreePersonPath(treeId, detailPerson.id, {
+                          tab: "chart",
+                        }),
+                      ),
+                      treeName: tree.name,
+                    });
+                    toast.success(t("detail.vcardDownloaded"));
+                  }}
+                >
+                  <Contact className="h-3.5 w-3.5" />
+                  {t("detail.downloadVcard")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    downloadPersonJson(detailPerson, people, rels, {
+                      url: absoluteUrl(
+                        buildTreePersonPath(treeId, detailPerson.id, {
+                          tab: "chart",
+                        }),
+                      ),
+                      treeName: tree.name,
+                    });
+                    toast.success(t("detail.jsonDownloaded"));
+                  }}
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  {t("detail.downloadPersonJson")}
+                </Button>
                 {shareUrl && (
                   <Button
                     size="sm"
@@ -3015,6 +3058,8 @@ export default function TreeWorkspace() {
                 )}
               <ImmediateFamilyStrip
                 members={immediateMembers}
+                people={people}
+                rels={rels}
                 onSelect={(p) => {
                   setDetailPerson(p);
                   setChartFocusId(p.id);

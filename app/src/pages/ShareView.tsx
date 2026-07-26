@@ -7,6 +7,7 @@ import EventsStrip from "@/components/tree/EventsStrip";
 import TodayEventsBanner from "@/components/tree/TodayEventsBanner";
 import OccasionsPanel from "@/components/tree/OccasionsPanel";
 import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
+import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
@@ -27,6 +28,8 @@ import {
   Eye,
   Printer,
   MessageCircle,
+  Contact,
+  FileDown,
 } from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -59,6 +62,10 @@ import {
   occasionGreetingText,
 } from "@/lib/occasionShare";
 import { openWhatsAppShare } from "@/lib/whatsAppShare";
+import {
+  downloadPersonJson,
+  downloadPersonVCard,
+} from "@/lib/personExport";
 import { formatFamilyBrief } from "@/lib/familyBrief";
 import { buildTreeOccasions, type TreeOccasion } from "@/lib/treeOccasions";
 import {
@@ -692,6 +699,45 @@ export default function ShareView() {
           </div>
         )}
 
+        <DiscoveriesPanel
+          people={people}
+          rels={rels}
+          canWrite={false}
+          homePersonId={detail?.id ?? people[0]?.id ?? null}
+          favoriteIds={favoriteIds}
+          onOpenPerson={(id) => {
+            const p = peopleById.get(id);
+            if (p) openPerson(p);
+          }}
+          onComparePair={(aId, bId) => {
+            const a = peopleById.get(aId);
+            if (!a) return;
+            openPerson(a);
+            setRelateId(bId);
+            const hops = findRelationPath(aId, bId, people, rels);
+            if (hops) {
+              setHighlightPathIds(hops.map((h) => h.personId));
+              toast.success(
+                t("tree.pathHighlightActive", { count: hops.length }),
+              );
+            }
+          }}
+          onHighlightPair={(aId, bId) => {
+            const hops = findRelationPath(aId, bId, people, rels);
+            if (!hops) {
+              toast.message(t("tree.howRelatedNone"));
+              return;
+            }
+            setHighlightPathIds(hops.map((h) => h.personId));
+            const a = peopleById.get(aId);
+            if (a) openPerson(a);
+            setRelateId(bId);
+            toast.success(
+              t("tree.pathHighlightActive", { count: hops.length }),
+            );
+          }}
+        />
+
         <Card>
           <CardContent className="p-2">
             <FamilyChart
@@ -788,6 +834,42 @@ export default function ShareView() {
                       variant="outline"
                       className="gap-1.5"
                       onClick={() => {
+                        downloadPersonVCard(detail, {
+                          url: absoluteUrl(
+                            buildSharePersonPath(shareToken, detail.id),
+                          ),
+                          treeName: tree.name,
+                        });
+                        toast.success(t("detail.vcardDownloaded"));
+                      }}
+                    >
+                      <Contact className="h-3.5 w-3.5" />
+                      {t("detail.downloadVcard")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => {
+                        downloadPersonJson(detail, people, rels, {
+                          url: absoluteUrl(
+                            buildSharePersonPath(shareToken, detail.id),
+                          ),
+                          treeName: tree.name,
+                        });
+                        toast.success(t("detail.jsonDownloaded"));
+                      }}
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      {t("detail.downloadPersonJson")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => {
                         const url = absoluteUrl(
                           buildSharePersonPath(shareToken, detail.id, {
                             relate: relateId,
@@ -837,6 +919,8 @@ export default function ShareView() {
                   </div>
                   <ImmediateFamilyStrip
                     members={immediateMembers}
+                    people={people}
+                    rels={rels}
                     onSelect={openPerson}
                   />
                 </div>
