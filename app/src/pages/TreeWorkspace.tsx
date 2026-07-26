@@ -7,6 +7,8 @@ import AppHeader from "@/components/AppHeader";
 import FamilyChart from "@/components/tree/FamilyChart";
 import PedigreeView from "@/components/tree/PedigreeView";
 import FanChartView from "@/components/tree/FanChartView";
+import TreeHomeBanner from "@/components/tree/TreeHomeBanner";
+import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -109,7 +111,7 @@ export default function TreeWorkspace() {
   const { id } = useParams<{ id: string }>();
   const treeId = parseInt(id ?? "0", 10);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth({ redirectOnUnauthenticated: true });
+  const { isAuthenticated, user } = useAuth({ redirectOnUnauthenticated: true });
   const utils = trpc.useUtils();
   const { t, i18n } = useTranslation();
   const L = useLabels();
@@ -384,6 +386,18 @@ export default function TreeWorkspace() {
 
       {/* المحتوى */}
       <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6 min-w-0 overflow-x-hidden">
+        <TreeHomeBanner
+          treeName={tree.name}
+          tribe={tree.tribe}
+          region={tree.region}
+          description={tree.description}
+          peopleCount={people.length}
+          photoCount={people.filter((p) => !!p.photoUrl).length}
+          spouseLinkCount={rels.filter((r) => r.type === "spouse").length}
+          livingCount={people.filter((p) => p.isLiving).length}
+          ownerName={myRole === "owner" ? (user?.name ?? null) : null}
+        />
+
         <Tabs defaultValue="chart" className="min-w-0">
           <TabsList className="mb-4 w-full sm:w-auto h-auto flex flex-wrap justify-start gap-1 p-1">
             <TabsTrigger value="chart" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
@@ -415,27 +429,39 @@ export default function TreeWorkspace() {
             )}
 
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1 rounded-xl border bg-card p-0.5 shadow-sm">
-                {(
-                  [
-                    { id: "family" as const, icon: Network, label: t("chart.viewFamily") },
-                    { id: "pedigree" as const, icon: GitBranch, label: t("chart.viewPedigree") },
-                    { id: "fan" as const, icon: Fan, label: t("chart.viewFan") },
-                  ] as const
-                ).map((v) => (
-                  <Button
-                    key={v.id}
-                    type="button"
-                    size="sm"
-                    variant={chartView === v.id ? "secondary" : "ghost"}
-                    className="gap-1.5 h-8"
-                    onClick={() => setChartView(v.id)}
-                    title={v.label}
-                  >
-                    <v.icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{v.label}</span>
-                  </Button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 rounded-xl border bg-card p-0.5 shadow-sm">
+                  {(
+                    [
+                      { id: "family" as const, icon: Network, label: t("chart.viewFamily") },
+                      { id: "pedigree" as const, icon: GitBranch, label: t("chart.viewPedigree") },
+                      { id: "fan" as const, icon: Fan, label: t("chart.viewFan") },
+                    ] as const
+                  ).map((v) => (
+                    <Button
+                      key={v.id}
+                      type="button"
+                      size="sm"
+                      variant={chartView === v.id ? "secondary" : "ghost"}
+                      className="gap-1.5 h-8"
+                      onClick={() => setChartView(v.id)}
+                      title={v.label}
+                    >
+                      <v.icon className="h-4 w-4" />
+                      <span className="hidden sm:inline">{v.label}</span>
+                    </Button>
+                  ))}
+                </div>
+                <ChartPersonSearch
+                  people={chartPeople}
+                  onSelect={(p) => {
+                    setDetailPerson(p);
+                    setChartFocusId(p.id);
+                    if (chartView === "family") {
+                      // يبقى في العرض العائلي مع تمييز البطاقة
+                    }
+                  }}
+                />
               </div>
               <p className="text-xs text-muted-foreground">
                 {t("chart.showingCount", {
@@ -715,6 +741,40 @@ export default function TreeWorkspace() {
               .filter((p): p is Person => !!p)
               .sort((a, b) => a.givenName.localeCompare(b.givenName, "ar"));
             const hasLinks = !!(father || mother || spouses.length || children.length);
+            const timeline: Array<{ year: number | null; label: string; key: string }> = [];
+            if (detailPerson.birthYear) {
+              timeline.push({
+                year: detailPerson.birthYear,
+                label: birthLabel
+                  ? `${t("tree.timelineBirth")} — ${birthLabel}`
+                  : t("tree.timelineBirth"),
+                key: "birth",
+              });
+            }
+            for (const sp of spouses) {
+              const rel = findSpouseRel(rels, detailPerson.id, sp.id);
+              const y = rel?.marriageYear ?? null;
+              timeline.push({
+                year: y,
+                label: t("tree.timelineMarriage", { name: sp.givenName }),
+                key: `m-${sp.id}`,
+              });
+            }
+            for (const ch of children) {
+              timeline.push({
+                year: ch.birthYear ?? null,
+                label: t("tree.timelineChild", { name: ch.givenName }),
+                key: `c-${ch.id}`,
+              });
+            }
+            if (!detailPerson.isLiving && detailPerson.deathYear) {
+              timeline.push({
+                year: detailPerson.deathYear,
+                label: t("tree.timelineDeath"),
+                key: "death",
+              });
+            }
+            timeline.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
             return (
             <>
               <SheetHeader className="text-start pe-8">
@@ -768,6 +828,24 @@ export default function TreeWorkspace() {
                 )}
                 <InfoRow label={t("detail.privacy")} value={L.privacy[detailPerson.privacy as PersonPrivacy]} />
               </div>
+              {timeline.length > 0 && (
+                <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+                  <p className="text-sm font-semibold">{t("tree.timelineTitle")}</p>
+                  <ol className="relative space-y-3 border-s-2 border-stone-200 ps-4">
+                    {timeline.map((ev) => (
+                      <li key={ev.key} className="relative text-sm">
+                        <span className="absolute -start-[1.35rem] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-sky-500 bg-white" />
+                        {ev.year != null && (
+                          <span className="me-2 font-semibold tabular-nums text-sky-700">
+                            {ev.year}
+                          </span>
+                        )}
+                        <span className="text-foreground/90">{ev.label}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
               <div className="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20">
                 <div>
                   <p className="font-semibold text-amber-950 dark:text-amber-100">
