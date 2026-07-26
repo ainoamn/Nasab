@@ -31,12 +31,11 @@ import {
 } from "@/lib/spouseMeta";
 import {
   BranchColumn,
-  CoupleToChildrenConnector,
+  CoupleLink,
   SiblingFork,
-  SpouseHeart,
   VLine,
 } from "@/components/tree/ChartConnectors";
-import { Baby, Heart, Minus, Plus, RotateCcw, Move } from "lucide-react";
+import { Baby, Minus, Plus, RotateCcw, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { displayGenerationNumber, printGenerationLevel } from "@/lib/printData";
@@ -1060,20 +1059,16 @@ function CoupleCardsRow({
   t: (k: string, o?: Record<string, unknown>) => string;
 }) {
   return (
-    <div className="flex flex-nowrap items-start justify-center gap-0 shrink-0">
+    <div className="flex flex-nowrap items-center justify-center gap-0 shrink-0">
       {couple.map((p, idx) => (
         <div key={p.id} className="flex flex-nowrap items-center shrink-0">
           {idx > 0 && (
-            <div className="relative flex flex-nowrap items-center shrink-0 self-start mt-[1.875rem]">
-              <div className="w-5 sm:w-8 h-0.5 bg-slate-500 print:bg-slate-700" />
-              <div className="relative -mx-1 flex flex-col items-center -mt-3">
-                <SpouseHeart
-                  marriageLabel={spouseDates.marriage}
-                  divorceLabel={spouseDates.divorce}
-                />
-              </div>
-              <div className="w-5 sm:w-8 h-0.5 bg-slate-500 print:bg-slate-700" />
-            </div>
+            <CoupleLink
+              marriageLabel={spouseDates.marriage}
+              divorceLabel={spouseDates.divorce}
+              minWidth={56}
+              className="mx-0"
+            />
           )}
           <PersonCard
             person={p}
@@ -1088,13 +1083,7 @@ function CoupleCardsRow({
       ))}
       {externalSpouses.map((ep) => (
         <div key={ep.linkId} className="flex flex-nowrap items-center shrink-0">
-          <div className="relative flex flex-nowrap items-center shrink-0 self-start mt-[1.875rem]">
-            <div className="w-5 sm:w-8 h-0.5 bg-slate-500 print:bg-slate-700" />
-            <span className="relative -mx-1 -mt-3 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 border border-violet-200 shadow-sm">
-              <Heart className="h-3 w-3 fill-violet-500" />
-            </span>
-            <div className="w-5 sm:w-8 h-0.5 bg-slate-500 print:bg-slate-700" />
-          </div>
+          <CoupleLink minWidth={56} className="mx-0" />
           <ExternalSpouseCard person={ep} compact={compact} t={t} />
         </div>
       ))}
@@ -1236,16 +1225,13 @@ function CoupleNode({
               return (
                 <div
                   key={`h-${cell.withId}`}
-                  className="flex items-center self-start pt-[1.875rem] px-0"
+                  className="flex items-center self-center px-0"
                 >
-                  <div className="w-4 sm:w-6 h-0.5 bg-slate-500 print:bg-slate-700" />
-                  <div className="relative -mx-0.5 -mt-3">
-                    <SpouseHeart
-                      marriageLabel={dates.marriage}
-                      divorceLabel={dates.divorce}
-                    />
-                  </div>
-                  <div className="w-4 sm:w-6 h-0.5 bg-slate-500 print:bg-slate-700" />
+                  <CoupleLink
+                    marriageLabel={dates.marriage}
+                    divorceLabel={dates.divorce}
+                    minWidth={52}
+                  />
                 </div>
               );
             }
@@ -1274,13 +1260,12 @@ function CoupleNode({
               return <div key={`k-${cell.person.id}`} />;
             }
             return (
-              <div
+                <div
                 key={`k-${cell.person.id}`}
                 className="flex flex-col items-center px-1"
               >
-                <CoupleToChildrenConnector h={20} />
                 {cell.person.id === focus.id && (
-                  <p className="text-[9px] text-muted-foreground mb-1 text-center px-1">
+                  <p className="text-[9px] text-muted-foreground mb-0.5 mt-1 text-center px-1">
                     {t("chart.noMotherListed")}
                   </p>
                 )}
@@ -1354,16 +1339,13 @@ function CoupleNode({
               return (
                 <div
                   key={`h-${cell.withId}`}
-                  className="flex items-center self-start pt-[1.875rem] px-0"
+                  className="flex items-center self-center px-0"
                 >
-                  <div className="w-4 sm:w-6 h-0.5 bg-slate-500 print:bg-slate-700" />
-                  <div className="relative -mx-0.5 -mt-3">
-                    <SpouseHeart
-                      marriageLabel={dates.marriage}
-                      divorceLabel={dates.divorce}
-                    />
-                  </div>
-                  <div className="w-4 sm:w-6 h-0.5 bg-slate-500 print:bg-slate-700" />
+                  <CoupleLink
+                    marriageLabel={dates.marriage}
+                    divorceLabel={dates.divorce}
+                    minWidth={52}
+                  />
                 </div>
               );
             }
@@ -1397,7 +1379,6 @@ function CoupleNode({
                 key={`k-${cell.person.id}`}
                 className="flex flex-col items-center px-1"
               >
-                <CoupleToChildrenConnector h={20} />
                 <ChildrenRow
                   kidIds={cell.kidIds}
                   depth={depth}
@@ -1458,24 +1439,21 @@ function CoupleNode({
       />
 
       {displayKids.length > 0 && (
-        <>
-          <CoupleToChildrenConnector h={20} />
-          <ChildrenRow
-            kidIds={displayKids}
-            depth={depth}
-            byId={byId}
-            childrenOf={childrenOf}
-            spousesOf={spousesOf}
-            rels={rels}
-            ranks={ranks}
-            onPersonClick={onPersonClick}
-            compact={compact}
-            visited={nextVisited}
-            remoteByLocal={remoteByLocal}
-            L={L}
-            t={t}
-          />
-        </>
+        <ChildrenRow
+          kidIds={displayKids}
+          depth={depth}
+          byId={byId}
+          childrenOf={childrenOf}
+          spousesOf={spousesOf}
+          rels={rels}
+          ranks={ranks}
+          onPersonClick={onPersonClick}
+          compact={compact}
+          visited={nextVisited}
+          remoteByLocal={remoteByLocal}
+          L={L}
+          t={t}
+        />
       )}
     </div>
   );
