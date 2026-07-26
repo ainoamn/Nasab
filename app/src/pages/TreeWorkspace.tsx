@@ -12,6 +12,7 @@ import { useLabels } from "@/lib/labels";
 import { computePersonRanks, formatBirthDate } from "@/lib/birthOrder";
 import PersonRankLines from "@/components/tree/PersonRankLines";
 import {
+  buildChildrenOf,
   buildSpousesOf,
   collectFocusedSubgraph,
   findUnlinkedPersonIds,
@@ -132,6 +133,7 @@ export default function TreeWorkspace() {
     [people],
   );
   const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
+  const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
   const chartFocusPerson = chartFocusId
     ? (peopleById.get(chartFocusId) ?? null)
     : null;
@@ -198,6 +200,8 @@ export default function TreeWorkspace() {
     onSuccess: async () => {
       toast.success(t("detail.unlinked"));
       await utils.person.list.invalidate({ treeId });
+      await utils.person.list.refetch({ treeId });
+      setChartRevision((n) => n + 1);
     },
     onError: (e) => toast.error(e.message),
   });
@@ -578,6 +582,12 @@ export default function TreeWorkspace() {
             const spouses = spouseIds
               .map((id) => peopleById.get(id))
               .filter((p): p is Person => !!p);
+            const childIds = childrenOf.get(detailPerson.id) ?? [];
+            const children = childIds
+              .map((id) => peopleById.get(id))
+              .filter((p): p is Person => !!p)
+              .sort((a, b) => a.givenName.localeCompare(b.givenName, "ar"));
+            const hasLinks = !!(father || mother || spouses.length || children.length);
             return (
             <>
               <DialogHeader className="text-start pe-8">
@@ -631,116 +641,146 @@ export default function TreeWorkspace() {
                 )}
                 <InfoRow label={t("detail.privacy")} value={L.privacy[detailPerson.privacy as PersonPrivacy]} />
               </div>
-              {(father || mother) && (
-                <div className="space-y-2 text-sm">
-                  <p className="font-semibold">{t("personForm.parentsTitle")}</p>
-                  <div className="flex flex-wrap gap-2">
+              <div className="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+                <div>
+                  <p className="font-semibold text-amber-950 dark:text-amber-100">
+                    {t("detail.linksTitle")}
+                  </p>
+                  {canWrite && (
+                    <p className="mt-0.5 text-xs text-amber-800/90 dark:text-amber-200/80">
+                      {t("detail.linksHint")}
+                    </p>
+                  )}
+                </div>
+                {!hasLinks ? (
+                  <p className="text-xs text-muted-foreground">{t("detail.noLinks")}</p>
+                ) : (
+                  <ul className="space-y-2">
                     {father && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void openPersonTree(father.id)}
-                        >
-                          {t("detail.father")}: {father.givenName}
-                        </Button>
+                      <li className="flex flex-wrap items-center gap-2 rounded-lg bg-background/80 px-2.5 py-2">
+                        <span className="min-w-0 flex-1 text-sm">
+                          <span className="text-muted-foreground">{t("detail.father")}: </span>
+                          <button
+                            type="button"
+                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            onClick={() => void openPersonTree(father.id)}
+                          >
+                            {father.givenName}
+                          </button>
+                        </span>
                         {canWrite && (
                           <Button
                             type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive"
-                            title={t("detail.unlink")}
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
                             disabled={unlinkMut.isPending}
                             onClick={() =>
-                              unlinkParent(
-                                father.id,
-                                detailPerson.id,
-                                father.givenName,
-                              )
+                              unlinkParent(father.id, detailPerson.id, father.givenName)
                             }
                           >
                             <Unlink className="h-3.5 w-3.5" />
+                            {t("detail.unlink")}
                           </Button>
                         )}
-                      </div>
+                      </li>
                     )}
                     {mother && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void openPersonTree(mother.id)}
-                        >
-                          {t("detail.mother")}: {mother.givenName}
-                        </Button>
+                      <li className="flex flex-wrap items-center gap-2 rounded-lg bg-background/80 px-2.5 py-2">
+                        <span className="min-w-0 flex-1 text-sm">
+                          <span className="text-muted-foreground">{t("detail.mother")}: </span>
+                          <button
+                            type="button"
+                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            onClick={() => void openPersonTree(mother.id)}
+                          >
+                            {mother.givenName}
+                          </button>
+                        </span>
                         {canWrite && (
                           <Button
                             type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive"
-                            title={t("detail.unlink")}
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
                             disabled={unlinkMut.isPending}
                             onClick={() =>
-                              unlinkParent(
-                                mother.id,
-                                detailPerson.id,
-                                mother.givenName,
-                              )
+                              unlinkParent(mother.id, detailPerson.id, mother.givenName)
                             }
                           >
                             <Unlink className="h-3.5 w-3.5" />
+                            {t("detail.unlink")}
                           </Button>
                         )}
-                      </div>
+                      </li>
                     )}
-                  </div>
-                </div>
-              )}
-              {spouses.length > 0 && (
-                <div className="space-y-2 text-sm">
-                  <p className="font-semibold">{t("detail.spouses")}</p>
-                  <div className="flex flex-wrap gap-2">
                     {spouses.map((sp) => (
-                      <div key={sp.id} className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => void openPersonTree(sp.id)}
-                        >
-                          {sp.givenName}
-                          <span className="ms-1 opacity-70">
-                            → {t("detail.viewSpouseTree")}
-                          </span>
-                        </Button>
+                      <li
+                        key={`sp-${sp.id}`}
+                        className="flex flex-wrap items-center gap-2 rounded-lg bg-background/80 px-2.5 py-2"
+                      >
+                        <span className="min-w-0 flex-1 text-sm">
+                          <span className="text-muted-foreground">{t("detail.spouses")}: </span>
+                          <button
+                            type="button"
+                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            onClick={() => void openPersonTree(sp.id)}
+                          >
+                            {sp.givenName}
+                          </button>
+                        </span>
                         {canWrite && (
                           <Button
                             type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive"
-                            title={t("detail.unlink")}
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
                             disabled={unlinkMut.isPending}
                             onClick={() =>
-                              unlinkSpouse(
-                                detailPerson.id,
-                                sp.id,
-                                sp.givenName,
-                              )
+                              unlinkSpouse(detailPerson.id, sp.id, sp.givenName)
                             }
                           >
                             <Unlink className="h-3.5 w-3.5" />
+                            {t("detail.unlink")}
                           </Button>
                         )}
-                      </div>
+                      </li>
                     ))}
-                  </div>
-                </div>
-              )}
+                    {children.map((ch) => (
+                      <li
+                        key={`ch-${ch.id}`}
+                        className="flex flex-wrap items-center gap-2 rounded-lg bg-background/80 px-2.5 py-2"
+                      >
+                        <span className="min-w-0 flex-1 text-sm">
+                          <span className="text-muted-foreground">{t("detail.children")}: </span>
+                          <button
+                            type="button"
+                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            onClick={() => void openPersonTree(ch.id)}
+                          >
+                            {ch.givenName}
+                          </button>
+                        </span>
+                        {canWrite && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+                            disabled={unlinkMut.isPending}
+                            onClick={() =>
+                              unlinkParent(detailPerson.id, ch.id, ch.givenName)
+                            }
+                          >
+                            <Unlink className="h-3.5 w-3.5" />
+                            {t("detail.unlink")}
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               {(ranks.amongSiblings || ranks.amongGenderInTree || ranks.amongCousins) && (
                 <PersonRankLines
                   ranks={ranks}
