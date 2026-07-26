@@ -52,6 +52,8 @@ type Props = {
   people: Person[];
   rels: Relationship[];
   defaultAnchorId?: number | null;
+  /** صلة افتراضية عند الإضافة (أب/أم/ابن…) */
+  defaultKinship?: Kinship | null;
   onAdded?: () => void;
 };
 
@@ -149,6 +151,7 @@ export default function PersonFormDialog({
   people,
   rels,
   defaultAnchorId,
+  defaultKinship = null,
   onAdded,
 }: Props) {
   const isEdit = !!person;
@@ -328,10 +331,10 @@ export default function PersonFormDialog({
     setEditFatherId("");
     setEditMotherId("");
     setLinkPersonId(pickPreferredAnchor(people, defaultAnchorId));
-    setKinship("son");
+    setKinship(defaultKinship && KINSHIPS.includes(defaultKinship) ? defaultKinship : "son");
     // لا تُضَمَّن people/rels — وإلا يُمسَح النموذج عند كل تحديث للشجرة
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, person?.id, defaultAnchorId, isEdit]);
+  }, [open, person?.id, defaultAnchorId, defaultKinship, isEdit]);
 
   /** إذا فُتح الحوار قبل تحميل الأشخاص */
   useEffect(() => {

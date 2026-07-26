@@ -11,10 +11,13 @@ type Props = {
   generations?: number;
   selectedPersonId?: number | null;
   onPersonClick?: (person: Person) => void;
+  onAddParent?: (childId: number, role: "father" | "mother") => void;
 };
 
 type Slot = {
   id: number | null;
+  childId: number | null;
+  role: "father" | "mother" | "focus" | null;
   ring: number;
   startAngle: number;
   endAngle: number;
@@ -55,6 +58,7 @@ export default function FanChartView({
   generations = 5,
   selectedPersonId,
   onPersonClick,
+  onAddParent,
 }: Props) {
   const { t } = useTranslation();
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
@@ -62,8 +66,14 @@ export default function FanChartView({
 
   const slots = useMemo(() => {
     const out: Slot[] = [];
-    // الحلقة 0 = الجذر (نصف دائرة سفلى كمركز بصري)
-    out.push({ id: focusId, ring: 0, startAngle: -20, endAngle: 20 });
+    out.push({
+      id: focusId,
+      childId: null,
+      role: "focus",
+      ring: 0,
+      startAngle: -20,
+      endAngle: 20,
+    });
 
     type Frontier = { id: number | null; a0: number; a1: number };
     let frontier: Frontier[] = [{ id: focusId, a0: -90, a1: 90 }];
@@ -72,30 +82,25 @@ export default function FanChartView({
       const next: Frontier[] = [];
       for (const cell of frontier) {
         const mid = (cell.a0 + cell.a1) / 2;
-        const left: Frontier = {
-          id: null,
-          a0: cell.a0,
-          a1: mid,
-        };
-        const right: Frontier = {
-          id: null,
-          a0: mid,
-          a1: cell.a1,
-        };
+        const left: Frontier = { id: null, a0: cell.a0, a1: mid };
+        const right: Frontier = { id: null, a0: mid, a1: cell.a1 };
         if (cell.id != null) {
           const { fatherId, motherId } = getParents(cell.id, rels, byId);
-          // في المروحة: الأب جهة، الأم جهة
           left.id = fatherId;
           right.id = motherId;
         }
         out.push({
           id: left.id,
+          childId: cell.id,
+          role: "father",
           ring,
           startAngle: left.a0,
           endAngle: left.a1,
         });
         out.push({
           id: right.id,
+          childId: cell.id,
+          role: "mother",
           ring,
           startAngle: right.a0,
           endAngle: right.a1,
@@ -155,8 +160,23 @@ export default function FanChartView({
             return (
               <g
                 key={`s-${slot.ring}-${i}`}
-                className={cn(person && "cursor-pointer")}
-                onClick={() => person && onPersonClick?.(person)}
+                className={cn(
+                  (person ||
+                    (slot.childId != null &&
+                      onAddParent &&
+                      (slot.role === "father" || slot.role === "mother"))) &&
+                    "cursor-pointer",
+                )}
+                onClick={() => {
+                  if (person) onPersonClick?.(person);
+                  else if (
+                    slot.childId != null &&
+                    onAddParent &&
+                    (slot.role === "father" || slot.role === "mother")
+                  ) {
+                    onAddParent(slot.childId, slot.role);
+                  }
+                }}
               >
                 <path
                   d={arcPath(

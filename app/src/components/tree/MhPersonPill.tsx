@@ -7,6 +7,7 @@ type Props = {
   selected?: boolean;
   placeholder?: string;
   onClick?: () => void;
+  onPlaceholderClick?: () => void;
   className?: string;
 };
 
@@ -17,21 +18,27 @@ export function MhPersonPill({
   selected,
   placeholder,
   onClick,
+  onPlaceholderClick,
   className,
 }: Props) {
   if (!person) {
+    const Comp = onPlaceholderClick ? "button" : "div";
     return (
-      <div
+      <Comp
+        type={onPlaceholderClick ? "button" : undefined}
+        onClick={onPlaceholderClick}
         className={cn(
           "flex h-12 w-[11.5rem] items-center gap-2 rounded-full border border-dashed border-stone-300 bg-white/70 px-3 text-xs text-stone-400",
+          onPlaceholderClick &&
+            "cursor-pointer hover:border-sky-400 hover:bg-sky-50 hover:text-sky-700",
           className,
         )}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-stone-300 text-base text-stone-300">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-current text-base">
           +
         </span>
         <span className="truncate">{placeholder ?? "—"}</span>
-      </div>
+      </Comp>
     );
   }
 

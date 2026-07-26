@@ -62,6 +62,7 @@ const SideTreeContext = createContext<{
 /** معرفات المتزوجين (رابط زوجية صريح أو مستنتج) */
 const MarriedIdsContext = createContext<Set<number>>(new Set());
 const SelectedPersonContext = createContext<number | null>(null);
+const QuickAddContext = createContext<((person: Person) => void) | null>(null);
 
 type RemotePerson = Person & { linkId: number; forPersonId: number };
 
@@ -78,6 +79,8 @@ type Props = {
   disablePanZoom?: boolean;
   /** تمييز البطاقة المحددة في لوحة التفاصيل */
   selectedPersonId?: number | null;
+  /** إضافة قريب سريعة من البطاقة (+) */
+  onQuickAdd?: (person: Person) => void;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
   focusMode?: boolean;
   /** جذر الشجرة في الطباعة — بدلاً من اكتشاف أعلى جد تلقائياً */
@@ -146,6 +149,7 @@ export default function FamilyChart({
   compact,
   disablePanZoom,
   selectedPersonId = null,
+  onQuickAdd,
   focusMode,
   rootPersonId,
   printLevels,
@@ -583,6 +587,7 @@ export default function FamilyChart({
     <SideTreeContext.Provider value={sideTreeCtx}>
     <MarriedIdsContext.Provider value={marriedIds}>
     <SelectedPersonContext.Provider value={selectedPersonId ?? null}>
+    <QuickAddContext.Provider value={onQuickAdd ?? null}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
       {!disablePanZoom && (
@@ -754,6 +759,7 @@ export default function FamilyChart({
         </div>
       </div>
     </div>
+    </QuickAddContext.Provider>
     </SelectedPersonContext.Provider>
     </MarriedIdsContext.Provider>
     </SideTreeContext.Provider>
@@ -881,6 +887,7 @@ function PersonCard({
   const hasSideTree = Boolean(sideTree?.personIds.has(person.id));
   const marriedIds = useContext(MarriedIdsContext);
   const selectedId = useContext(SelectedPersonContext);
+  const onQuickAdd = useContext(QuickAddContext);
   const isMarried = marriedIds.has(person.id);
   const isSelected = selectedId === person.id;
   const female = isFemale(person.gender);
@@ -1019,6 +1026,22 @@ function PersonCard({
           aria-hidden
         />
       </button>
+      {onQuickAdd && !compact && (
+        <button
+          type="button"
+          data-no-pan
+          title={t("tree.addRelative")}
+          aria-label={t("tree.addRelative")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickAdd(person);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="z-[2] -mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-600 shadow-sm hover:border-sky-400 hover:bg-sky-50 hover:text-sky-700"
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }

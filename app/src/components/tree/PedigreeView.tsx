@@ -13,9 +13,16 @@ type Props = {
   generations?: number;
   selectedPersonId?: number | null;
   onPersonClick?: (person: Person) => void;
+  /** إضافة أب/أم من الخانة الفارغة — childId = الشخص الذي نضيف له الوالد */
+  onAddParent?: (childId: number, role: "father" | "mother") => void;
 };
 
-type Cell = { person: Person | null; key: string; slot: string };
+type Cell = {
+  person: Person | null;
+  key: string;
+  slot: string;
+  childId: number | null;
+};
 
 /**
  * مخطط أسلاف أفقي: الشخص يميناً، الآباء يساراً،
@@ -28,6 +35,7 @@ export default function PedigreeView({
   generations = 4,
   selectedPersonId,
   onPersonClick,
+  onAddParent,
 }: Props) {
   const { t } = useTranslation();
   const L = useLabels();
@@ -36,7 +44,9 @@ export default function PedigreeView({
   const columns = useMemo(() => {
     const cols: Cell[][] = [];
     const focus = byId.get(focusId) ?? null;
-    cols.push([{ person: focus, key: `f-${focusId}`, slot: "focus" }]);
+    cols.push([
+      { person: focus, key: `f-${focusId}`, slot: "focus", childId: null },
+    ]);
 
     let frontier: Array<{ id: number | null; key: string }> = [
       { id: focusId, key: `f-${focusId}` },
@@ -47,8 +57,18 @@ export default function PedigreeView({
       const col: Cell[] = [];
       for (const item of frontier) {
         if (item.id == null) {
-          col.push({ person: null, key: `${item.key}-fa`, slot: "father" });
-          col.push({ person: null, key: `${item.key}-mo`, slot: "mother" });
+          col.push({
+            person: null,
+            key: `${item.key}-fa`,
+            slot: "father",
+            childId: null,
+          });
+          col.push({
+            person: null,
+            key: `${item.key}-mo`,
+            slot: "mother",
+            childId: null,
+          });
           next.push({ id: null, key: `${item.key}-fa` });
           next.push({ id: null, key: `${item.key}-mo` });
           continue;
@@ -58,11 +78,13 @@ export default function PedigreeView({
           person: fatherId ? byId.get(fatherId) ?? null : null,
           key: `${item.key}-fa`,
           slot: "father",
+          childId: item.id,
         });
         col.push({
           person: motherId ? byId.get(motherId) ?? null : null,
           key: `${item.key}-mo`,
           slot: "mother",
+          childId: item.id,
         });
         next.push({ id: fatherId, key: `${item.key}-fa` });
         next.push({ id: motherId, key: `${item.key}-mo` });
@@ -145,6 +167,18 @@ export default function PedigreeView({
                         onClick={
                           cell.person
                             ? () => onPersonClick?.(cell.person!)
+                            : undefined
+                        }
+                        onPlaceholderClick={
+                          !cell.person &&
+                          cell.childId != null &&
+                          onAddParent &&
+                          (cell.slot === "father" || cell.slot === "mother")
+                            ? () =>
+                                onAddParent(
+                                  cell.childId!,
+                                  cell.slot as "father" | "mother",
+                                )
                             : undefined
                         }
                       />

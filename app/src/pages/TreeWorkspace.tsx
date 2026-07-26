@@ -9,6 +9,7 @@ import PedigreeView from "@/components/tree/PedigreeView";
 import FanChartView from "@/components/tree/FanChartView";
 import TreeHomeBanner from "@/components/tree/TreeHomeBanner";
 import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
+import PhotosGallery from "@/components/tree/PhotosGallery";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -22,6 +23,7 @@ import {
   findUnlinkedPersonIds,
   getParents,
 } from "@/lib/familyGraph";
+import { relationToFocus } from "@/lib/relationshipLabel";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -103,6 +105,7 @@ import {
   Network,
   GitBranch,
   Fan,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -118,6 +121,9 @@ export default function TreeWorkspace() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [addAnchorId, setAddAnchorId] = useState<number | null>(null);
+  const [addKinship, setAddKinship] = useState<
+    "father" | "mother" | "son" | "daughter" | "spouse" | "brother" | "sister" | null
+  >(null);
   const [editPerson, setEditPerson] = useState<Person | null>(null);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [deletePerson, setDeletePerson] = useState<Person | null>(null);
@@ -241,6 +247,25 @@ export default function TreeWorkspace() {
     unlinkMut.mutate({ id: rel.id, treeId });
   };
 
+  const listFocusId = chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
+
+  const openAddRelative = (
+    anchorId: number,
+    kinship:
+      | "father"
+      | "mother"
+      | "son"
+      | "daughter"
+      | "spouse"
+      | "brother"
+      | "sister" = "son",
+  ) => {
+    setAddAnchorId(anchorId);
+    setAddKinship(kinship);
+    setDetailPerson(null);
+    setAddOpen(true);
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim();
     if (!q) return people;
@@ -321,6 +346,7 @@ export default function TreeWorkspace() {
                     size="sm"
                     onClick={() => {
                       setAddAnchorId(null);
+                      setAddKinship(null);
                       setAddOpen(true);
                     }}
                     className="gap-2"
@@ -406,6 +432,9 @@ export default function TreeWorkspace() {
             <TabsTrigger value="list" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
               <List className="h-4 w-4" /> {t("tree.list")}
             </TabsTrigger>
+            <TabsTrigger value="photos" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+              <ImageIcon className="h-4 w-4" /> {t("tree.photos")}
+            </TabsTrigger>
             <TabsTrigger value="log" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
               <History className="h-4 w-4" /> {t("tree.log")}
             </TabsTrigger>
@@ -484,6 +513,9 @@ export default function TreeWorkspace() {
                     selectedPersonId={detailPerson?.id ?? null}
                     onPersonClick={(p) => setDetailPerson(p)}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
+                    onQuickAdd={
+                      canWrite ? (p) => openAddRelative(p.id, "son") : undefined
+                    }
                     onToggleBranch={
                       canWrite
                         ? (branchId, isHidden) =>
@@ -516,6 +548,11 @@ export default function TreeWorkspace() {
                           setDetailPerson(p);
                           setChartFocusId(p.id);
                         }}
+                        onAddParent={
+                          canWrite
+                            ? (childId, role) => openAddRelative(childId, role)
+                            : undefined
+                        }
                       />
                     );
                   })()
@@ -544,6 +581,11 @@ export default function TreeWorkspace() {
                           setDetailPerson(p);
                           setChartFocusId(p.id);
                         }}
+                        onAddParent={
+                          canWrite
+                            ? (childId, role) => openAddRelative(childId, role)
+                            : undefined
+                        }
                       />
                     );
                   })()
@@ -569,6 +611,7 @@ export default function TreeWorkspace() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t("tree.cols.name")}</TableHead>
+                        <TableHead>{t("tree.cols.relation")}</TableHead>
                         <TableHead>{t("tree.cols.nasab")}</TableHead>
                         <TableHead>{t("tree.cols.kunya")}</TableHead>
                         <TableHead>{t("tree.cols.gender")}</TableHead>
@@ -580,7 +623,7 @@ export default function TreeWorkspace() {
                     <TableBody>
                       {filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                             {t("tree.noResults")}
                           </TableCell>
                         </TableRow>
@@ -619,6 +662,13 @@ export default function TreeWorkspace() {
                                 </span>
                               </div>
                             </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {listFocusId != null
+                                ? t(
+                                    `tree.rel.${relationToFocus(listFocusId, p.id, people, rels)}`,
+                                  )
+                                : "—"}
+                            </TableCell>
                             <TableCell className="font-display text-muted-foreground">{p.fatherName ?? "—"}</TableCell>
                             <TableCell>{p.kunya ?? "—"}</TableCell>
                             <TableCell>{p.gender === "female" ? t("common.female") : t("common.male")}</TableCell>
@@ -649,6 +699,13 @@ export default function TreeWorkspace() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="photos">
+            <PhotosGallery
+              people={people}
+              onPersonClick={(p) => setDetailPerson(p)}
+            />
           </TabsContent>
 
           <TabsContent value="log">
@@ -689,11 +746,15 @@ export default function TreeWorkspace() {
         open={addOpen}
         onOpenChange={(o) => {
           setAddOpen(o);
-          if (!o) setAddAnchorId(null);
+          if (!o) {
+            setAddAnchorId(null);
+            setAddKinship(null);
+          }
         }}
         people={people}
         rels={rels}
         defaultAnchorId={addAnchorId}
+        defaultKinship={addKinship}
         onAdded={refreshChart}
       />
       <PersonFormDialog
@@ -1025,11 +1086,7 @@ export default function TreeWorkspace() {
                 <SheetFooter className="gap-2 flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-start pt-0">
                   <Button
                     className="gap-2 w-full sm:w-auto"
-                    onClick={() => {
-                      setAddAnchorId(detailPerson.id);
-                      setDetailPerson(null);
-                      setAddOpen(true);
-                    }}
+                    onClick={() => openAddRelative(detailPerson.id, "son")}
                   >
                     <UserPlus className="h-4 w-4" /> {t("tree.addRelative")}
                   </Button>
