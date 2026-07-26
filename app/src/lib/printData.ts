@@ -581,6 +581,9 @@ export type SunLayout = {
  * تخطيط شمس النسب بنمط MyHeritage:
  * الجذر وزوجته في المركز، الأبناء حلقات متحدة المركز،
  * والزوج/الزوجة متلاصقان على نفس الحلقة، والروابط من منتصف الزوجين.
+ *
+ * يحجز زاوية حسب حجم الفرع ويفرض مسافة دنيا بين العقد على كل حلقة
+ * حتى لا تتداخل الأسماء الطويلة.
  */
 export function computeSunLayout(
   people: Person[],
@@ -601,7 +604,10 @@ export function computeSunLayout(
   const cx = 50;
   const cy = 50;
   const rootLevel = levels.get(rootPersonId) ?? 0;
-  const outerRadius = 44;
+
+  // نصف قطر خارجي يتسع مع كثافة الشجرة
+  const density = Math.max(1, people.length);
+  const outerRadius = Math.min(47.5, 38 + Math.min(9, Math.log2(density + 1) * 2.2));
 
   const placeAt = (id: number, angleDeg: number, ring: number, isSpouse = false) => {
     positions.set(id, { x: cx, y: cy, angle: angleDeg, ring, isSpouse });
@@ -634,12 +640,28 @@ export function computeSunLayout(
     return out;
   };
 
+  const weightMemo = new Map<number, number>();
+  const subtreeWeight = (id: number, depth = 0): number => {
+    if (weightMemo.has(id)) return weightMemo.get(id)!;
+    if (depth > 40) return 1;
+    const person = byId.get(id);
+    if (!person) return 1;
+    const kids = bloodKids(id);
+    const spouses = oppositeSpouses(person, spousesOf, byId).length;
+    const w =
+      1 +
+      spouses * 0.35 +
+      kids.reduce((sum, kid) => sum + subtreeWeight(kid, depth + 1), 0);
+    weightMemo.set(id, w);
+    return w;
+  };
+
   const rootPerson = byId.get(rootPersonId)!;
   const rootSpouseIds = oppositeSpouses(rootPerson, spousesOf, byId).map((s) => s.id);
   const rootIds = [rootPersonId, ...rootSpouseIds];
 
   placeAt(rootPersonId, 180, 0);
-  rootSpouseIds.forEach((sid, i) => placeAt(sid, 0, 0, true));
+  rootSpouseIds.forEach((sid) => placeAt(sid, 0, 0, true));
   if (rootSpouseIds.length > 0) {
     spouseEdges.push({ fromId: rootPersonId, toId: rootSpouseIds[0]! });
   }
@@ -650,7 +672,6 @@ export function computeSunLayout(
 
   const rootKids = bloodKids(rootPersonId);
   if (rootKids.length === 0) {
-    // مركز فقط
     const gap = 3.8;
     rootIds.forEach((id, i) => {
       const pos = positions.get(id)!;
@@ -660,11 +681,12 @@ export function computeSunLayout(
     return { positions, edges, spouseEdges, ringCount: 1, rootIds };
   }
 
-  const slice = 360 / rootKids.length;
-  rootKids.forEach((cid, i) => {
-    const start = -90 + i * slice;
-    const end = start + slice;
-    queue.push({ id: cid, start, end, ring: 1, parentId: rootPersonId });
+  const totalRootW = rootKids.reduce((s, id) => s + subtreeWeight(id), 0) || rootKids.length;
+  let cursor = -90;
+  rootKids.forEach((cid) => {
+    const span = (360 * subtreeWeight(cid)) / totalRootW;
+    queue.push({ id: cid, start: cursor, end: cursor + span, ring: 1, parentId: rootPersonId });
+    cursor += span;
   });
 
   while (queue.length > 0) {
@@ -679,8 +701,8 @@ export function computeSunLayout(
 
     const person = byId.get(slot.id)!;
     const spouses = oppositeSpouses(person, spousesOf, byId).filter((s) => !placed.has(s.id));
-    // الأزواج متلاصقان على القوس (فجوة زاوية صغيرة)
-    const spouseGap = Math.min(3.2, Math.max(1.4, span * 0.08));
+    // فجوة زوجية صغيرة داخل نفس الشريحة — لا تسرق زاوية الأبناء
+    const spouseGap = Math.min(2.4, Math.max(1.1, span * 0.06));
     spouses.forEach((sp, i) => {
       const dir = i % 2 === 0 ? 1 : -1;
       const spouseAngle = mid + dir * spouseGap * (Math.floor(i / 2) + 1);
@@ -692,31 +714,120 @@ export function computeSunLayout(
     const kids = bloodKids(slot.id).filter((k) => !placed.has(k));
     if (kids.length === 0) continue;
 
-    const usable = span * 0.9;
+    const usable = span * 0.92;
     const pad = (span - usable) / 2;
-    const childSlice = usable / kids.length;
+    const kidWeights = kids.map((id) => subtreeWeight(id));
+    const tw = kidWeights.reduce((a, b) => a + b, 0) || kids.length;
+    let kCursor = slot.start + pad;
     kids.forEach((cid, i) => {
-      const cStart = slot.start + pad + i * childSlice;
+      const childSpan = (usable * kidWeights[i]!) / tw;
       queue.push({
         id: cid,
-        start: cStart,
-        end: cStart + childSlice,
+        start: kCursor,
+        end: kCursor + childSpan,
         ring: slot.ring + 1,
         parentId: slot.id,
       });
+      kCursor += childSpan;
     });
   }
 
-  // أفراد متبقون (نادرًا) — على حلقتهم دون كسر التخطيط
-  for (const p of people) {
-    if (placed.has(p.id)) continue;
-    const ring = Math.max(1, (levels.get(p.id) ?? rootLevel) - rootLevel);
-    const angle = -90 + ((p.id * 47) % 360);
-    placeAt(p.id, angle, ring);
-    placed.add(p.id);
+  // متبقون — وزّعهم بانتظام على حلقتهم بدل الزوايا العشوائية
+  const leftovers = people.filter((p) => !placed.has(p.id));
+  if (leftovers.length > 0) {
+    const byRing = new Map<number, Person[]>();
+    for (const p of leftovers) {
+      const ring = Math.max(1, (levels.get(p.id) ?? rootLevel) - rootLevel);
+      const list = byRing.get(ring) ?? [];
+      list.push(p);
+      byRing.set(ring, list);
+    }
+    for (const [ring, list] of byRing) {
+      list.forEach((p, i) => {
+        const angle = -90 + (360 * (i + 0.5)) / list.length;
+        placeAt(p.id, angle, ring);
+        placed.add(p.id);
+      });
+    }
   }
 
   const maxRing = Math.max(1, ...[...positions.values()].map((p) => p.ring));
+
+  /** مسافة زاوية دنيا على الحلقة — تقل مع اتساع المحيط */
+  const minGapForRing = (ring: number, count: number): number => {
+    if (count <= 1) return 0;
+    const radiusPct = (ring / maxRing) * outerRadius;
+    // قوس أدنى ≈ 2.8 وحدة نسبية على المحيط (حوالي عرض اسم قصير)
+    const arcMin = ring <= 1 ? 4.2 : ring === 2 ? 3.4 : 2.8;
+    const fromArc = (arcMin / Math.max(radiusPct, 8)) * (180 / Math.PI);
+    const even = 360 / count;
+    return Math.min(even, Math.max(2.2, fromArc));
+  };
+
+  // إعادة توزيع كل حلقة لفرض فجوة دنيا مع الحفاظ على الترتيب الزاوي
+  for (let ring = 1; ring <= maxRing; ring++) {
+    const nodes = [...positions.entries()]
+      .filter(([, p]) => p.ring === ring && !p.isSpouse)
+      .map(([id, p]) => ({ id, angle: p.angle, pos: p }))
+      .sort((a, b) => a.angle - b.angle);
+    if (nodes.length <= 1) continue;
+
+    const minGap = minGapForRing(ring, nodes.length);
+    const angles = nodes.map((n) => n.angle);
+
+    // مرّتان لكفاية الالتفاف حول الدائرة
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < angles.length; i++) {
+        const next = (i + 1) % angles.length;
+        let delta = angles[next]! - angles[i]!;
+        if (next === 0) delta += 360;
+        if (delta >= minGap) continue;
+        const need = minGap - delta;
+        angles[next] = angles[next]! + need / 2;
+        angles[i] = angles[i]! - need / 2;
+      }
+      // طبّع داخل [-180, 540) ثم أعد الترتيب النسبي
+      for (let i = 0; i < angles.length; i++) {
+        while (angles[i]! < -180) angles[i]! += 360;
+        while (angles[i]! >= 540) angles[i]! -= 360;
+      }
+    }
+
+    // إن بقي تداخل شديد: توزيع منتظم مع الحفاظ على الترتيب
+    let tight = false;
+    for (let i = 0; i < angles.length; i++) {
+      const next = (i + 1) % angles.length;
+      let delta = angles[next]! - angles[i]!;
+      if (next === 0) delta += 360;
+      if (delta < minGap * 0.85) {
+        tight = true;
+        break;
+      }
+    }
+    if (tight || nodes.length * minGap > 360) {
+      const start = angles[0]!;
+      const step = 360 / nodes.length;
+      for (let i = 0; i < angles.length; i++) angles[i] = start + i * step;
+    }
+
+    nodes.forEach((n, i) => {
+      const pos = positions.get(n.id)!;
+      positions.set(n.id, { ...pos, angle: angles[i]! });
+      // حرّك الأزواج مع المحور
+      for (const e of spouseEdges) {
+        if (e.fromId !== n.id && e.toId !== n.id) continue;
+        const spouseId = e.fromId === n.id ? e.toId : e.fromId;
+        const sp = positions.get(spouseId);
+        if (!sp || sp.ring !== ring) continue;
+        const side = sp.angle >= n.angle ? 1 : -1;
+        positions.set(spouseId, {
+          ...sp,
+          angle: angles[i]! + side * Math.min(2.2, minGap * 0.35),
+        });
+      }
+    });
+  }
+
   const step = outerRadius / maxRing;
 
   // المركز: الزوجان جنباً إلى جنب أفقياً

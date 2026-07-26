@@ -340,4 +340,28 @@ describe("computeSunLayout", () => {
     expect(Math.abs(majed.angle - hamoud.angle)).toBeLessThan(90);
     expect(Math.abs(omar.angle - hamoud.angle)).toBeLessThan(90);
   });
+
+  it("keeps primary nodes on a dense ring from stacking on the same angle", async () => {
+    const { computeSunLayout } = await import("@/lib/printData");
+    const people = [
+      person(1, "جذع"),
+      ...Array.from({ length: 12 }, (_, i) => person(10 + i, `ابن${i + 1}`)),
+    ];
+    const rels = people.slice(1).map((p) => parentRel(1, p.id));
+    const levels = assignGenerationsStable(people, rels);
+    const { positions } = computeSunLayout(people, rels, levels, 1);
+
+    const ring1 = [...positions.entries()]
+      .filter(([, p]) => p.ring === 1 && !p.isSpouse)
+      .map(([, p]) => ((p.angle % 360) + 360) % 360)
+      .sort((a, b) => a - b);
+
+    expect(ring1).toHaveLength(12);
+    for (let i = 0; i < ring1.length; i++) {
+      const next = ring1[(i + 1) % ring1.length]!;
+      let delta = next - ring1[i]!;
+      if (i === ring1.length - 1) delta += 360;
+      expect(delta).toBeGreaterThan(20);
+    }
+  });
 });

@@ -26,13 +26,27 @@ function pct(n: number) {
   return (n / 100) * VB;
 }
 
-function sunName(p: Person, laqabFallback?: string | null): string {
+function sunName(p: Person, ring: number, laqabFallback?: string | null): string {
+  // الحلقات الخارجية: اسم مختصر حتى لا تتداخل النصوص الطويلة
+  if (ring >= 3) return p.givenName;
+  if (ring === 2) {
+    const fatherFirst = p.fatherName?.trim().split(/\s+/)[0];
+    if (!fatherFirst) return p.givenName;
+    const link = p.gender === "female" ? "بنت" : "بن";
+    return `${p.givenName} ${link} ${fatherFirst}`;
+  }
   const parts = [p.givenName];
   if (p.fatherName) {
-    parts.push(p.gender === "female" ? `بنت ${p.fatherName}` : `بن ${p.fatherName}`);
+    const fatherShort =
+      ring === 0
+        ? p.fatherName
+        : p.fatherName.trim().split(/\s+/).slice(0, 2).join(" ");
+    parts.push(p.gender === "female" ? `بنت ${fatherShort}` : `بن ${fatherShort}`);
   }
-  const laqab = p.laqab?.trim() || laqabFallback?.trim();
-  if (laqab) parts.push(laqab);
+  if (ring === 0) {
+    const laqab = p.laqab?.trim() || laqabFallback?.trim();
+    if (laqab) parts.push(laqab);
+  }
   return parts.join(" ");
 }
 
@@ -80,11 +94,14 @@ function PersonNode({
   pos,
   totalRings,
   laqabFallback,
+  labelIndex = 0,
 }: {
   person: Person;
   pos: SunPosition;
   totalRings: number;
   laqabFallback?: string | null;
+  /** لتناوب إزاحة التسمية قليلاً بين الجيران */
+  labelIndex?: number;
 }) {
   const x = pct(pos.x);
   const y = pct(pos.y);
@@ -92,12 +109,23 @@ function PersonNode({
   const r = nodeRadius(pos.ring, totalRings);
   const border = female ? FEMALE_BORDER : MALE_BORDER;
   const fill = female ? FEMALE_FILL : MALE_FILL;
-  const name = sunName(person, laqabFallback);
-  const years = yearLabel(person);
+  const name = sunName(person, pos.ring, laqabFallback);
+  const years = pos.ring <= 1 ? yearLabel(person) : null;
   const { rotate, flip } = labelTransform(pos.angle);
   const photo = person.photoUrl;
-  const labelGap = r + 8;
-  const fontSize = pos.ring === 0 ? 22 : pos.ring === 1 ? 16 : pos.ring === 2 ? 13 : 11;
+  const stagger = labelIndex % 2 === 0 ? 0 : Math.min(14, 6 + pos.ring * 2);
+  const labelGap = r + 8 + stagger;
+  const fontSize =
+    pos.ring === 0 ? 22 : pos.ring === 1 ? 15 : pos.ring === 2 ? 12 : pos.ring === 3 ? 10 : 9;
+
+  const nameTextProps = {
+    fontWeight: 600 as const,
+    fill: TEXT,
+    fontFamily: "DejaVu Sans, 'Noto Naskh Arabic', Tahoma, sans-serif",
+    stroke: BG,
+    strokeWidth: 3.5,
+    paintOrder: "stroke fill" as const,
+  };
 
   // في المركز: الاسم بجانب الدائرة أفقياً (يسار للذكر / يمين للأنثى غالباً)
   if (pos.ring === 0) {
@@ -134,9 +162,7 @@ function PersonNode({
           textAnchor={nameOnLeft ? "end" : "start"}
           dominantBaseline="middle"
           fontSize={22}
-          fontWeight={600}
-          fill={TEXT}
-          fontFamily="DejaVu Sans, 'Noto Naskh Arabic', Tahoma, sans-serif"
+          {...nameTextProps}
         >
           {name}
         </text>
@@ -178,9 +204,7 @@ function PersonNode({
           textAnchor={flip ? "end" : "start"}
           dominantBaseline="middle"
           fontSize={fontSize}
-          fontWeight={600}
-          fill={TEXT}
-          fontFamily="DejaVu Sans, 'Noto Naskh Arabic', Tahoma, sans-serif"
+          {...nameTextProps}
         >
           {name}
         </text>
@@ -190,9 +214,12 @@ function PersonNode({
             y={10}
             textAnchor={flip ? "end" : "start"}
             dominantBaseline="middle"
-            fontSize={Math.max(9, fontSize - 4)}
+            fontSize={Math.max(8, fontSize - 3)}
             fill={MUTED}
             fontFamily="DejaVu Sans, Tahoma, sans-serif"
+            stroke={BG}
+            strokeWidth={2.5}
+            paintOrder="stroke fill"
           >
             {years}
           </text>
@@ -339,20 +366,19 @@ export default function SunRingPrint(props: PrintTemplateProps) {
 
           {/* الأشخاص — من الداخل للخارج */}
           {[...people]
-            .sort((a, b) => (positions.get(a.id)?.ring ?? 99) - (positions.get(b.id)?.ring ?? 99))
-            .map((p) => {
-              const pos = positions.get(p.id);
-              if (!pos) return null;
-              return (
-                <PersonNode
-                  key={p.id}
-                  person={p}
-                  pos={pos}
-                  totalRings={ringCount}
-                  laqabFallback={tree.tribe}
-                />
-              );
-            })}
+            .map((p) => ({ p, pos: positions.get(p.id) }))
+            .filter((x): x is { p: Person; pos: SunPosition } => !!x.pos)
+            .sort((a, b) => a.pos.ring - b.pos.ring || a.pos.angle - b.pos.angle)
+            .map(({ p, pos }, idx) => (
+              <PersonNode
+                key={p.id}
+                person={p}
+                pos={pos}
+                totalRings={ringCount}
+                laqabFallback={tree.tribe}
+                labelIndex={idx}
+              />
+            ))}
         </svg>
       </div>
     </div>
