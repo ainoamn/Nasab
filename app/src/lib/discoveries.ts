@@ -154,3 +154,31 @@ export function findDiscoveries(
 
   return out.slice(0, limit);
 }
+
+/** ترتيب الاكتشافات: شخص البيت ثم المفضلة ثم الأخيرون */
+export function sortDiscoveriesByProximity(
+  items: Discovery[],
+  opts: {
+    homeId?: number | null;
+    favoriteIds?: number[];
+    recentIds?: number[];
+  },
+): Discovery[] {
+  const fav = new Set(opts.favoriteIds ?? []);
+  const recent = new Map<number, number>();
+  (opts.recentIds ?? []).forEach((id, i) => recent.set(id, i));
+
+  const rank = (id: number) => {
+    if (opts.homeId != null && id === opts.homeId) return 0;
+    if (fav.has(id)) return 1;
+    if (recent.has(id)) return 10 + (recent.get(id) ?? 0);
+    return 100;
+  };
+
+  return [...items].sort((a, b) => {
+    const ra = Math.min(rank(a.personId), rank(a.otherPersonId ?? -1));
+    const rb = Math.min(rank(b.personId), rank(b.otherPersonId ?? -1));
+    if (ra !== rb) return ra - rb;
+    return a.personName.localeCompare(b.personName, "ar");
+  });
+}

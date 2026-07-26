@@ -14,6 +14,7 @@ import EventsStrip from "@/components/tree/EventsStrip";
 import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
+import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
 import RelationPathDialog from "@/components/tree/RelationPathDialog";
@@ -51,6 +52,11 @@ import {
   getFavoritePersonIds,
   toggleFavoritePersonId,
 } from "@/lib/favoritePeople";
+import {
+  clearDismissedDiscoveries,
+  dismissDiscoveryKey,
+  getDismissedDiscoveryKeys,
+} from "@/lib/dismissedDiscoveries";
 import {
   absoluteUrl,
   buildPrintRootPath,
@@ -191,6 +197,7 @@ export default function TreeWorkspace() {
   const [listUnlinkedOnly, setListUnlinkedOnly] = useState(false);
   const [recentIds, setRecentIds] = useState<number[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [dismissedDiscoveryKeys, setDismissedDiscoveryKeys] = useState<string[]>([]);
   const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
@@ -234,6 +241,7 @@ export default function TreeWorkspace() {
     if (treeId > 0) {
       setRecentIds(getRecentPersonIds(treeId));
       setFavoriteIds(getFavoritePersonIds(treeId));
+      setDismissedDiscoveryKeys(getDismissedDiscoveryKeys(treeId));
     }
   }, [treeId]);
 
@@ -613,7 +621,8 @@ export default function TreeWorkspace() {
     unlinkMut.mutate({ id: rel.id, treeId });
   };
 
-  const listFocusId = chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
+  const listFocusId =
+    homePersonId ?? chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
 
   const openAddRelative = (
     anchorId: number,
@@ -885,6 +894,16 @@ export default function TreeWorkspace() {
           people={people}
           rels={rels}
           canWrite={canWrite}
+          homePersonId={homePersonId}
+          favoriteIds={favoriteIds}
+          recentIds={recentIds}
+          dismissedKeys={dismissedDiscoveryKeys}
+          onDismiss={(key) => {
+            setDismissedDiscoveryKeys(dismissDiscoveryKey(treeId, key));
+          }}
+          onClearDismissed={() => {
+            setDismissedDiscoveryKeys(clearDismissedDiscoveries(treeId));
+          }}
           onOpenPerson={(id) => {
             const p = peopleById.get(id);
             if (p) revealOnChart(p);
@@ -1037,7 +1056,11 @@ export default function TreeWorkspace() {
                 </div>
                 <ChartPersonSearch
                   people={chartPeople}
+                  rels={chartRels}
                   favoriteIds={favoriteIds}
+                  recentIds={recentIds}
+                  homePersonId={homePersonId}
+                  kinshipFocusId={kinshipFocusForViews}
                   onSelect={(p) => {
                     setDetailPerson(p);
                     setChartFocusId((prev) => {
@@ -1986,6 +2009,30 @@ export default function TreeWorkspace() {
                   {t("tree.howRelatedTitle")}
                 </Button>
               </div>
+              {homePersonId != null &&
+                homePersonId !== detailPerson.id &&
+                peopleById.has(homePersonId) && (
+                  <PathToHomeStrip
+                    homePerson={peopleById.get(homePersonId)!}
+                    detailPerson={detailPerson}
+                    people={people}
+                    rels={rels}
+                    onSelectHop={(p) => {
+                      setDetailPerson(p);
+                      setChartFocusId(p.id);
+                      requestCenterOn(p.id);
+                    }}
+                    onHighlightPath={(ids) => {
+                      setHighlightPathIds(ids);
+                      setChartView("family");
+                      setMainTab("chart");
+                      if (ids[0] != null) requestCenterOn(ids[0]);
+                      toast.success(
+                        t("tree.pathHighlightActive", { count: ids.length }),
+                      );
+                    }}
+                  />
+                )}
               <ImmediateFamilyStrip
                 members={immediateMembers}
                 onSelect={(p) => {
