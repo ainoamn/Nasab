@@ -234,6 +234,8 @@ export const en = {
     openProfile: "Open profile",
     densityCompact: "Compact density",
     densityComfortable: "Comfortable density",
+    focusHere: "Focus here",
+    doubleClickFocus: "Double-click to focus",
   },
   login: {
     title: "Welcome to Nasab",
@@ -873,6 +875,7 @@ export const en = {
     escape: "Close panel / clear highlight / exit fullscreen",
     home: "Go to home person",
     related: "How are they related?",
+    dblFocus: "Double-click a card to focus",
     help: "Show this guide",
   },
   members: {
@@ -1082,6 +1085,17 @@ export const en = {
       missingBothParents: "Parents not recorded",
       childNoSpouseLink: "Has children but no spouse link",
     },
+    prevSibling: "Previous sibling: {{name}}",
+    nextSibling: "Next sibling: {{name}}",
+    siblingOf: "{{current}} / {{total}}",
+  },
+  spouseDates: {
+    title: "Marriage dates",
+    editLink: "Edit marriage dates",
+    marriageYear: "Marriage year",
+    divorceYear: "Separation year (optional)",
+    saving: "Saving...",
+    saved: "Marriage dates saved",
   },
   roles: {
     owner: "Owner",

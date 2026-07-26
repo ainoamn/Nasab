@@ -22,6 +22,7 @@ import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
 import GedcomImportDialog from "@/components/tree/GedcomImportDialog";
 import RecentPeopleStrip from "@/components/tree/RecentPeopleStrip";
+import SpouseDatesDialog from "@/components/tree/SpouseDatesDialog";
 import ShortcutsDialog from "@/components/tree/ShortcutsDialog";
 import { useLabels } from "@/lib/labels";
 import { computePersonRanks, formatBirthDate } from "@/lib/birthOrder";
@@ -52,7 +53,7 @@ import type {
   FemaleDisplay,
   PersonPrivacy,
 } from "@contracts/constants";
-import type { Person } from "@db/tables";
+import type { Person, Relationship } from "@db/tables";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,8 @@ import {
   FileDown,
   Rows3,
   Rows2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -181,6 +184,11 @@ export default function TreeWorkspace() {
     to: number | null;
   }>({ from: null, to: null });
   const [chartCompact, setChartCompact] = useState(false);
+  const [spouseEdit, setSpouseEdit] = useState<{
+    rel: Relationship;
+    a: Person;
+    b: Person;
+  } | null>(null);
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
@@ -867,7 +875,7 @@ export default function TreeWorkspace() {
                     requestCenterOn(p.id);
                   }}
                 />
-                {chartView === "family" || chartView === "descendants" ? (
+                {chartView === "family" || chartView === "descendants" || chartView === "pedigree" || chartView === "fan" ? (
                   <div className="flex items-center gap-1.5 rounded-xl border bg-card px-2 py-1 text-xs">
                     <Label htmlFor="max-gen" className="text-muted-foreground whitespace-nowrap">
                       {t("chart.maxGenerations")}
@@ -1026,6 +1034,26 @@ export default function TreeWorkspace() {
                     kinshipFocusId={
                       chartFocusId ?? homePersonId ?? detailPerson?.id ?? null
                     }
+                    onFocusPerson={(p) => {
+                      focusOnPerson(p.id);
+                      setDetailPerson(p);
+                    }}
+                    onHowRelated={(p) => {
+                      setHowRelatedPair({
+                        from:
+                          chartFocusId ??
+                          homePersonId ??
+                          detailPerson?.id ??
+                          null,
+                        to: p.id,
+                      });
+                      setHowRelatedOpen(true);
+                    }}
+                    onEditSpouse={
+                      canWrite
+                        ? (rel, a, b) => setSpouseEdit({ rel, a, b })
+                        : undefined
+                    }
                     onPersonClick={(p) => setDetailPerson(p)}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
                     onQuickAdd={
@@ -1061,6 +1089,7 @@ export default function TreeWorkspace() {
                         people={chartPeople}
                         rels={chartRels}
                         focusId={focusId}
+                        generations={Math.min(maxGenerations, 8)}
                         selectedPersonId={detailPerson?.id ?? null}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
@@ -1094,6 +1123,7 @@ export default function TreeWorkspace() {
                         people={chartPeople}
                         rels={chartRels}
                         focusId={focusId}
+                        generations={Math.min(maxGenerations, 7)}
                         selectedPersonId={detailPerson?.id ?? null}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
@@ -1379,6 +1409,14 @@ export default function TreeWorkspace() {
         onOpenChange={setGedcomImportOpen}
       />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <SpouseDatesDialog
+        treeId={treeId}
+        open={!!spouseEdit}
+        onOpenChange={(o) => !o && setSpouseEdit(null)}
+        relationship={spouseEdit?.rel ?? null}
+        personA={spouseEdit?.a}
+        personB={spouseEdit?.b}
+      />
       <RelationPathDialog
         open={howRelatedOpen}
         onOpenChange={(o) => {
@@ -1450,7 +1488,12 @@ export default function TreeWorkspace() {
               ...children.map((p) => ({ person: p, role: "child" as const })),
             ];
             const hasLinks = !!(father || mother || spouses.length || children.length);
-            const timeline: Array<{ year: number | null; label: string; key: string }> = [];
+            const timeline: Array<{
+              year: number | null;
+              label: string;
+              key: string;
+              personId?: number;
+            }> = [];
             if (detailPerson.birthYear) {
               timeline.push({
                 year: detailPerson.birthYear,
@@ -1467,6 +1510,7 @@ export default function TreeWorkspace() {
                 year: y,
                 label: t("tree.timelineMarriage", { name: sp.givenName }),
                 key: `m-${sp.id}`,
+                personId: sp.id,
               });
             }
             for (const ch of children) {
@@ -1474,6 +1518,7 @@ export default function TreeWorkspace() {
                 year: ch.birthYear ?? null,
                 label: t("tree.timelineChild", { name: ch.givenName }),
                 key: `c-${ch.id}`,
+                personId: ch.id,
               });
             }
             if (!detailPerson.isLiving && detailPerson.deathYear) {
@@ -1484,6 +1529,25 @@ export default function TreeWorkspace() {
               });
             }
             timeline.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
+            const fullSiblings = (() => {
+              const set = new Map<number, Person>();
+              set.set(detailPerson.id, detailPerson);
+              for (const s of siblings) set.set(s.id, s);
+              return [...set.values()].sort((a, b) =>
+                a.givenName.localeCompare(b.givenName, "ar"),
+              );
+            })();
+            const curSibIdx = fullSiblings.findIndex((s) => s.id === detailPerson.id);
+            const prevSib =
+              fullSiblings.length > 1 && curSibIdx >= 0
+                ? fullSiblings[
+                    (curSibIdx - 1 + fullSiblings.length) % fullSiblings.length
+                  ]
+                : null;
+            const nextSib =
+              fullSiblings.length > 1 && curSibIdx >= 0
+                ? fullSiblings[(curSibIdx + 1) % fullSiblings.length]
+                : null;
             return (
             <>
               <SheetHeader className="text-start pe-8">
@@ -1506,6 +1570,48 @@ export default function TreeWorkspace() {
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-1">
+                      {prevSib && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title={t("detail.prevSibling", { name: prevSib.givenName })}
+                          onClick={() => {
+                            setDetailPerson(prevSib);
+                            setChartFocusId(prevSib.id);
+                          }}
+                        >
+                          <ChevronRight className="h-4 w-4 rtl:hidden" />
+                          <ChevronLeft className="hidden h-4 w-4 rtl:block" />
+                        </Button>
+                      )}
+                      {nextSib && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title={t("detail.nextSibling", { name: nextSib.givenName })}
+                          onClick={() => {
+                            setDetailPerson(nextSib);
+                            setChartFocusId(nextSib.id);
+                          }}
+                        >
+                          <ChevronLeft className="h-4 w-4 rtl:hidden" />
+                          <ChevronRight className="hidden h-4 w-4 rtl:block" />
+                        </Button>
+                      )}
+                      {fullSiblings.length > 1 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {t("detail.siblingOf", {
+                            current: curSibIdx + 1,
+                            total: fullSiblings.length,
+                          })}
+                        </span>
+                      )}
+                    </div>
                     <SheetTitle className="font-display text-xl sm:text-2xl flex flex-wrap items-center gap-2">
                       <span className={!detailPerson.isLiving ? "line-through decoration-2 text-rose-900" : ""}>
                         {detailPerson.givenName}
@@ -1644,7 +1750,23 @@ export default function TreeWorkspace() {
                             {ev.year}
                           </span>
                         )}
-                        <span className="text-foreground/90">{ev.label}</span>
+                        {ev.personId != null ? (
+                          <button
+                            type="button"
+                            className="text-start text-foreground/90 underline-offset-2 hover:underline"
+                            onClick={() => {
+                              const p = peopleById.get(ev.personId!);
+                              if (p) {
+                                setDetailPerson(p);
+                                setChartFocusId(p.id);
+                              }
+                            }}
+                          >
+                            {ev.label}
+                          </button>
+                        ) : (
+                          <span className="text-foreground/90">{ev.label}</span>
+                        )}
                       </li>
                     ))}
                   </ol>

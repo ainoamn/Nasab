@@ -31,16 +31,42 @@ export function CoupleLink({
   divorceLabel,
   className,
   minWidth = 40,
+  onClick,
+  editTitle,
 }: {
   marriageLabel?: string | null;
   divorceLabel?: string | null;
   className?: string;
   minWidth?: number;
+  onClick?: () => void;
+  editTitle?: string;
 }) {
+  const interactive = !!onClick;
+  const Comp = interactive ? "button" : "div";
   return (
-    <div
+    <Comp
+      type={interactive ? "button" : undefined}
+      data-no-pan={interactive ? true : undefined}
+      title={interactive ? editTitle : undefined}
+      onClick={
+        interactive
+          ? (e) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
+      onPointerDown={
+        interactive
+          ? (e) => {
+              e.stopPropagation();
+            }
+          : undefined
+      }
       className={cn(
         "relative flex flex-col items-center justify-center shrink-0 self-center",
+        interactive &&
+          "cursor-pointer rounded-md px-0.5 hover:bg-amber-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400",
         className,
       )}
       style={{ minWidth }}
@@ -48,19 +74,24 @@ export function CoupleLink({
       <div className="relative flex h-4 w-full items-center">
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2",
+            "absolute inset-x-0 top-1/2 -translate-y-1/2",
             LINE_H,
             LINE_BG,
+            interactive && "bg-amber-500/70",
           )}
         />
       </div>
-      {(marriageLabel || divorceLabel) && (
-        <div className="mt-0.5 flex flex-col items-center gap-px max-w-[5rem]">
-          {marriageLabel && (
+      {(marriageLabel || divorceLabel || interactive) && (
+        <div className="mt-0.5 flex flex-col items-center gap-px max-w-[5.5rem]">
+          {marriageLabel ? (
             <span className="text-[7px] text-stone-500 text-center leading-tight truncate px-0.5">
               {marriageLabel}
             </span>
-          )}
+          ) : interactive ? (
+            <span className="text-[7px] text-amber-700/90 text-center leading-tight px-0.5">
+              +
+            </span>
+          ) : null}
           {divorceLabel && (
             <span className="text-[7px] text-stone-400 text-center leading-tight truncate px-0.5">
               {divorceLabel}
@@ -68,7 +99,7 @@ export function CoupleLink({
           )}
         </div>
       )}
-    </div>
+    </Comp>
   );
 }
 

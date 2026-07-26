@@ -234,6 +234,8 @@ export const ar = {
     openProfile: "فتح الملف",
     densityCompact: "عرض مضغوط",
     densityComfortable: "عرض مريح",
+    focusHere: "تركيز هنا",
+    doubleClickFocus: "نقر مزدوج للتركيز",
   },
   login: {
     title: "أهلاً بك في نَسَب",
@@ -872,6 +874,7 @@ export const ar = {
     escape: "إغلاق اللوحة / إلغاء التمييز / خروج ملء الشاشة",
     home: "الذهاب لشخص البيت",
     related: "كيف يرتبطان؟",
+    dblFocus: "نقر مزدوج على البطاقة للتركيز",
     help: "عرض هذا الدليل",
   },
   members: {
@@ -1081,6 +1084,17 @@ export const ar = {
       missingBothParents: "الأبوان غير مسجّلين",
       childNoSpouseLink: "لديه أبناء بلا زوج/ة مسجّل",
     },
+    prevSibling: "الأخ/الأخت السابق: {{name}}",
+    nextSibling: "الأخ/الأخت التالي: {{name}}",
+    siblingOf: "{{current}} / {{total}}",
+  },
+  spouseDates: {
+    title: "تواريخ الزواج",
+    editLink: "تعديل تواريخ الزواج",
+    marriageYear: "سنة الزواج",
+    divorceYear: "سنة الانفصال (اختياري)",
+    saving: "جارٍ الحفظ...",
+    saved: "تم حفظ تواريخ الزواج",
   },
   roles: {
     owner: "مالك",

@@ -77,6 +77,12 @@ const KinshipFocusContext = createContext<{
   people: Person[];
   rels: Relationship[];
 } | null>(null);
+const ChartActionsContext = createContext<{
+  onFocusPerson?: (person: Person) => void;
+  onHowRelated?: (person: Person) => void;
+  onEditSpouse?: (rel: Relationship, a: Person, b: Person) => void;
+  editSpouseTitle?: string;
+} | null>(null);
 const QuickAddContext = createContext<
   ((person: Person, kinship: QuickKinship) => void) | null
 >(null);
@@ -102,6 +108,9 @@ type Props = {
   highlightPathIds?: number[] | null;
   /** محور القرابة لمعاينة التحويم */
   kinshipFocusId?: number | null;
+  onFocusPerson?: (person: Person) => void;
+  onHowRelated?: (person: Person) => void;
+  onEditSpouse?: (rel: Relationship, a: Person, b: Person) => void;
   /** إضافة قريب سريعة من البطاقة (+) مع اختيار الصلة */
   onQuickAdd?: (person: Person, kinship: QuickKinship) => void;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
@@ -175,6 +184,9 @@ export default function FamilyChart({
   centerRequest = null,
   highlightPathIds = null,
   kinshipFocusId = null,
+  onFocusPerson,
+  onHowRelated,
+  onEditSpouse,
   onQuickAdd,
   focusMode,
   rootPersonId,
@@ -182,6 +194,15 @@ export default function FamilyChart({
 }: Props) {
   const L = useLabels();
   const { t } = useTranslation();
+  const chartActions = useMemo(
+    () => ({
+      onFocusPerson,
+      onHowRelated,
+      onEditSpouse,
+      editSpouseTitle: t("spouseDates.editLink"),
+    }),
+    [onFocusPerson, onHowRelated, onEditSpouse, t],
+  );
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragging = useRef(false);
@@ -679,6 +700,7 @@ export default function FamilyChart({
     <SelectedPersonContext.Provider value={selectedPersonId ?? null}>
     <PathHighlightContext.Provider value={pathHighlightSet}>
     <KinshipFocusContext.Provider value={kinshipFocus}>
+    <ChartActionsContext.Provider value={chartActions}>
     <QuickAddContext.Provider value={onQuickAdd ?? null}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
@@ -875,6 +897,7 @@ export default function FamilyChart({
       </div>
     </div>
     </QuickAddContext.Provider>
+    </ChartActionsContext.Provider>
     </KinshipFocusContext.Provider>
     </PathHighlightContext.Provider>
     </SelectedPersonContext.Provider>
@@ -1006,6 +1029,7 @@ function PersonCard({
   const selectedId = useContext(SelectedPersonContext);
   const pathHighlight = useContext(PathHighlightContext);
   const kinshipCtx = useContext(KinshipFocusContext);
+  const chartActions = useContext(ChartActionsContext);
   const onQuickAdd = useContext(QuickAddContext);
   const isMarried = marriedIds.has(person.id);
   const isSelected = selectedId === person.id;
@@ -1063,6 +1087,11 @@ function PersonCard({
             onClick={(e) => {
               e.stopPropagation();
               onPersonClick?.(person);
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              chartActions?.onFocusPerson?.(person);
             }}
             onPointerDown={(e) => e.stopPropagation()}
             className={cn(
@@ -1213,15 +1242,39 @@ function PersonCard({
               )}
             </div>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="mt-2.5 h-7 w-full text-xs"
-            onClick={() => onPersonClick?.(person)}
-          >
-            {t("chart.openProfile")}
-          </Button>
+          <div className="mt-2.5 grid gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-7 w-full text-xs"
+              onClick={() => onPersonClick?.(person)}
+            >
+              {t("chart.openProfile")}
+            </Button>
+            {chartActions?.onFocusPerson && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 w-full text-xs"
+                onClick={() => chartActions.onFocusPerson?.(person)}
+              >
+                {t("chart.focusHere")}
+              </Button>
+            )}
+            {chartActions?.onHowRelated && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 w-full text-xs"
+                onClick={() => chartActions.onHowRelated?.(person)}
+              >
+                {t("tree.howRelatedTitle")}
+              </Button>
+            )}
+          </div>
         </HoverCardContent>
       </HoverCard>
       {onQuickAdd && !compact && (
@@ -1357,6 +1410,7 @@ function FocusCoupleStrip({
   /** عند التصفية: إبراز زوج/ة واحدة وتعتيم الباقي */
   activeSpouseId?: number | null;
 }) {
+  const chartActions = useContext(ChartActionsContext);
   const ordered = sortSpouses(spouses, rels, focus.id);
   const startSpouses = ordered.filter((_, i) => i % 2 === 0);
   const endSpouses = ordered.filter((_, i) => i % 2 === 1);
@@ -1374,6 +1428,12 @@ function FocusCoupleStrip({
           marriageLabel={dates.marriage}
           divorceLabel={dates.divorce}
           minWidth={48}
+          editTitle={chartActions?.editSpouseTitle}
+          onClick={
+            chartActions?.onEditSpouse && spouseRel
+              ? () => chartActions.onEditSpouse!(spouseRel, focus, sp)
+              : undefined
+          }
         />
       );
       const card = (
@@ -1473,6 +1533,7 @@ function CoupleCardsRow({
   focusId?: number;
   rels: Relationship[];
 }) {
+  const chartActions = useContext(ChartActionsContext);
   const focus = focusId
     ? couple.find((p) => p.id === focusId) ?? couple[0]
     : couple[0];
@@ -1495,6 +1556,7 @@ function CoupleCardsRow({
 
   if (spouses.length === 1 && externalSpouses.length === 0) {
     const sp = spouses[0]!;
+    const spouseRel = findSpouseRel(rels, focus.id, sp.id);
     return (
       <SiblingHub
         hub={
@@ -1523,6 +1585,12 @@ function CoupleCardsRow({
               marriageLabel={spouseDates.marriage}
               divorceLabel={spouseDates.divorce}
               minWidth={48}
+              editTitle={chartActions?.editSpouseTitle}
+              onClick={
+                chartActions?.onEditSpouse && spouseRel
+                  ? () => chartActions.onEditSpouse!(spouseRel, focus, sp)
+                  : undefined
+              }
             />
           </>
         }
