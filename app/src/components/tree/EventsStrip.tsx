@@ -30,6 +30,7 @@ type Props = {
   onWhatsAppGreeting?: (ev: TreeOccasion) => void;
   onDownloadUpcomingCalendar?: () => void;
   onCopyFamilyBrief?: () => void;
+  onWhatsAppFamilyBrief?: () => void;
   onPrintFamilyBrief?: () => void;
   className?: string;
 };
@@ -72,6 +73,7 @@ export default function EventsStrip({
   onWhatsAppGreeting,
   onDownloadUpcomingCalendar,
   onCopyFamilyBrief,
+  onWhatsAppFamilyBrief,
   onPrintFamilyBrief,
   className,
 }: Props) {
@@ -118,6 +120,18 @@ export default function EventsStrip({
             >
               <ClipboardList className="h-3 w-3" />
               {t("tree.copyFamilyBrief")}
+            </Button>
+          )}
+          {onWhatsAppFamilyBrief && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={onWhatsAppFamilyBrief}
+            >
+              <MessageCircle className="h-3 w-3" />
+              {t("tree.whatsAppFamilyBrief")}
             </Button>
           )}
           {onPrintFamilyBrief && (

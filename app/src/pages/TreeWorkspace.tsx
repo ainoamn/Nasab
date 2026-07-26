@@ -15,6 +15,7 @@ import TodayEventsBanner from "@/components/tree/TodayEventsBanner";
 import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
+import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
 import OccasionsPanel from "@/components/tree/OccasionsPanel";
@@ -229,6 +230,7 @@ import {
   Gift,
   Copy,
   Contact,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -981,7 +983,7 @@ export default function TreeWorkspace() {
     toast.success(t("tree.whatsAppOpened"));
   };
 
-  const copyPersonCard = (person: Person) => {
+  const buildPersonCardText = (person: Person): string => {
     const url = absoluteUrl(
       buildTreePersonPath(treeId, person.id, { tab: "chart" }),
     );
@@ -1008,7 +1010,7 @@ export default function TreeWorkspace() {
         }
       }
     }
-    const text = formatPersonShareCard({
+    return formatPersonShareCard({
       person,
       relationLabel,
       homeName,
@@ -1020,8 +1022,16 @@ export default function TreeWorkspace() {
         linkHeader: t("tree.pathTextLink"),
       },
     });
-    void navigator.clipboard.writeText(text);
+  };
+
+  const copyPersonCard = (person: Person) => {
+    void navigator.clipboard.writeText(buildPersonCardText(person));
     toast.success(t("tree.personCardCopied"));
+  };
+
+  const sharePersonWhatsApp = (person: Person) => {
+    openWhatsAppShare(buildPersonCardText(person));
+    toast.success(t("tree.whatsAppOpened"));
   };
 
   const occasionIcsTitle = (ev: TreeOccasion) => {
@@ -1109,7 +1119,7 @@ export default function TreeWorkspace() {
     toast.success(t("tree.occasionsDownloadDone", { count: upcoming.length }));
   };
 
-  const copyFamilyBrief = () => {
+  const buildFamilyBriefText = () => {
     const all = buildTreeOccasions(occasionsPeople, occasionsRels);
     const today = all.filter((e) => e.daysUntil === 0);
     const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
@@ -1126,7 +1136,7 @@ export default function TreeWorkspace() {
       },
     );
     const top = researchItems.slice(0, 5);
-    const text = formatFamilyBrief({
+    return formatFamilyBrief({
       today,
       week,
       researchCount: researchItems.length,
@@ -1158,8 +1168,16 @@ export default function TreeWorkspace() {
         researchFooter: t("tree.familyBriefResearch"),
       },
     });
-    void navigator.clipboard.writeText(text);
+  };
+
+  const copyFamilyBrief = () => {
+    void navigator.clipboard.writeText(buildFamilyBriefText());
     toast.success(t("tree.familyBriefCopied"));
+  };
+
+  const shareFamilyBriefWhatsApp = () => {
+    openWhatsAppShare(buildFamilyBriefText());
+    toast.success(t("tree.whatsAppOpened"));
   };
 
   const familyBriefPrintData = useMemo(() => {
@@ -1560,6 +1578,7 @@ export default function TreeWorkspace() {
           onWhatsAppGreeting={shareOccasionWhatsApp}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
           onCopyFamilyBrief={copyFamilyBrief}
+          onWhatsAppFamilyBrief={shareFamilyBriefWhatsApp}
           onPrintFamilyBrief={() => setFamilyBriefPrintOpen(true)}
         />
 
@@ -2938,6 +2957,15 @@ export default function TreeWorkspace() {
                   size="sm"
                   variant="outline"
                   className="gap-1.5"
+                  onClick={() => sharePersonWhatsApp(detailPerson)}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  {t("tree.sharePersonWhatsApp")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
                   onClick={() => {
                     downloadPersonVCard(detailPerson, {
                       url: absoluteUrl(
@@ -3058,6 +3086,17 @@ export default function TreeWorkspace() {
                 )}
               <ImmediateFamilyStrip
                 members={immediateMembers}
+                people={people}
+                rels={rels}
+                onSelect={(p) => {
+                  setDetailPerson(p);
+                  setChartFocusId(p.id);
+                  requestCenterOn(p.id);
+                }}
+              />
+              <BirthOrderStrip
+                siblings={fullSiblings}
+                focusId={detailPerson.id}
                 people={people}
                 rels={rels}
                 onSelect={(p) => {

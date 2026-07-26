@@ -8,6 +8,9 @@ import TodayEventsBanner from "@/components/tree/TodayEventsBanner";
 import OccasionsPanel from "@/components/tree/OccasionsPanel";
 import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
 import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
+import PlacesBrowser from "@/components/tree/PlacesBrowser";
+import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
+import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
@@ -30,6 +33,7 @@ import {
   MessageCircle,
   Contact,
   FileDown,
+  MapPin,
 } from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -108,6 +112,7 @@ export default function ShareView() {
   const [printOccasion, setPrintOccasion] = useState<TreeOccasion | null>(null);
   const [familyBriefPrintOpen, setFamilyBriefPrintOpen] = useState(false);
   const [showOccasionsPanel, setShowOccasionsPanel] = useState(false);
+  const [showPlacesPanel, setShowPlacesPanel] = useState(false);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -293,7 +298,7 @@ export default function ShareView() {
     toast.success(t("tree.whatsAppOpened"));
   };
 
-  const copyPersonCard = (person: Person) => {
+  const buildPersonCardText = (person: Person): string => {
     const url = absoluteUrl(buildSharePersonPath(shareToken, person.id));
     let relationLabel: string | null = null;
     let homeName: string | null = null;
@@ -310,7 +315,7 @@ export default function ShareView() {
           .filter((n): n is string => !!n);
       }
     }
-    const text = formatPersonShareCard({
+    return formatPersonShareCard({
       person,
       relationLabel,
       homeName,
@@ -322,8 +327,16 @@ export default function ShareView() {
         linkHeader: t("tree.pathTextLink"),
       },
     });
-    void navigator.clipboard.writeText(text);
+  };
+
+  const copyPersonCard = (person: Person) => {
+    void navigator.clipboard.writeText(buildPersonCardText(person));
     toast.success(t("tree.personCardCopied"));
+  };
+
+  const sharePersonWhatsApp = (person: Person) => {
+    openWhatsAppShare(buildPersonCardText(person));
+    toast.success(t("tree.whatsAppOpened"));
   };
 
   const occasionIcsTitle = (ev: TreeOccasion) => {
@@ -405,11 +418,11 @@ export default function ShareView() {
     toast.success(t("tree.occasionsDownloadDone", { count: upcoming.length }));
   };
 
-  const copyFamilyBrief = () => {
+  const buildFamilyBriefText = () => {
     const all = buildTreeOccasions(occasionsPeople, occasionsRels);
     const today = all.filter((e) => e.daysUntil === 0);
     const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
-    const text = formatFamilyBrief({
+    return formatFamilyBrief({
       today,
       week,
       researchCount: 0,
@@ -431,8 +444,16 @@ export default function ShareView() {
         researchFooter: t("tree.familyBriefResearch"),
       },
     });
-    void navigator.clipboard.writeText(text);
+  };
+
+  const copyFamilyBrief = () => {
+    void navigator.clipboard.writeText(buildFamilyBriefText());
     toast.success(t("tree.familyBriefCopied"));
+  };
+
+  const shareFamilyBriefWhatsApp = () => {
+    openWhatsAppShare(buildFamilyBriefText());
+    toast.success(t("tree.whatsAppOpened"));
   };
 
   const familyBriefPrintData = useMemo(() => {
@@ -681,8 +702,35 @@ export default function ShareView() {
           onWhatsAppGreeting={shareOccasionWhatsApp}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
           onCopyFamilyBrief={copyFamilyBrief}
+          onWhatsAppFamilyBrief={shareFamilyBriefWhatsApp}
           onPrintFamilyBrief={() => setFamilyBriefPrintOpen(true)}
         />
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={showPlacesPanel ? "secondary" : "outline"}
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setShowPlacesPanel((v) => !v)}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            {showPlacesPanel
+              ? t("share.hidePlaces")
+              : t("share.showPlaces")}
+          </Button>
+        </div>
+
+        {showPlacesPanel && (
+          <div className="mb-4 rounded-2xl border bg-card p-4 shadow-sm">
+            <PlacesBrowser
+              people={people}
+              rels={rels}
+              kinshipFocusId={detail?.id ?? null}
+              onPersonClick={(p) => openPerson(p)}
+            />
+          </div>
+        )}
 
         {showOccasionsPanel && (
           <div className="mb-4 rounded-2xl border bg-card p-4 shadow-sm">
@@ -778,6 +826,7 @@ export default function ShareView() {
             const siblings = [...siblingIds]
               .map((id) => peopleById.get(id))
               .filter((p): p is Person => !!p);
+            const fullSiblings = [detail, ...siblings];
             const immediateMembers = [
               ...(father ? [{ person: father, role: "father" as const }] : []),
               ...(mother ? [{ person: mother, role: "mother" as const }] : []),
@@ -827,6 +876,16 @@ export default function ShareView() {
                     >
                       <Copy className="h-3.5 w-3.5" />
                       {t("tree.copyPersonCard")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => sharePersonWhatsApp(detail)}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {t("tree.sharePersonWhatsApp")}
                     </Button>
                     <Button
                       type="button"
@@ -922,6 +981,19 @@ export default function ShareView() {
                     people={people}
                     rels={rels}
                     onSelect={openPerson}
+                  />
+                  <BirthOrderStrip
+                    siblings={fullSiblings}
+                    focusId={detail.id}
+                    people={people}
+                    rels={rels}
+                    onSelect={openPerson}
+                  />
+                  <PersonGapsStrip
+                    person={detail}
+                    people={people}
+                    rels={rels}
+                    canWrite={false}
                   />
                 </div>
               </>

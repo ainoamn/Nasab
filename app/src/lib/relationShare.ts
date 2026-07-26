@@ -66,6 +66,15 @@ export function formatPersonShareCard(opts: {
     : opts.person.givenName;
   const lines: string[] = [head];
 
+  if (opts.person.kunya) {
+    lines.push(opts.person.kunya);
+  }
+  if (opts.person.laqab || opts.person.clan) {
+    lines.push(
+      [opts.person.laqab, opts.person.clan].filter(Boolean).join(" · "),
+    );
+  }
+
   if (opts.relationLabel && opts.homeName) {
     lines.push(
       opts.labels.kinship
