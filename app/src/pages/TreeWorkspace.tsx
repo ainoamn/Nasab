@@ -58,6 +58,13 @@ import {
   pushRecentPersonId,
 } from "@/lib/recentPeople";
 import {
+  getRecentRelates,
+  pushRecentRelate,
+  type RecentRelatePair,
+} from "@/lib/recentRelates";
+import { formatFamilyBrief } from "@/lib/familyBrief";
+import { buildResearchTourItems } from "@/lib/researchTour";
+import {
   getFavoritePersonIds,
   toggleFavoritePersonId,
 } from "@/lib/favoritePeople";
@@ -227,6 +234,9 @@ export default function TreeWorkspace() {
   const [listUnlinkedOnly, setListUnlinkedOnly] = useState(false);
   const [recentIds, setRecentIds] = useState<number[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [recentRelatePairs, setRecentRelatePairs] = useState<RecentRelatePair[]>(
+    [],
+  );
   const [dismissedDiscoveryKeys, setDismissedDiscoveryKeys] = useState<string[]>([]);
   const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
@@ -276,6 +286,7 @@ export default function TreeWorkspace() {
       setFavoriteIds(getFavoritePersonIds(treeId));
       setDismissedDiscoveryKeys(getDismissedDiscoveryKeys(treeId));
       setOccasionsScopeState(getOccasionsScope(treeId));
+      setRecentRelatePairs(getRecentRelates(treeId));
     }
   }, [treeId]);
 
@@ -735,12 +746,17 @@ export default function TreeWorkspace() {
     }
   };
 
+  const rememberRelate = (fromId: number, toId: number) => {
+    setRecentRelatePairs(pushRecentRelate(treeId, fromId, toId));
+  };
+
   const copyPathLink = (fromId: number, toId: number) => {
     const url = absoluteUrl(
       buildTreePersonPath(treeId, fromId, { relate: toId, tab: "chart" }),
     );
     void navigator.clipboard.writeText(url);
     setUrlRelateId(toId);
+    rememberRelate(fromId, toId);
     toast.success(t("tree.pathLinkCopied"));
   };
 
@@ -807,6 +823,7 @@ export default function TreeWorkspace() {
     });
     void navigator.clipboard.writeText(text);
     setUrlRelateId(toId);
+    rememberRelate(fromId, toId);
     toast.success(t("tree.pathTextCopied"));
   };
 
@@ -924,6 +941,48 @@ export default function TreeWorkspace() {
       buildMultiOccasionIcs(items),
     );
     toast.success(t("tree.occasionsDownloadDone", { count: upcoming.length }));
+  };
+
+  const copyFamilyBrief = () => {
+    const all = buildTreeOccasions(occasionsPeople, occasionsRels);
+    const today = all.filter((e) => e.daysUntil === 0);
+    const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
+    const gaps = buildPersonGapsMap(people, rels, { skipNoPhoto: true });
+    const researchCount = buildResearchTourItems(
+      gaps,
+      peopleById,
+      dismissedDiscoveryKeys,
+      {
+        homeId: homePersonId,
+        favoriteIds,
+        recentIds,
+      },
+    ).length;
+    const text = formatFamilyBrief({
+      today,
+      week,
+      researchCount,
+      urlFor: (ev) =>
+        ev.person
+          ? absoluteUrl(
+              buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
+            )
+          : null,
+      labels: {
+        title: t("tree.familyBriefTitle"),
+        todayHeader: t("tree.familyBriefToday"),
+        weekHeader: t("tree.familyBriefWeek"),
+        emptyToday: t("tree.familyBriefEmptyToday"),
+        emptyWeek: t("tree.familyBriefEmptyWeek"),
+        birthday: t("tree.eventBirthday"),
+        anniversary: t("tree.eventAnniversary"),
+        todayTag: t("tree.eventToday"),
+        inDays: t("tree.familyBriefInDays"),
+        researchFooter: t("tree.familyBriefResearch"),
+      },
+    });
+    void navigator.clipboard.writeText(text);
+    toast.success(t("tree.familyBriefCopied"));
   };
 
   const filtered = useMemo(() => {
@@ -1212,6 +1271,7 @@ export default function TreeWorkspace() {
           onAddToCalendar={shareOccasionCalendar}
           onCopyGreeting={shareOccasionGreeting}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
+          onCopyFamilyBrief={copyFamilyBrief}
         />
 
         <DiscoveriesPanel
@@ -2067,12 +2127,18 @@ export default function TreeWorkspace() {
           setMainTab("chart");
           if (ids.length >= 2) {
             setUrlRelateId(ids[ids.length - 1]!);
+            rememberRelate(ids[0]!, ids[ids.length - 1]!);
           }
           if (ids[0] != null) requestCenterOn(ids[0]);
           toast.success(t("tree.pathHighlightActive", { count: ids.length }));
         }}
         onCopyPathLink={copyPathLink}
         onCopyPathText={copyPathText}
+        recentPairs={recentRelatePairs}
+        onSelectRecentPair={(a, b) => {
+          rememberRelate(a, b);
+          setHowRelatedPair({ from: a, to: b });
+        }}
       />
 
       {/* بطاقة الشخص */}

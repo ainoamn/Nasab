@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { GitCompareArrows, ChevronLeft, Link as LinkIcon, Copy } from "lucide-react";
+import type { RecentRelatePair } from "@/lib/recentRelates";
 
 type Props = {
   open: boolean;
@@ -26,6 +27,7 @@ type Props = {
   rels: Relationship[];
   defaultFromId?: number | null;
   defaultToId?: number | null;
+  recentPairs?: RecentRelatePair[];
   onOpenPerson?: (person: Person) => void;
   /** عرض المسار على مخطط العائلة */
   onShowOnChart?: (pathIds: number[]) => void;
@@ -33,6 +35,8 @@ type Props = {
   onCopyPathLink?: (fromId: number, toId: number) => void;
   /** نسخ نص المسار للواتساب */
   onCopyPathText?: (fromId: number, toId: number) => void;
+  /** عند اختيار زوج من المقارنات الأخيرة */
+  onSelectRecentPair?: (fromId: number, toId: number) => void;
 };
 
 function viaLabel(
@@ -57,10 +61,12 @@ export default function RelationPathDialog({
   rels,
   defaultFromId,
   defaultToId,
+  recentPairs,
   onOpenPerson,
   onShowOnChart,
   onCopyPathLink,
   onCopyPathText,
+  onSelectRecentPair,
 }: Props) {
   const { t } = useTranslation();
   const [fromId, setFromId] = useState("");
@@ -89,9 +95,36 @@ export default function RelationPathDialog({
 
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
+  const recentChips = useMemo(() => {
+    if (!recentPairs?.length) return [];
+    return recentPairs
+      .map((pair) => {
+        const a = byId.get(pair.a);
+        const b = byId.get(pair.b);
+        if (!a || !b) return null;
+        const hops = findRelationPath(pair.a, pair.b, people, rels);
+        const key = classifyRelationPath(pair.a, pair.b, people, rels, hops);
+        return {
+          a: pair.a,
+          b: pair.b,
+          aName: a.givenName,
+          bName: b.givenName,
+          rel: t(`tree.rel.${key}`),
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x)
+      .slice(0, 8);
+  }, [recentPairs, byId, people, rels, t]);
+
   const swap = () => {
     setFromId(toId);
     setToId(fromId);
+  };
+
+  const pickRecent = (a: number, b: number) => {
+    setFromId(String(a));
+    setToId(String(b));
+    onSelectRecentPair?.(a, b);
   };
 
   return (
@@ -104,6 +137,30 @@ export default function RelationPathDialog({
           </DialogTitle>
           <DialogDescription>{t("tree.howRelatedHint")}</DialogDescription>
         </DialogHeader>
+
+        {recentChips.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("tree.recentRelatesTitle")}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {recentChips.map((chip) => (
+                <button
+                  key={`${chip.a}-${chip.b}`}
+                  type="button"
+                  onClick={() => pickRecent(chip.a, chip.b)}
+                  className="inline-flex max-w-full items-center gap-1 rounded-full border bg-sky-50/80 px-2.5 py-1 text-[11px] font-medium text-sky-950 hover:bg-sky-100"
+                  title={`${chip.aName} ↔ ${chip.bName}`}
+                >
+                  <span className="truncate">
+                    {chip.aName} ↔ {chip.bName}
+                  </span>
+                  <span className="shrink-0 text-sky-700/70">· {chip.rel}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
           <div className="space-y-1.5">

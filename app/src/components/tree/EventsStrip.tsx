@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import type { TreeOccasion } from "@/lib/treeOccasions";
-import { Cake, Heart, Link as LinkIcon, Printer, CalendarPlus, MessageSquare, CalendarRange } from "lucide-react";
+import { Cake, Heart, Link as LinkIcon, Printer, CalendarPlus, MessageSquare, CalendarRange, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ type Props = {
   onAddToCalendar?: (ev: TreeOccasion) => void;
   onCopyGreeting?: (ev: TreeOccasion) => void;
   onDownloadUpcomingCalendar?: () => void;
+  onCopyFamilyBrief?: () => void;
   className?: string;
 };
 
@@ -31,6 +32,7 @@ export default function EventsStrip({
   onAddToCalendar,
   onCopyGreeting,
   onDownloadUpcomingCalendar,
+  onCopyFamilyBrief,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -62,6 +64,18 @@ export default function EventsStrip({
         <p className="text-sm font-semibold">{t("tree.eventsTitle")}</p>
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-[11px] text-muted-foreground">{t("tree.eventsHint")}</p>
+          {onCopyFamilyBrief && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={onCopyFamilyBrief}
+            >
+              <ClipboardList className="h-3 w-3" />
+              {t("tree.copyFamilyBrief")}
+            </Button>
+          )}
           {onDownloadUpcomingCalendar && (
             <Button
               type="button"

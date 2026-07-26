@@ -2,13 +2,22 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import FamilyChart from "@/components/tree/FamilyChart";
+import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { TreePalm, ShieldCheck, Lock } from "lucide-react";
+import {
+  TreePalm,
+  ShieldCheck,
+  Lock,
+  Copy,
+  Link as LinkIcon,
+  ChevronLeft,
+  Eye,
+} from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -18,13 +27,28 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { parsePersonIdParam } from "@/lib/treeUrl";
+import {
+  absoluteUrl,
+  buildSharePersonPath,
+  parsePersonIdParam,
+} from "@/lib/treeUrl";
 import {
   classifyRelationPath,
   findRelationPath,
+  type PathHop,
 } from "@/lib/relationPath";
+import {
+  formatPersonShareCard,
+  formatRelationPathText,
+} from "@/lib/relationShare";
+import {
+  buildChildrenOf,
+  buildSpousesOf,
+  getParents,
+} from "@/lib/familyGraph";
 import { toast } from "sonner";
 import type { Relationship } from "@db/schema";
+import { cn } from "@/lib/utils";
 
 /** عرض عام للقراءة فقط — يحترم كل قواعد الخصوصية */
 export default function ShareView() {
@@ -32,6 +56,7 @@ export default function ShareView() {
   const shareToken = token ?? "";
   const [searchParams, setSearchParams] = useSearchParams();
   const [detail, setDetail] = useState<Person | null>(null);
+  const [relateId, setRelateId] = useState<number | null>(null);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(
     null,
   );
@@ -61,12 +86,14 @@ export default function ShareView() {
     () => new Map(people.map((p) => [p.id, p])),
     [people],
   );
+  const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
+  const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
 
   useEffect(() => {
     if (bootstrapped.current || !query.data || people.length === 0) return;
     bootstrapped.current = true;
     const pid = parsePersonIdParam(searchParams.get("person"));
-    const relateId = parsePersonIdParam(searchParams.get("relate"));
+    const rid = parsePersonIdParam(searchParams.get("relate"));
     if (pid != null && peopleById.has(pid)) {
       const p = peopleById.get(pid)!;
       setDetail(p);
@@ -75,14 +102,15 @@ export default function ShareView() {
     }
     if (
       pid != null &&
-      relateId != null &&
-      pid !== relateId &&
-      peopleById.has(relateId)
+      rid != null &&
+      pid !== rid &&
+      peopleById.has(rid)
     ) {
-      const path = findRelationPath(pid, relateId, people, rels);
+      setRelateId(rid);
+      const path = findRelationPath(pid, rid, people, rels);
       if (path && path.length > 1) {
         setHighlightPathIds(path.map((h) => h.personId));
-        const label = classifyRelationPath(pid, relateId, people, rels, path);
+        const label = classifyRelationPath(pid, rid, people, rels, path);
         toast.success(
           t("tree.pathLinkOpened", {
             rel: t(`tree.rel.${label}`),
@@ -101,11 +129,96 @@ export default function ShareView() {
         const next = new URLSearchParams(prev);
         if (detail) next.set("person", String(detail.id));
         else next.delete("person");
+        if (relateId != null) next.set("relate", String(relateId));
+        else next.delete("relate");
         return next.toString() === prev.toString() ? prev : next;
       },
       { replace: true },
     );
-  }, [detail?.id, setSearchParams]);
+  }, [detail?.id, relateId, setSearchParams]);
+
+  const pathInfo = useMemo(() => {
+    if (!detail || relateId == null || !peopleById.has(relateId)) return null;
+    const hops = findRelationPath(detail.id, relateId, people, rels);
+    if (!hops || hops.length < 2) return null;
+    const key = classifyRelationPath(
+      detail.id,
+      relateId,
+      people,
+      rels,
+      hops,
+    );
+    return { hops, label: t(`tree.rel.${key}`), relate: peopleById.get(relateId)! };
+  }, [detail, relateId, people, rels, peopleById, t]);
+
+  const openPerson = (p: Person) => {
+    setDetail(p);
+    centerTokenRef.current += 1;
+    setCenterRequest({ personId: p.id, token: centerTokenRef.current });
+  };
+
+  const viaLabel = (via: PathHop["via"]) => {
+    if (via === "start") return null;
+    if (via === "parent") return t("tree.pathViaParent");
+    if (via === "child") return t("tree.pathViaChild");
+    return t("tree.pathViaSpouse");
+  };
+
+  const copyPathText = () => {
+    if (!detail || !pathInfo) return;
+    const url = absoluteUrl(
+      buildSharePersonPath(shareToken, detail.id, { relate: relateId }),
+    );
+    const text = formatRelationPathText({
+      fromName: detail.givenName,
+      toName: pathInfo.relate.givenName,
+      relationLabel: pathInfo.label,
+      hops: pathInfo.hops,
+      peopleById,
+      viaLabel: (via) => viaLabel(via) ?? via,
+      url,
+      labels: {
+        headline: t("tree.pathTextHeadline"),
+        hopsHeader: t("tree.pathTextHops"),
+        linkHeader: t("tree.pathTextLink"),
+      },
+    });
+    void navigator.clipboard.writeText(text);
+    toast.success(t("tree.pathTextCopied"));
+  };
+
+  const copyPersonCard = (person: Person) => {
+    const url = absoluteUrl(buildSharePersonPath(shareToken, person.id));
+    let relationLabel: string | null = null;
+    let homeName: string | null = null;
+    let hopNames: string[] | undefined;
+    if (relateId != null && relateId !== person.id && peopleById.has(relateId)) {
+      const other = peopleById.get(relateId)!;
+      homeName = other.givenName;
+      const hops = findRelationPath(relateId, person.id, people, rels);
+      const key = classifyRelationPath(relateId, person.id, people, rels, hops);
+      relationLabel = t(`tree.rel.${key}`);
+      if (hops && hops.length > 1) {
+        hopNames = hops
+          .map((h) => peopleById.get(h.personId)?.givenName)
+          .filter((n): n is string => !!n);
+      }
+    }
+    const text = formatPersonShareCard({
+      person,
+      relationLabel,
+      homeName,
+      hopNames,
+      url,
+      labels: {
+        kinship: t("tree.personCardKinship"),
+        pathHeader: t("tree.pathTextHops"),
+        linkHeader: t("tree.pathTextLink"),
+      },
+    });
+    void navigator.clipboard.writeText(text);
+    toast.success(t("tree.personCardCopied"));
+  };
 
   if (query.isLoading) {
     return (
@@ -173,6 +286,99 @@ export default function ShareView() {
           </div>
         </div>
 
+        {pathInfo && detail && (
+          <div className="mb-4 rounded-xl border border-sky-200/80 bg-sky-50/60 px-3 py-2.5">
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-sky-950">
+                {t("share.pathBanner", {
+                  from: detail.givenName,
+                  to: pathInfo.relate.givenName,
+                  rel: pathInfo.label,
+                })}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => {
+                    setHighlightPathIds(pathInfo.hops.map((h) => h.personId));
+                    toast.success(
+                      t("tree.pathHighlightActive", {
+                        count: pathInfo.hops.length,
+                      }),
+                    );
+                  }}
+                >
+                  <Eye className="h-3 w-3" />
+                  {t("tree.showPathOnChart")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
+                  onClick={copyPathText}
+                >
+                  <Copy className="h-3 w-3" />
+                  {t("tree.copyPathText")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => {
+                    const url = absoluteUrl(
+                      buildSharePersonPath(shareToken, detail.id, {
+                        relate: relateId,
+                      }),
+                    );
+                    void navigator.clipboard.writeText(url);
+                    toast.success(t("tree.pathLinkCopied"));
+                  }}
+                >
+                  <LinkIcon className="h-3 w-3" />
+                  {t("tree.copyPathLink")}
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-0.5">
+              {pathInfo.hops.map((hop, i) => {
+                const p = peopleById.get(hop.personId);
+                if (!p) return null;
+                const isEnd = p.id === detail.id;
+                const isRelate = p.id === relateId;
+                return (
+                  <span
+                    key={`${hop.personId}-${i}`}
+                    className="inline-flex items-center gap-0.5"
+                  >
+                    {i > 0 && (
+                      <ChevronLeft className="mx-0.5 h-3 w-3 shrink-0 text-sky-400 rtl:rotate-180" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openPerson(p)}
+                      className={cn(
+                        "inline-flex max-w-[7.5rem] truncate rounded-full px-2 py-0.5 text-[11px] font-medium transition hover:bg-white",
+                        isEnd
+                          ? "bg-sky-600 text-white"
+                          : isRelate
+                            ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-300"
+                            : "bg-white/80 text-sky-950 ring-1 ring-sky-200",
+                      )}
+                    >
+                      {p.givenName}
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardContent className="p-2">
             <FamilyChart
@@ -181,35 +387,127 @@ export default function ShareView() {
               selectedPersonId={detail?.id ?? null}
               centerRequest={centerRequest}
               highlightPathIds={highlightPathIds}
-              onPersonClick={(p) => {
-                setDetail(p);
-                centerTokenRef.current += 1;
-                setCenterRequest({
-                  personId: p.id,
-                  token: centerTokenRef.current,
-                });
-              }}
+              onPersonClick={(p) => openPerson(p)}
             />
           </CardContent>
         </Card>
       </main>
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-sm">
-          {detail && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl">{detail.givenName}</DialogTitle>
-                {detail.fatherName && (
-                  <DialogDescription className="font-display">{detail.fatherName}</DialogDescription>
-                )}
-              </DialogHeader>
-              <div className="text-sm space-y-1 text-muted-foreground">
-                {detail.kunya && <p>{t("share.kunyaLabel", { kunya: detail.kunya })}</p>}
-                <p>{L.formatYears(detail.birthYear, detail.deathYear, detail.isLiving)}</p>
-              </div>
-            </>
-          )}
+        <DialogContent className="max-w-md">
+          {detail && (() => {
+            const { fatherId, motherId } = getParents(
+              detail.id,
+              rels,
+              peopleById,
+            );
+            const father = fatherId ? peopleById.get(fatherId) : null;
+            const mother = motherId ? peopleById.get(motherId) : null;
+            const spouses = (spousesOf.get(detail.id) ?? [])
+              .map((id) => peopleById.get(id))
+              .filter((p): p is Person => !!p);
+            const children = (childrenOf.get(detail.id) ?? [])
+              .map((id) => peopleById.get(id))
+              .filter((p): p is Person => !!p);
+            const siblingIds = new Set<number>();
+            for (const pid of [fatherId, motherId]) {
+              if (pid == null) continue;
+              for (const sid of childrenOf.get(pid) ?? []) {
+                if (sid !== detail.id) siblingIds.add(sid);
+              }
+            }
+            const siblings = [...siblingIds]
+              .map((id) => peopleById.get(id))
+              .filter((p): p is Person => !!p);
+            const immediateMembers = [
+              ...(father ? [{ person: father, role: "father" as const }] : []),
+              ...(mother ? [{ person: mother, role: "mother" as const }] : []),
+              ...spouses.map((p) => ({ person: p, role: "spouse" as const })),
+              ...siblings.map((p) => ({ person: p, role: "sibling" as const })),
+              ...children.map((p) => ({ person: p, role: "child" as const })),
+            ];
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="font-display text-xl">
+                    {detail.givenName}
+                  </DialogTitle>
+                  {detail.fatherName && (
+                    <DialogDescription className="font-display">
+                      {detail.fatherName}
+                    </DialogDescription>
+                  )}
+                </DialogHeader>
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1 text-muted-foreground">
+                    {detail.kunya && (
+                      <p>{t("share.kunyaLabel", { kunya: detail.kunya })}</p>
+                    )}
+                    <p>
+                      {L.formatYears(
+                        detail.birthYear,
+                        detail.deathYear,
+                        detail.isLiving,
+                      )}
+                    </p>
+                    {pathInfo && (
+                      <Badge variant="secondary" className="mt-1">
+                        {pathInfo.label}
+                        {" · "}
+                        {pathInfo.relate.givenName}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => copyPersonCard(detail)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      {t("tree.copyPersonCard")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => {
+                        const url = absoluteUrl(
+                          buildSharePersonPath(shareToken, detail.id, {
+                            relate: relateId,
+                          }),
+                        );
+                        void navigator.clipboard.writeText(url);
+                        toast.success(t("detail.linkCopied"));
+                      }}
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      {t("detail.copyPersonLink")}
+                    </Button>
+                    {pathInfo && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={copyPathText}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        {t("tree.copyPathText")}
+                      </Button>
+                    )}
+                  </div>
+                  <ImmediateFamilyStrip
+                    members={immediateMembers}
+                    onSelect={openPerson}
+                  />
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
