@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import FamilyChart from "@/components/tree/FamilyChart";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TreePalm, ShieldCheck, Lock } from "lucide-react";
 import type { Person } from "@db/schema";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,12 +18,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { parsePersonIdParam } from "@/lib/treeUrl";
 
 /** عرض عام للقراءة فقط — يحترم كل قواعد الخصوصية */
 export default function ShareView() {
   const { token } = useParams<{ token: string }>();
   const shareToken = token ?? "";
+  const [searchParams, setSearchParams] = useSearchParams();
   const [detail, setDetail] = useState<Person | null>(null);
+  const [centerRequest, setCenterRequest] = useState<{
+    personId: number;
+    token: number;
+  } | null>(null);
+  const centerTokenRef = useRef(0);
+  const bootstrapped = useRef(false);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -31,6 +39,41 @@ export default function ShareView() {
     { shareToken },
     { enabled: shareToken.length >= 16, retry: false },
   );
+
+  const people = useMemo(
+    () => (query.data?.people ?? []) as Person[],
+    [query.data?.people],
+  );
+  const peopleById = useMemo(
+    () => new Map(people.map((p) => [p.id, p])),
+    [people],
+  );
+
+  useEffect(() => {
+    if (bootstrapped.current || !query.data || people.length === 0) return;
+    bootstrapped.current = true;
+    const pid = parsePersonIdParam(searchParams.get("person"));
+    if (pid != null && peopleById.has(pid)) {
+      const p = peopleById.get(pid)!;
+      setDetail(p);
+      centerTokenRef.current += 1;
+      setCenterRequest({ personId: pid, token: centerTokenRef.current });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.data, people.length, peopleById]);
+
+  useEffect(() => {
+    if (!bootstrapped.current) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (detail) next.set("person", String(detail.id));
+        else next.delete("person");
+        return next.toString() === prev.toString() ? prev : next;
+      },
+      { replace: true },
+    );
+  }, [detail?.id, setSearchParams]);
 
   if (query.isLoading) {
     return (
@@ -54,7 +97,7 @@ export default function ShareView() {
     );
   }
 
-  const { tree, people, rels } = query.data;
+  const { tree, rels } = query.data;
   const isMember = !!tree.myRole;
   const treeId = tree.id;
 
@@ -100,7 +143,20 @@ export default function ShareView() {
 
         <Card>
           <CardContent className="p-2">
-            <FamilyChart people={people as Person[]} rels={rels} onPersonClick={(p) => setDetail(p)} />
+            <FamilyChart
+              people={people}
+              rels={rels}
+              selectedPersonId={detail?.id ?? null}
+              centerRequest={centerRequest}
+              onPersonClick={(p) => {
+                setDetail(p);
+                centerTokenRef.current += 1;
+                setCenterRequest({
+                  personId: p.id,
+                  token: centerTokenRef.current,
+                });
+              }}
+            />
           </CardContent>
         </Card>
       </main>

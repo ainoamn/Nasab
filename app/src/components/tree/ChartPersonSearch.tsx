@@ -8,14 +8,22 @@ import { cn } from "@/lib/utils";
 type Props = {
   people: Person[];
   onSelect: (person: Person) => void;
+  /** رفع المفضلة لأعلى نتائج البحث */
+  favoriteIds?: number[];
   className?: string;
 };
 
 /** بحث سريع داخل المخطط — يركّز على الشخص فور الاختيار */
-export default function ChartPersonSearch({ people, onSelect, className }: Props) {
+export default function ChartPersonSearch({
+  people,
+  onSelect,
+  favoriteIds = [],
+  className,
+}: Props) {
   const { t } = useTranslation();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const favSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
 
   const results = useMemo(() => {
     const query = q.trim();
@@ -26,8 +34,14 @@ export default function ChartPersonSearch({ people, onSelect, className }: Props
           .filter(Boolean)
           .some((s) => s!.includes(query) || s!.toLowerCase().includes(query.toLowerCase())),
       )
+      .sort((a, b) => {
+        const af = favSet.has(a.id) ? 0 : 1;
+        const bf = favSet.has(b.id) ? 0 : 1;
+        if (af !== bf) return af - bf;
+        return a.givenName.localeCompare(b.givenName, "ar");
+      })
       .slice(0, 8);
-  }, [people, q]);
+  }, [people, q, favSet]);
 
   return (
     <div className={cn("relative w-full max-w-xs", className)}>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
@@ -40,6 +40,8 @@ import {
   scopeSummaryLabel,
   type PrintScope,
 } from "@/lib/printFilter";
+import { parsePersonIdParam } from "@/lib/treeUrl";
+import { getHomePersonId } from "@/lib/homePerson";
 
 const TPL_ICONS: Record<PrintTemplateId, typeof TreePalm> = {
   palm: TreePalm,
@@ -60,12 +62,14 @@ const TPL_ICONS: Record<PrintTemplateId, typeof TreePalm> = {
 export default function TreePrint() {
   const { id } = useParams<{ id: string }>();
   const treeId = parseInt(id ?? "0", 10);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth({ redirectOnUnauthenticated: true });
   const { t, i18n } = useTranslation();
   const [template, setTemplate] = useState<PrintTemplateId>("palm");
   const [step, setStep] = useState<"pick" | "preview">("pick");
   const [scope, setScope] = useState<PrintScope>(DEFAULT_PRINT_SCOPE);
+  const [rootBootstrapped, setRootBootstrapped] = useState(false);
 
   const treeQuery = trpc.tree.get.useQuery(
     { id: treeId },
@@ -75,6 +79,39 @@ export default function TreePrint() {
     { treeId },
     { enabled: isAuthenticated && treeId > 0 },
   );
+
+  const allPeople = useMemo(
+    () => (dataQuery.data?.people ?? []) as Person[],
+    [dataQuery.data?.people],
+  );
+  const allRels = (dataQuery.data?.rels ?? []) as Relationship[];
+  const branches = (dataQuery.data?.branches ?? []) as TreeBranch[];
+
+  useEffect(() => {
+    if (rootBootstrapped || dataQuery.isLoading || allPeople.length === 0) return;
+    const fromUrl = parsePersonIdParam(searchParams.get("root"));
+    const fromHome = getHomePersonId(treeId);
+    const rootId =
+      (fromUrl != null && allPeople.some((p) => p.id === fromUrl)
+        ? fromUrl
+        : null) ??
+      (fromHome != null && allPeople.some((p) => p.id === fromHome)
+        ? fromHome
+        : null) ??
+      allPeople.find((p) => p.gender !== "female")?.id ??
+      allPeople[0]?.id ??
+      null;
+    if (rootId != null) {
+      setScope((s) => ({ ...s, rootPersonId: rootId }));
+    }
+    setRootBootstrapped(true);
+  }, [
+    rootBootstrapped,
+    dataQuery.isLoading,
+    allPeople,
+    searchParams,
+    treeId,
+  ]);
 
   const designs = t("printDesigns.items", {
     returnObjects: true,
@@ -97,10 +134,6 @@ export default function TreePrint() {
       document.title = `${t("brand")} — ${t("tagline")}`;
     };
   }, [treeQuery.data, t]);
-
-  const allPeople = (dataQuery.data?.people ?? []) as Person[];
-  const allRels = (dataQuery.data?.rels ?? []) as Relationship[];
-  const branches = (dataQuery.data?.branches ?? []) as TreeBranch[];
 
   const subgraph = useMemo(
     () => buildPrintSubgraph(allPeople, allRels, branches, scope),

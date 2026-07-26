@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
@@ -22,6 +22,8 @@ import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
 import GedcomImportDialog from "@/components/tree/GedcomImportDialog";
 import RecentPeopleStrip from "@/components/tree/RecentPeopleStrip";
+import FavoritesStrip from "@/components/tree/FavoritesStrip";
+import TreeGrowthChecklist from "@/components/tree/TreeGrowthChecklist";
 import SpouseDatesDialog from "@/components/tree/SpouseDatesDialog";
 import ShortcutsDialog from "@/components/tree/ShortcutsDialog";
 import { useLabels } from "@/lib/labels";
@@ -45,6 +47,19 @@ import {
   getRecentPersonIds,
   pushRecentPersonId,
 } from "@/lib/recentPeople";
+import {
+  getFavoritePersonIds,
+  toggleFavoritePersonId,
+} from "@/lib/favoritePeople";
+import {
+  absoluteUrl,
+  buildPrintRootPath,
+  buildSharePersonPath,
+  buildTreePersonPath,
+  parseChartViewParam,
+  parseMainTabParam,
+  parsePersonIdParam,
+} from "@/lib/treeUrl";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -140,14 +155,18 @@ import {
   Rows2,
   ChevronLeft,
   ChevronRight,
+  Star,
+  Link as LinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
+import { cn } from "@/lib/utils";
 
 export default function TreeWorkspace() {
   const { id } = useParams<{ id: string }>();
   const treeId = parseInt(id ?? "0", 10);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth({ redirectOnUnauthenticated: true });
   const utils = trpc.useUtils();
   const { t, i18n } = useTranslation();
@@ -171,6 +190,8 @@ export default function TreeWorkspace() {
   const [listLiving, setListLiving] = useState<"all" | "living" | "deceased">("all");
   const [listUnlinkedOnly, setListUnlinkedOnly] = useState(false);
   const [recentIds, setRecentIds] = useState<number[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
   const [chartView, setChartView] = useState<
@@ -198,6 +219,7 @@ export default function TreeWorkspace() {
     token: number;
   } | null>(null);
   const centerTokenRef = useRef(0);
+  const urlBootstrappedRef = useRef(false);
 
   const requestCenterOn = (personId: number) => {
     centerTokenRef.current += 1;
@@ -209,7 +231,14 @@ export default function TreeWorkspace() {
   }, [treeId]);
 
   useEffect(() => {
-    if (treeId > 0) setRecentIds(getRecentPersonIds(treeId));
+    if (treeId > 0) {
+      setRecentIds(getRecentPersonIds(treeId));
+      setFavoriteIds(getFavoritePersonIds(treeId));
+    }
+  }, [treeId]);
+
+  useEffect(() => {
+    urlBootstrappedRef.current = false;
   }, [treeId]);
 
   useEffect(() => {
@@ -237,6 +266,50 @@ export default function TreeWorkspace() {
     () => new Map(people.map((p) => [p.id, p])),
     [people],
   );
+
+  /** قراءة ?person=&view=&tab= مرة واحدة بعد تحميل الأفراد */
+  useEffect(() => {
+    if (urlBootstrappedRef.current) return;
+    if (dataQuery.isLoading || people.length === 0) {
+      if (!dataQuery.isLoading && people.length === 0) {
+        urlBootstrappedRef.current = true;
+      }
+      return;
+    }
+    urlBootstrappedRef.current = true;
+    const pid = parsePersonIdParam(searchParams.get("person"));
+    const view = parseChartViewParam(searchParams.get("view"));
+    const tab = parseMainTabParam(searchParams.get("tab"));
+    if (view) setChartView(view);
+    if (tab) setMainTab(tab);
+    if (pid != null && peopleById.has(pid)) {
+      const p = peopleById.get(pid)!;
+      setDetailPerson(p);
+      setChartFocusId(pid);
+      requestCenterOn(pid);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once per tree load
+  }, [dataQuery.isLoading, people.length, peopleById]);
+
+  /** مزامنة الرابط العميق مع التحديد والعرض */
+  useEffect(() => {
+    if (!urlBootstrappedRef.current) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (detailPerson) next.set("person", String(detailPerson.id));
+        else next.delete("person");
+        if (chartView !== "family") next.set("view", chartView);
+        else next.delete("view");
+        if (mainTab !== "chart") next.set("tab", mainTab);
+        else next.delete("tab");
+        const a = next.toString();
+        const b = prev.toString();
+        return a === b ? prev : next;
+      },
+      { replace: true },
+    );
+  }, [detailPerson?.id, chartView, mainTab, setSearchParams]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -760,25 +833,52 @@ export default function TreeWorkspace() {
           livingCount={people.filter((p) => p.isLiving).length}
           ownerName={myRole === "owner" ? (user?.name ?? null) : null}
           completenessScore={completeness.score}
+          completeness={completeness}
+          completenessOpen={completenessOpen}
+          onCompletenessClick={() => setCompletenessOpen((v) => !v)}
+        />
+
+        <TreeGrowthChecklist
+          people={people}
+          rels={rels}
+          focusPerson={
+            (homePersonId != null ? peopleById.get(homePersonId) : null) ??
+            detailPerson ??
+            people[0] ??
+            null
+          }
+          canWrite={canWrite}
+          completenessScore={completeness.score}
+          onAddRelative={(personId, kinship) =>
+            openAddRelative(personId, kinship)
+          }
+          onEditPerson={(p) => {
+            setEditPerson(p);
+            setDetailPerson(null);
+          }}
+          onAddFirst={() => {
+            setAddAnchorId(null);
+            setAddKinship(null);
+            setAddOpen(true);
+          }}
+        />
+
+        <FavoritesStrip
+          people={people}
+          favoriteIds={favoriteIds}
+          onSelect={(p) => revealOnChart(p)}
         />
 
         <RecentPeopleStrip
           people={people}
           recentIds={recentIds}
-          onSelect={(p) => {
-            setDetailPerson(p);
-            setChartFocusId(p.id);
-            requestCenterOn(p.id);
-          }}
+          onSelect={(p) => revealOnChart(p)}
         />
 
         <EventsStrip
           people={people}
           rels={rels}
-          onPersonClick={(p) => {
-            setDetailPerson(p);
-            setChartFocusId(p.id);
-          }}
+          onPersonClick={(p) => revealOnChart(p)}
         />
 
         <DiscoveriesPanel
@@ -787,11 +887,7 @@ export default function TreeWorkspace() {
           canWrite={canWrite}
           onOpenPerson={(id) => {
             const p = peopleById.get(id);
-            if (p) {
-              setDetailPerson(p);
-              setChartFocusId(id);
-              requestCenterOn(id);
-            }
+            if (p) revealOnChart(p);
           }}
           onAddParent={(personId, role) => openAddRelative(personId, role)}
           onComparePair={(aId, bId) => {
@@ -807,6 +903,7 @@ export default function TreeWorkspace() {
             setHighlightPathIds(path.map((h) => h.personId));
             setChartView("family");
             setChartFocusId(null);
+            setMainTab("chart");
             requestCenterOn(aId);
             toast.success(
               t("tree.pathHighlightActive", { count: path.length }),
@@ -940,6 +1037,7 @@ export default function TreeWorkspace() {
                 </div>
                 <ChartPersonSearch
                   people={chartPeople}
+                  favoriteIds={favoriteIds}
                   onSelect={(p) => {
                     setDetailPerson(p);
                     setChartFocusId((prev) => {
@@ -1800,6 +1898,77 @@ export default function TreeWorkspace() {
                 >
                   <House className="h-3.5 w-3.5" />
                   {t("tree.setHomePerson")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={favoriteIds.includes(detailPerson.id) ? "secondary" : "outline"}
+                  className="gap-1.5"
+                  onClick={() => {
+                    const next = toggleFavoritePersonId(treeId, detailPerson.id);
+                    setFavoriteIds(next);
+                    toast.success(
+                      next.includes(detailPerson.id)
+                        ? t("tree.favoriteAdded")
+                        : t("tree.favoriteRemoved"),
+                    );
+                  }}
+                >
+                  <Star
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      favoriteIds.includes(detailPerson.id) &&
+                        "fill-amber-400 text-amber-500",
+                    )}
+                  />
+                  {favoriteIds.includes(detailPerson.id)
+                    ? t("tree.unfavorite")
+                    : t("tree.favorite")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const url = absoluteUrl(
+                      buildTreePersonPath(treeId, detailPerson.id, {
+                        view: chartView,
+                        tab: mainTab,
+                      }),
+                    );
+                    void navigator.clipboard.writeText(url);
+                    toast.success(t("detail.linkCopied"));
+                  }}
+                >
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  {t("detail.copyPersonLink")}
+                </Button>
+                {shareUrl && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const url = absoluteUrl(
+                        buildSharePersonPath(tree.shareToken!, detailPerson.id),
+                      );
+                      void navigator.clipboard.writeText(url);
+                      toast.success(t("detail.sharePersonCopied"));
+                    }}
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    {t("detail.copySharePersonLink")}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() =>
+                    navigate(buildPrintRootPath(treeId, detailPerson.id))
+                  }
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  {t("detail.printFromHere")}
                 </Button>
                 <Button
                   size="sm"

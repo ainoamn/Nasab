@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Image as ImageIcon, Users, Heart, ScrollText, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { CompletenessBreakdown } from "@/lib/treeCompleteness";
 
 type Props = {
   treeName: string;
@@ -15,6 +16,9 @@ type Props = {
   ownerName?: string | null;
   /** 0–100 اكتمال البيانات */
   completenessScore?: number | null;
+  completeness?: CompletenessBreakdown | null;
+  completenessOpen?: boolean;
+  onCompletenessClick?: () => void;
   className?: string;
 };
 
@@ -32,6 +36,9 @@ export default function TreeHomeBanner({
   livingCount,
   ownerName,
   completenessScore = null,
+  completeness = null,
+  completenessOpen = false,
+  onCompletenessClick,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -125,31 +132,71 @@ export default function TreeHomeBanner({
           </p>
           {score != null && (
             <div className="mt-3 space-y-1.5">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-                  <Gauge className="h-3.5 w-3.5 text-emerald-700" />
-                  {t("tree.completenessTitle")}
-                </span>
-                <span className="tabular-nums font-bold text-emerald-800">
-                  {score}%
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-stone-200/80">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    score >= 70
-                      ? "bg-emerald-500"
-                      : score >= 40
-                        ? "bg-amber-500"
-                        : "bg-rose-400",
-                  )}
-                  style={{ width: `${score}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                {t("tree.completenessHint")}
-              </p>
+              <button
+                type="button"
+                className={cn(
+                  "w-full space-y-1.5 rounded-lg text-start transition",
+                  onCompletenessClick && "hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60",
+                )}
+                onClick={onCompletenessClick}
+                disabled={!onCompletenessClick}
+              >
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                    <Gauge className="h-3.5 w-3.5 text-emerald-700" />
+                    {t("tree.completenessTitle")}
+                  </span>
+                  <span className="tabular-nums font-bold text-emerald-800">
+                    {score}%
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-stone-200/80">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      score >= 70
+                        ? "bg-emerald-500"
+                        : score >= 40
+                          ? "bg-amber-500"
+                          : "bg-rose-400",
+                    )}
+                    style={{ width: `${score}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {onCompletenessClick
+                    ? t("tree.completenessClickHint")
+                    : t("tree.completenessHint")}
+                </p>
+              </button>
+              {completenessOpen && completeness && (
+                <ul className="mt-2 space-y-1 rounded-lg border bg-background/80 px-2.5 py-2 text-[11px] text-foreground/80">
+                  <li>
+                    {t("tree.completenessBirth", {
+                      n: completeness.withBirthYear,
+                      total: completeness.peopleCount,
+                    })}
+                  </li>
+                  <li>
+                    {t("tree.completenessPhoto", {
+                      n: completeness.withPhoto,
+                      total: completeness.peopleCount,
+                    })}
+                  </li>
+                  <li>
+                    {t("tree.completenessParent", {
+                      n: completeness.withParent,
+                      total: completeness.peopleCount,
+                    })}
+                  </li>
+                  <li>
+                    {t("tree.completenessSpouse", {
+                      n: completeness.parentsOfKidsWithSpouse,
+                      total: Math.max(1, completeness.parentsOfKidsTotal),
+                    })}
+                  </li>
+                </ul>
+              )}
             </div>
           )}
         </div>
