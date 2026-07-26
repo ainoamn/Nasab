@@ -144,3 +144,25 @@ export function classifyRelationPath(
 
   return vias.length <= 6 ? "relative" : "connected";
 }
+
+/**
+ * الجد/الجدّة المشتركة على مسار صعود ثم نزول
+ * (آخر شخص عبر «أب/أم» قبل أول «ابن/ابنة»).
+ */
+export function findCommonAncestorId(hops: PathHop[] | null): number | null {
+  if (!hops || hops.length < 3) return null;
+  let lastAscendIdx = -1;
+  for (let i = 1; i < hops.length; i++) {
+    const via = hops[i]!.via;
+    if (via === "parent") {
+      lastAscendIdx = i;
+      continue;
+    }
+    if (via === "child" && lastAscendIdx >= 0) {
+      return hops[lastAscendIdx]!.personId;
+    }
+    // زوج/ة يقطع نموذج الجد المشترك الكلاسيكي
+    if (via === "spouse") return null;
+  }
+  return null;
+}

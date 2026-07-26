@@ -15,16 +15,24 @@ export function formatRelationPathText(opts: {
     headline: string;
     hopsHeader: string;
     linkHeader: string;
+    commonAncestor?: string; // "{{name}}"
   };
+  commonAncestorName?: string | null;
 }): string {
   const lines: string[] = [
     opts.labels.headline
       .replace("{{from}}", opts.fromName)
       .replace("{{to}}", opts.toName)
       .replace("{{rel}}", opts.relationLabel),
-    "",
-    opts.labels.hopsHeader,
   ];
+
+  if (opts.commonAncestorName && opts.labels.commonAncestor) {
+    lines.push(
+      opts.labels.commonAncestor.replace("{{name}}", opts.commonAncestorName),
+    );
+  }
+
+  lines.push("", opts.labels.hopsHeader);
 
   for (const hop of opts.hops) {
     const p = opts.peopleById.get(hop.personId);

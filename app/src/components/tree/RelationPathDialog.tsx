@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import {
   classifyRelationPath,
+  findCommonAncestorId,
   findRelationPath,
   type PathHop,
   type PathLabelKey,
@@ -31,8 +32,10 @@ import {
   Link as LinkIcon,
   Copy,
   Printer,
+  Star,
 } from "lucide-react";
 import type { RecentRelatePair } from "@/lib/recentRelates";
+import type { FavoriteRelatePair } from "@/lib/favoriteRelates";
 
 type Props = {
   open: boolean;
@@ -42,6 +45,7 @@ type Props = {
   defaultFromId?: number | null;
   defaultToId?: number | null;
   recentPairs?: RecentRelatePair[];
+  favoritePairs?: FavoriteRelatePair[];
   homePersonId?: number | null;
   onOpenPerson?: (person: Person) => void;
   onShowOnChart?: (pathIds: number[]) => void;
@@ -50,6 +54,7 @@ type Props = {
   onCopyPersonCard?: (person: Person) => void;
   onCopyBothCards?: (fromId: number, toId: number) => void;
   onPrintCertificate?: (fromId: number, toId: number) => void;
+  onToggleFavoritePair?: (fromId: number, toId: number) => void;
   onSelectRecentPair?: (fromId: number, toId: number) => void;
 };
 
@@ -223,6 +228,7 @@ export default function RelationPathDialog({
   defaultFromId,
   defaultToId,
   recentPairs,
+  favoritePairs,
   homePersonId = null,
   onOpenPerson,
   onShowOnChart,
@@ -231,6 +237,7 @@ export default function RelationPathDialog({
   onCopyPersonCard,
   onCopyBothCards,
   onPrintCertificate,
+  onToggleFavoritePair,
   onSelectRecentPair,
 }: Props) {
   const { t } = useTranslation();
@@ -264,29 +271,47 @@ export default function RelationPathDialog({
   }, [fromNum, toNum, people, rels, path]);
 
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+  const mrcaId = useMemo(() => findCommonAncestorId(path), [path]);
+  const mrcaPerson = mrcaId != null ? (byId.get(mrcaId) ?? null) : null;
   const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
   const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
 
-  const recentChips = useMemo(() => {
-    if (!recentPairs?.length) return [];
-    return recentPairs
-      .map((pair) => {
-        const a = byId.get(pair.a);
-        const b = byId.get(pair.b);
-        if (!a || !b) return null;
-        const hops = findRelationPath(pair.a, pair.b, people, rels);
-        const key = classifyRelationPath(pair.a, pair.b, people, rels, hops);
-        return {
-          a: pair.a,
-          b: pair.b,
-          aName: a.givenName,
-          bName: b.givenName,
-          rel: t(`tree.rel.${key}`),
-        };
-      })
-      .filter((x): x is NonNullable<typeof x> => !!x)
-      .slice(0, 8);
-  }, [recentPairs, byId, people, rels, t]);
+  const pairChips = useMemo(() => {
+    const build = (pairs: RecentRelatePair[] | FavoriteRelatePair[] | undefined) => {
+      if (!pairs?.length) return [];
+      return pairs
+        .map((pair) => {
+          const a = byId.get(pair.a);
+          const b = byId.get(pair.b);
+          if (!a || !b) return null;
+          const hops = findRelationPath(pair.a, pair.b, people, rels);
+          const key = classifyRelationPath(pair.a, pair.b, people, rels, hops);
+          return {
+            a: pair.a,
+            b: pair.b,
+            aName: a.givenName,
+            bName: b.givenName,
+            rel: t(`tree.rel.${key}`),
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => !!x);
+    };
+    return {
+      favorite: build(favoritePairs).slice(0, 12),
+      recent: build(recentPairs).slice(0, 8),
+    };
+  }, [favoritePairs, recentPairs, byId, people, rels, t]);
+
+  const isPairFavorite =
+    fromNum != null &&
+    toNum != null &&
+    !Number.isNaN(fromNum) &&
+    !Number.isNaN(toNum) &&
+    (favoritePairs ?? []).some((p) => {
+      const lo = Math.min(fromNum, toNum);
+      const hi = Math.max(fromNum, toNum);
+      return p.a === lo && p.b === hi;
+    });
 
   const fromPerson =
     fromNum != null && !Number.isNaN(fromNum) ? byId.get(fromNum) : null;
@@ -315,13 +340,38 @@ export default function RelationPathDialog({
           <DialogDescription>{t("tree.howRelatedHint")}</DialogDescription>
         </DialogHeader>
 
-        {recentChips.length > 0 && (
+        {pairChips.favorite.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("tree.favoriteRelatesTitle")}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {pairChips.favorite.map((chip) => (
+                <button
+                  key={`fav-${chip.a}-${chip.b}`}
+                  type="button"
+                  onClick={() => pickRecent(chip.a, chip.b)}
+                  className="inline-flex max-w-full items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-950 hover:bg-amber-100"
+                  title={`${chip.aName} ↔ ${chip.bName}`}
+                >
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+                  <span className="truncate">
+                    {chip.aName} ↔ {chip.bName}
+                  </span>
+                  <span className="shrink-0 text-amber-800/70">· {chip.rel}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {pairChips.recent.length > 0 && (
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">
               {t("tree.recentRelatesTitle")}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {recentChips.map((chip) => (
+              {pairChips.recent.map((chip) => (
                 <button
                   key={`${chip.a}-${chip.b}`}
                   type="button"
@@ -383,6 +433,15 @@ export default function RelationPathDialog({
                 {labelText(label, t)}
               </p>
             )}
+            {mrcaPerson && (
+              <button
+                type="button"
+                onClick={() => onOpenPerson?.(mrcaPerson)}
+                className="mx-auto flex max-w-full items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-100"
+              >
+                {t("tree.commonAncestorAt", { name: mrcaPerson.givenName })}
+              </button>
+            )}
             {path == null ? (
               <p className="text-center text-sm text-muted-foreground">
                 {t("tree.howRelatedNone")}
@@ -394,6 +453,7 @@ export default function RelationPathDialog({
                     const person = byId.get(hop.personId);
                     if (!person) return null;
                     const edge = viaLabel(hop.via, t);
+                    const isMrca = mrcaId === person.id;
                     return (
                       <li
                         key={`${hop.personId}-${i}`}
@@ -413,6 +473,7 @@ export default function RelationPathDialog({
                             i === path.length - 1 &&
                               i !== 0 &&
                               "border-pink-300",
+                            isMrca && "border-amber-400 bg-amber-50 ring-1 ring-amber-200",
                           )}
                           onClick={() => onOpenPerson?.(person)}
                         >
@@ -438,6 +499,11 @@ export default function RelationPathDialog({
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">
                             {person.givenName}
+                            {isMrca ? (
+                              <span className="ms-1 text-[10px] font-normal text-amber-800">
+                                ({t("tree.commonAncestorTag")})
+                              </span>
+                            ) : null}
                           </span>
                         </button>
                       </li>
@@ -488,6 +554,24 @@ export default function RelationPathDialog({
                   </div>
                 )}
 
+                {onToggleFavoritePair && path.length > 1 && fromNum != null && toNum != null && (
+                  <Button
+                    type="button"
+                    variant={isPairFavorite ? "secondary" : "outline"}
+                    className="w-full gap-2"
+                    onClick={() => onToggleFavoritePair(fromNum, toNum)}
+                  >
+                    <Star
+                      className={cn(
+                        "h-4 w-4",
+                        isPairFavorite && "fill-amber-400 text-amber-500",
+                      )}
+                    />
+                    {isPairFavorite
+                      ? t("tree.unfavoriteRelate")
+                      : t("tree.favoriteRelate")}
+                  </Button>
+                )}
                 {onPrintCertificate && path.length > 1 && (
                   <Button
                     type="button"

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import {
   classifyRelationPath,
+  findCommonAncestorId,
   findRelationPath,
   type PathHop,
 } from "@/lib/relationPath";
@@ -38,7 +39,7 @@ function viaLabel(
   return t("tree.pathViaSpouse");
 }
 
-/** شهادة قرابة قابلة للطباعة — مسار + الشخصان + رابط عميق */
+/** شهادة قرابة قابلة للطباعة — مسار + الشخصان + جد مشترك + رابط عميق */
 export default function KinshipCertificateDialog({
   open,
   onOpenChange,
@@ -60,11 +61,14 @@ export default function KinshipCertificateDialog({
     const hops = findRelationPath(fromId, toId, people, rels);
     if (!hops || hops.length < 2) return null;
     const key = classifyRelationPath(fromId, toId, people, rels, hops);
+    const mrcaId = findCommonAncestorId(hops);
+    const mrca = mrcaId != null ? byId.get(mrcaId) : null;
     return {
       from,
       to,
       hops,
       label: t(`tree.rel.${key}`),
+      mrca,
     };
   }, [fromId, toId, byId, people, rels, t]);
 
@@ -97,6 +101,11 @@ export default function KinshipCertificateDialog({
                   {data.from.givenName} ↔ {data.to.givenName}
                 </p>
                 <p className="text-lg font-bold text-amber-900">{data.label}</p>
+                {data.mrca && (
+                  <p className="mt-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-950">
+                    {t("tree.commonAncestorAt", { name: data.mrca.givenName })}
+                  </p>
+                )}
               </header>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -126,6 +135,7 @@ export default function KinshipCertificateDialog({
                     const person = byId.get(hop.personId);
                     if (!person) return null;
                     const edge = viaLabel(hop.via, t);
+                    const isMrca = data.mrca?.id === person.id;
                     return (
                       <li key={`${hop.personId}-${i}`}>
                         {edge && (
@@ -140,9 +150,11 @@ export default function KinshipCertificateDialog({
                             i === data.hops.length - 1 &&
                               i !== 0 &&
                               "border-pink-300 bg-pink-50",
+                            isMrca && "border-amber-400 bg-amber-50 ring-1 ring-amber-300",
                           )}
                         >
                           {person.givenName}
+                          {isMrca ? ` · ${t("tree.commonAncestorTag")}` : ""}
                         </p>
                       </li>
                     );

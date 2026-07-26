@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Person, Relationship } from "@db/tables";
 import {
   classifyRelationPath,
+  findCommonAncestorId,
   findRelationPath,
 } from "@/lib/relationPath";
 
@@ -87,8 +88,33 @@ describe("findRelationPath", () => {
     expect(classifyRelationPath(1, 4, people, rels, path)).toBe("uncle");
   });
 
-  it("returns null when disconnected", () => {
-    const people = [person(1, "أ"), person(2, "ب")];
-    expect(findRelationPath(1, 2, people, [])).toBeNull();
+  it("finds common ancestor for siblings", () => {
+    const people = [
+      person(1, "أحمد"),
+      person(2, "سعيد"),
+      person(3, "أب"),
+    ];
+    const rels = [parent(3, 1), parent(3, 2)];
+    const path = findRelationPath(1, 2, people, rels);
+    expect(findCommonAncestorId(path)).toBe(3);
+  });
+
+  it("finds common ancestor for uncle path", () => {
+    const people = [
+      person(1, "حفيد"),
+      person(2, "أب"),
+      person(3, "جد"),
+      person(4, "عم"),
+    ];
+    const rels = [parent(2, 1), parent(3, 2), parent(3, 4)];
+    const path = findRelationPath(1, 4, people, rels);
+    expect(findCommonAncestorId(path)).toBe(3);
+  });
+
+  it("returns null for parent-only path", () => {
+    const people = [person(1, "ابن"), person(2, "أب")];
+    const rels = [parent(2, 1)];
+    const path = findRelationPath(1, 2, people, rels);
+    expect(findCommonAncestorId(path)).toBeNull();
   });
 });

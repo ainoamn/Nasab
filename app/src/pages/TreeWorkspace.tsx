@@ -24,6 +24,7 @@ import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
 import RelationPathDialog from "@/components/tree/RelationPathDialog";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
+import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -51,6 +52,7 @@ import { getHomePersonId, setHomePersonId } from "@/lib/homePerson";
 import { computeTreeCompleteness } from "@/lib/treeCompleteness";
 import {
   classifyRelationPath,
+  findCommonAncestorId,
   findRelationPath,
 } from "@/lib/relationPath";
 import { buildPersonGapsMap, type PersonGap } from "@/lib/personGaps";
@@ -63,6 +65,11 @@ import {
   pushRecentRelate,
   type RecentRelatePair,
 } from "@/lib/recentRelates";
+import {
+  getFavoriteRelates,
+  toggleFavoriteRelate,
+  type FavoriteRelatePair,
+} from "@/lib/favoriteRelates";
 import { formatFamilyBrief } from "@/lib/familyBrief";
 import { buildResearchTourItems } from "@/lib/researchTour";
 import {
@@ -243,6 +250,12 @@ export default function TreeWorkspace() {
   const [recentRelatePairs, setRecentRelatePairs] = useState<RecentRelatePair[]>(
     [],
   );
+  const [favoriteRelatePairs, setFavoriteRelatePairs] = useState<
+    FavoriteRelatePair[]
+  >([]);
+  const [profilePrintPerson, setProfilePrintPerson] = useState<Person | null>(
+    null,
+  );
   const [dismissedDiscoveryKeys, setDismissedDiscoveryKeys] = useState<string[]>([]);
   const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
@@ -300,6 +313,7 @@ export default function TreeWorkspace() {
       setDismissedDiscoveryKeys(getDismissedDiscoveryKeys(treeId));
       setOccasionsScopeState(getOccasionsScope(treeId));
       setRecentRelatePairs(getRecentRelates(treeId));
+      setFavoriteRelatePairs(getFavoriteRelates(treeId));
       setResearchTourScope(getResearchTourState(treeId).scope);
     }
   }, [treeId]);
@@ -852,10 +866,16 @@ export default function TreeWorkspace() {
       peopleById,
       viaLabel,
       url,
+      commonAncestorName:
+        (() => {
+          const id = findCommonAncestorId(hops);
+          return id != null ? peopleById.get(id)?.givenName ?? null : null;
+        })(),
       labels: {
         headline: t("tree.pathTextHeadline"),
         hopsHeader: t("tree.pathTextHops"),
         linkHeader: t("tree.pathTextLink"),
+        commonAncestor: t("tree.commonAncestorAt"),
       },
     });
     void navigator.clipboard.writeText(text);
@@ -2192,6 +2212,7 @@ export default function TreeWorkspace() {
         onCopyPathLink={copyPathLink}
         onCopyPathText={copyPathText}
         recentPairs={recentRelatePairs}
+        favoritePairs={favoriteRelatePairs}
         homePersonId={homePersonId}
         onCopyPersonCard={copyPersonCard}
         onCopyBothCards={(a, b) => {
@@ -2230,6 +2251,18 @@ export default function TreeWorkspace() {
           rememberRelate(a, b);
           toast.success(t("tree.bothCardsCopied"));
         }}
+        onToggleFavoritePair={(a, b) => {
+          const next = toggleFavoriteRelate(treeId, a, b);
+          setFavoriteRelatePairs(next);
+          const pinned = next.some((p) => {
+            const lo = Math.min(a, b);
+            const hi = Math.max(a, b);
+            return p.a === lo && p.b === hi;
+          });
+          toast.success(
+            pinned ? t("tree.favoriteRelateAdded") : t("tree.favoriteRelateRemoved"),
+          );
+        }}
         onPrintCertificate={(a, b) => {
           rememberRelate(a, b);
           setKinshipCertPair({ from: a, to: b });
@@ -2254,6 +2287,25 @@ export default function TreeWorkspace() {
             ? absoluteUrl(
                 buildTreePersonPath(treeId, kinshipCertPair.from, {
                   relate: kinshipCertPair.to,
+                  tab: "chart",
+                }),
+              )
+            : ""
+        }
+      />
+
+      <PersonProfilePrintDialog
+        open={!!profilePrintPerson}
+        onOpenChange={(o) => !o && setProfilePrintPerson(null)}
+        person={profilePrintPerson}
+        people={people}
+        rels={rels}
+        homePersonId={homePersonId}
+        treeName={tree.name}
+        personUrl={
+          profilePrintPerson
+            ? absoluteUrl(
+                buildTreePersonPath(treeId, profilePrintPerson.id, {
                   tab: "chart",
                 }),
               )
@@ -2633,6 +2685,15 @@ export default function TreeWorkspace() {
                 >
                   <Printer className="h-3.5 w-3.5" />
                   {t("detail.printFromHere")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setProfilePrintPerson(detailPerson)}
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  {t("tree.printPersonProfile")}
                 </Button>
                 <Button
                   size="sm"
