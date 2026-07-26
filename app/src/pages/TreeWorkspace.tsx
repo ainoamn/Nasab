@@ -10,6 +10,7 @@ import FanChartView from "@/components/tree/FanChartView";
 import TreeHomeBanner from "@/components/tree/TreeHomeBanner";
 import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
 import PhotosGallery from "@/components/tree/PhotosGallery";
+import EventsStrip from "@/components/tree/EventsStrip";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -24,6 +25,7 @@ import {
   getParents,
 } from "@/lib/familyGraph";
 import { relationToFocus } from "@/lib/relationshipLabel";
+import { collectCloseFamily } from "@/lib/closeFamily";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -105,6 +107,7 @@ import {
   Network,
   GitBranch,
   Fan,
+  Home,
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -133,7 +136,9 @@ export default function TreeWorkspace() {
   const [search, setSearch] = useState("");
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
-  const [chartView, setChartView] = useState<"family" | "pedigree" | "fan">("family");
+  const [chartView, setChartView] = useState<
+    "family" | "close" | "pedigree" | "fan"
+  >("family");
 
   /** بعد إضافة/تعديل: اخرج من وضع التركيز دون إعادة تركيب المخطط (يحافظ على السحب والتكبير) */
   const refreshChart = () => {
@@ -165,6 +170,20 @@ export default function TreeWorkspace() {
   }, [chartFocusId, people, rels]);
   const chartPeople = chartSubgraph.people;
   const chartRels = chartSubgraph.rels;
+
+  const closeFocusId =
+    chartFocusId ??
+    detailPerson?.id ??
+    chartPeople.find((p) => p.gender !== "female")?.id ??
+    chartPeople[0]?.id ??
+    null;
+
+  const closeSubgraph = useMemo(() => {
+    if (chartView !== "close" || closeFocusId == null) {
+      return { people: chartPeople, rels: chartRels };
+    }
+    return collectCloseFamily(closeFocusId, people, rels);
+  }, [chartView, closeFocusId, chartPeople, chartRels, people, rels]);
 
   const unlinkedIds = useMemo(
     () => findUnlinkedPersonIds(people, rels),
@@ -424,6 +443,15 @@ export default function TreeWorkspace() {
           ownerName={myRole === "owner" ? (user?.name ?? null) : null}
         />
 
+        <EventsStrip
+          people={people}
+          rels={rels}
+          onPersonClick={(p) => {
+            setDetailPerson(p);
+            setChartFocusId(p.id);
+          }}
+        />
+
         <Tabs defaultValue="chart" className="min-w-0">
           <TabsList className="mb-4 w-full sm:w-auto h-auto flex flex-wrap justify-start gap-1 p-1">
             <TabsTrigger value="chart" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
@@ -463,6 +491,7 @@ export default function TreeWorkspace() {
                   {(
                     [
                       { id: "family" as const, icon: Network, label: t("chart.viewFamily") },
+                      { id: "close" as const, icon: Home, label: t("chart.viewClose") },
                       { id: "pedigree" as const, icon: GitBranch, label: t("chart.viewPedigree") },
                       { id: "fan" as const, icon: Fan, label: t("chart.viewFan") },
                     ] as const
@@ -494,7 +523,10 @@ export default function TreeWorkspace() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {t("chart.showingCount", {
-                  shown: chartPeople.length,
+                  shown:
+                    chartView === "close"
+                      ? closeSubgraph.people.length
+                      : chartPeople.length,
                   total: people.length,
                 })}
               </p>
@@ -502,14 +534,19 @@ export default function TreeWorkspace() {
 
             <Card className="overflow-hidden">
               <CardContent className="p-2 sm:p-3 min-w-0 overflow-hidden">
-                {chartView === "family" && (
+                {(chartView === "family" || chartView === "close") && (
+                  chartView === "close" && closeFocusId == null ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                      {t("chart.pickFocus")}
+                    </p>
+                  ) : (
                   <FamilyChart
-                    key={chartRevision}
-                    people={chartPeople}
-                    rels={chartRels}
+                    key={`${chartRevision}-${chartView}-${closeFocusId ?? "all"}`}
+                    people={chartView === "close" ? closeSubgraph.people : chartPeople}
+                    rels={chartView === "close" ? closeSubgraph.rels : chartRels}
                     branches={branches}
                     remotePeople={remotePeople}
-                    focusMode={chartFocusId != null}
+                    focusMode={chartFocusId != null || chartView === "close"}
                     selectedPersonId={detailPerson?.id ?? null}
                     onPersonClick={(p) => setDetailPerson(p)}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
@@ -523,6 +560,7 @@ export default function TreeWorkspace() {
                         : undefined
                     }
                   />
+                  )
                 )}
                 {chartView === "pedigree" && (
                   (() => {
@@ -872,6 +910,54 @@ export default function TreeWorkspace() {
                   </div>
                 </div>
               </SheetHeader>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="gap-1.5"
+                  onClick={() => void openPersonTree(detailPerson.id)}
+                >
+                  <Focus className="h-3.5 w-3.5" />
+                  {t("detail.profileAction")}
+                </Button>
+                {canWrite && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setEditPerson(detailPerson);
+                      setDetailPerson(null);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {t("common.edit")}
+                  </Button>
+                )}
+                {canWrite && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => openAddRelative(detailPerson.id, "son")}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    {t("common.add")}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setChartView("close");
+                    setChartFocusId(detailPerson.id);
+                  }}
+                >
+                  <Home className="h-3.5 w-3.5" />
+                  {t("chart.viewClose")}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {detailPerson.kunya && <InfoRow label={t("detail.kunya")} value={detailPerson.kunya} />}
                 {detailPerson.laqab && <InfoRow label={t("detail.laqab")} value={detailPerson.laqab} />}
