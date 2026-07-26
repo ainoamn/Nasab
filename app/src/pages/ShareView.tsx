@@ -19,6 +19,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { parsePersonIdParam } from "@/lib/treeUrl";
+import {
+  classifyRelationPath,
+  findRelationPath,
+} from "@/lib/relationPath";
+import { toast } from "sonner";
+import type { Relationship } from "@db/schema";
 
 /** عرض عام للقراءة فقط — يحترم كل قواعد الخصوصية */
 export default function ShareView() {
@@ -26,6 +32,9 @@ export default function ShareView() {
   const shareToken = token ?? "";
   const [searchParams, setSearchParams] = useSearchParams();
   const [detail, setDetail] = useState<Person | null>(null);
+  const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(
+    null,
+  );
   const [centerRequest, setCenterRequest] = useState<{
     personId: number;
     token: number;
@@ -44,6 +53,10 @@ export default function ShareView() {
     () => (query.data?.people ?? []) as Person[],
     [query.data?.people],
   );
+  const rels = useMemo(
+    () => (query.data?.rels ?? []) as Relationship[],
+    [query.data?.rels],
+  );
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -53,11 +66,30 @@ export default function ShareView() {
     if (bootstrapped.current || !query.data || people.length === 0) return;
     bootstrapped.current = true;
     const pid = parsePersonIdParam(searchParams.get("person"));
+    const relateId = parsePersonIdParam(searchParams.get("relate"));
     if (pid != null && peopleById.has(pid)) {
       const p = peopleById.get(pid)!;
       setDetail(p);
       centerTokenRef.current += 1;
       setCenterRequest({ personId: pid, token: centerTokenRef.current });
+    }
+    if (
+      pid != null &&
+      relateId != null &&
+      pid !== relateId &&
+      peopleById.has(relateId)
+    ) {
+      const path = findRelationPath(pid, relateId, people, rels);
+      if (path && path.length > 1) {
+        setHighlightPathIds(path.map((h) => h.personId));
+        const label = classifyRelationPath(pid, relateId, people, rels, path);
+        toast.success(
+          t("tree.pathLinkOpened", {
+            rel: t(`tree.rel.${label}`),
+            count: path.length,
+          }),
+        );
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data, people.length, peopleById]);
@@ -148,6 +180,7 @@ export default function ShareView() {
               rels={rels}
               selectedPersonId={detail?.id ?? null}
               centerRequest={centerRequest}
+              highlightPathIds={highlightPathIds}
               onPersonClick={(p) => {
                 setDetail(p);
                 centerTokenRef.current += 1;

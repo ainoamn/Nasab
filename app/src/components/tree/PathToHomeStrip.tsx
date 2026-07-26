@@ -7,7 +7,7 @@ import {
 } from "@/lib/relationPath";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { House, Eye, ChevronLeft } from "lucide-react";
+import { House, Eye, ChevronLeft, Link as LinkIcon } from "lucide-react";
 
 type Props = {
   homePerson: Person;
@@ -16,6 +16,7 @@ type Props = {
   rels: Relationship[];
   onSelectHop: (person: Person) => void;
   onHighlightPath: (pathIds: number[]) => void;
+  onCopyPathLink?: () => void;
   className?: string;
 };
 
@@ -27,6 +28,7 @@ export default function PathToHomeStrip({
   rels,
   onSelectHop,
   onHighlightPath,
+  onCopyPathLink,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -74,16 +76,30 @@ export default function PathToHomeStrip({
             </span>
           )}
         </p>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7 gap-1 text-xs"
-          onClick={() => onHighlightPath(path.map((h) => h.personId))}
-        >
-          <Eye className="h-3 w-3" />
-          {t("tree.showPathOnChart")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 text-xs"
+            onClick={() => onHighlightPath(path.map((h) => h.personId))}
+          >
+            <Eye className="h-3 w-3" />
+            {t("tree.showPathOnChart")}
+          </Button>
+          {onCopyPathLink && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 text-xs"
+              onClick={onCopyPathLink}
+            >
+              <LinkIcon className="h-3 w-3" />
+              {t("tree.copyPathLink")}
+            </Button>
+          )}
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-0.5">
         {path.map((hop, i) => {

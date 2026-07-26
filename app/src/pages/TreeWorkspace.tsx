@@ -18,6 +18,7 @@ import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
 import OccasionsPanel from "@/components/tree/OccasionsPanel";
+import ResearchTourStrip from "@/components/tree/ResearchTourStrip";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
 import RelationPathDialog from "@/components/tree/RelationPathDialog";
@@ -74,6 +75,12 @@ import {
   parseMainTabParam,
   parsePersonIdParam,
 } from "@/lib/treeUrl";
+import {
+  buildOccasionIcs,
+  downloadIcs,
+  occasionGreetingText,
+} from "@/lib/occasionShare";
+import type { TreeOccasion } from "@/lib/treeOccasions";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -230,6 +237,7 @@ export default function TreeWorkspace() {
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
+  const [urlRelateId, setUrlRelateId] = useState<number | null>(null);
   const [mainTab, setMainTab] = useState("chart");
   const [centerRequest, setCenterRequest] = useState<{
     personId: number;
@@ -285,7 +293,7 @@ export default function TreeWorkspace() {
     [people],
   );
 
-  /** قراءة ?person=&view=&tab= مرة واحدة بعد تحميل الأفراد */
+  /** قراءة ?person=&relate=&view=&tab= مرة واحدة بعد تحميل الأفراد */
   useEffect(() => {
     if (urlBootstrappedRef.current) return;
     if (dataQuery.isLoading || people.length === 0) {
@@ -296,6 +304,7 @@ export default function TreeWorkspace() {
     }
     urlBootstrappedRef.current = true;
     const pid = parsePersonIdParam(searchParams.get("person"));
+    const relateId = parsePersonIdParam(searchParams.get("relate"));
     const view = parseChartViewParam(searchParams.get("view"));
     const tab = parseMainTabParam(searchParams.get("tab"));
     if (view) setChartView(view);
@@ -305,6 +314,34 @@ export default function TreeWorkspace() {
       setDetailPerson(p);
       setChartFocusId(pid);
       requestCenterOn(pid);
+    }
+    if (
+      pid != null &&
+      relateId != null &&
+      pid !== relateId &&
+      peopleById.has(pid) &&
+      peopleById.has(relateId)
+    ) {
+      const path = findRelationPath(pid, relateId, people, rels);
+      if (path && path.length > 1) {
+        setUrlRelateId(relateId);
+        setHighlightPathIds(path.map((h) => h.personId));
+        setChartView("family");
+        setMainTab("chart");
+        const label = classifyRelationPath(
+          pid,
+          relateId,
+          people,
+          rels,
+          path,
+        );
+        toast.success(
+          t("tree.pathLinkOpened", {
+            rel: t(`tree.rel.${label}`),
+            count: path.length,
+          }),
+        );
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once per tree load
   }, [dataQuery.isLoading, people.length, peopleById]);
@@ -317,6 +354,8 @@ export default function TreeWorkspace() {
         const next = new URLSearchParams(prev);
         if (detailPerson) next.set("person", String(detailPerson.id));
         else next.delete("person");
+        if (urlRelateId != null) next.set("relate", String(urlRelateId));
+        else next.delete("relate");
         if (chartView !== "family") next.set("view", chartView);
         else next.delete("view");
         if (mainTab !== "chart") next.set("tab", mainTab);
@@ -327,7 +366,7 @@ export default function TreeWorkspace() {
       },
       { replace: true },
     );
-  }, [detailPerson?.id, chartView, mainTab, setSearchParams]);
+  }, [detailPerson?.id, chartView, mainTab, urlRelateId, setSearchParams]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -353,6 +392,7 @@ export default function TreeWorkspace() {
         }
         if (highlightPathIds) {
           setHighlightPathIds(null);
+          setUrlRelateId(null);
           return;
         }
         if (detailPerson) {
@@ -386,6 +426,15 @@ export default function TreeWorkspace() {
       }
       if (e.key === "r" || e.key === "R") {
         setHowRelatedOpen(true);
+        return;
+      }
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        (
+          document.querySelector(
+            "[data-research-next]",
+          ) as HTMLButtonElement | null
+        )?.click();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -670,6 +719,51 @@ export default function TreeWorkspace() {
     }
   };
 
+  const copyPathLink = (fromId: number, toId: number) => {
+    const url = absoluteUrl(
+      buildTreePersonPath(treeId, fromId, { relate: toId, tab: "chart" }),
+    );
+    void navigator.clipboard.writeText(url);
+    setUrlRelateId(toId);
+    toast.success(t("tree.pathLinkCopied"));
+  };
+
+  const shareOccasionCalendar = (ev: TreeOccasion) => {
+    if (!ev.person) return;
+    const personUrl = absoluteUrl(
+      buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
+    );
+    const title =
+      ev.kind === "birthday"
+        ? t("tree.icsBirthdayTitle", { name: ev.person.givenName })
+        : t("tree.icsAnniversaryTitle", { name: ev.label });
+    const content = buildOccasionIcs(ev, {
+      title,
+      description: t("tree.icsDescription", { url: personUrl }),
+      url: personUrl,
+    });
+    downloadIcs(`nasab-${ev.key}`, content);
+    toast.success(t("tree.icsDownloaded"));
+  };
+
+  const shareOccasionGreeting = (ev: TreeOccasion) => {
+    if (!ev.person) return;
+    const personUrl = absoluteUrl(
+      buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
+    );
+    const text = occasionGreetingText(
+      ev.kind,
+      ev.person.givenName,
+      personUrl,
+      {
+        birthday: t("tree.greetingBirthday"),
+        anniversary: t("tree.greetingAnniversary"),
+      },
+    );
+    void navigator.clipboard.writeText(text);
+    toast.success(t("tree.greetingCopied"));
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim();
     return people.filter((p) => {
@@ -923,6 +1017,8 @@ export default function TreeWorkspace() {
           people={people}
           rels={rels}
           onPersonClick={(p) => revealOnChart(p)}
+          onAddToCalendar={shareOccasionCalendar}
+          onCopyGreeting={shareOccasionGreeting}
         />
 
         <EventsStrip
@@ -942,6 +1038,8 @@ export default function TreeWorkspace() {
             void navigator.clipboard.writeText(url);
             toast.success(t("detail.linkCopied"));
           }}
+          onAddToCalendar={shareOccasionCalendar}
+          onCopyGreeting={shareOccasionGreeting}
         />
 
         <DiscoveriesPanel
@@ -1077,12 +1175,30 @@ export default function TreeWorkspace() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setHighlightPathIds(null)}
+                  onClick={() => {
+                    setHighlightPathIds(null);
+                    setUrlRelateId(null);
+                  }}
                 >
                   {t("tree.clearPathHighlight")}
                 </Button>
               </div>
             )}
+
+            <ResearchTourStrip
+              gapsById={researchGapsById}
+              peopleById={peopleById}
+              dismissedKeys={dismissedDiscoveryKeys}
+              homePersonId={homePersonId}
+              favoriteIds={favoriteIds}
+              recentIds={recentIds}
+              canWrite={canWrite}
+              onFix={fixResearchGap}
+              onShow={(p) => revealOnChart(p)}
+              onSkip={(key) => {
+                setDismissedDiscoveryKeys(dismissDiscoveryKey(treeId, key));
+              }}
+            />
 
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -1641,6 +1757,8 @@ export default function TreeWorkspace() {
                   buildPrintRootPath(treeId, p.id, { template: "occasions" }),
                 )
               }
+              onAddToCalendar={shareOccasionCalendar}
+              onCopyGreeting={shareOccasionGreeting}
             />
           </TabsContent>
 
@@ -1764,9 +1882,14 @@ export default function TreeWorkspace() {
           setHighlightPathIds(ids);
           setChartView("family");
           setChartFocusId(null);
+          setMainTab("chart");
+          if (ids.length >= 2) {
+            setUrlRelateId(ids[ids.length - 1]!);
+          }
           if (ids[0] != null) requestCenterOn(ids[0]);
           toast.success(t("tree.pathHighlightActive", { count: ids.length }));
         }}
+        onCopyPathLink={copyPathLink}
       />
 
       {/* بطاقة الشخص */}
@@ -2166,11 +2289,15 @@ export default function TreeWorkspace() {
                       setHighlightPathIds(ids);
                       setChartView("family");
                       setMainTab("chart");
+                      setUrlRelateId(homePersonId);
                       if (ids[0] != null) requestCenterOn(ids[0]);
                       toast.success(
                         t("tree.pathHighlightActive", { count: ids.length }),
                       );
                     }}
+                    onCopyPathLink={() =>
+                      copyPathLink(detailPerson.id, homePersonId)
+                    }
                   />
                 )}
               <ImmediateFamilyStrip

@@ -1,4 +1,4 @@
-/** مزامنة روابط الشجرة العميقة: ?person=&view=&tab= و ?root= للطباعة */
+/** مزامنة روابط الشجرة العميقة: ?person=&relate=&view=&tab= و ?root= للطباعة */
 
 export type ChartViewParam =
   | "family"
@@ -43,17 +43,34 @@ export function parseMainTabParam(raw: string | null): string | null {
 export function buildTreePersonPath(
   treeId: number,
   personId: number,
-  opts?: { view?: ChartViewParam; tab?: string },
+  opts?: {
+    view?: ChartViewParam;
+    tab?: string;
+    /** الشخص الآخر لمسار «كيف يرتبطان؟» */
+    relate?: number | null;
+  },
 ): string {
   const q = new URLSearchParams();
   q.set("person", String(personId));
   if (opts?.view && opts.view !== "family") q.set("view", opts.view);
   if (opts?.tab && opts.tab !== "chart") q.set("tab", opts.tab);
+  if (opts?.relate != null && opts.relate > 0 && opts.relate !== personId) {
+    q.set("relate", String(opts.relate));
+  }
   return `/trees/${treeId}?${q.toString()}`;
 }
 
-export function buildSharePersonPath(shareToken: string, personId: number): string {
-  return `/share/${shareToken}?person=${personId}`;
+export function buildSharePersonPath(
+  shareToken: string,
+  personId: number,
+  opts?: { relate?: number | null },
+): string {
+  const q = new URLSearchParams();
+  q.set("person", String(personId));
+  if (opts?.relate != null && opts.relate > 0 && opts.relate !== personId) {
+    q.set("relate", String(opts.relate));
+  }
+  return `/share/${shareToken}?${q.toString()}`;
 }
 
 export function buildPrintRootPath(

@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-07-26 — رابط مسار القرابة + جولة بحث + تقويم/تهنئة
+
+### الجديد
+- روابط عميقة `?person=&relate=` تفتح المسار مضيئاً؛ نسخ الرابط من «كيف يرتبطان؟» ومسار البيت.
+- **جولة بحث** فوق المخطط: إصلاح / إظهار / تخطّي + اختصار `N`.
+- مناسبات: تنزيل `.ics` ونسخ تهنئة مع رابط الشخص.
+
+### الملفات
+- `treeUrl.ts`, `researchTour.ts`, `occasionShare.ts`, `ResearchTourStrip.tsx`
+- تحديثات `RelationPathDialog`, `PathToHomeStrip`, `EventsStrip`, `OccasionsPanel`, `TodayEventsBanner`, `ShareView`, `TreeWorkspace`, `ShortcutsDialog` + ترجمات
+
+---
+
 ## 2026-07-26 — نقاط بحث على المخطط + مناسبات اليوم
 
 ### الجديد

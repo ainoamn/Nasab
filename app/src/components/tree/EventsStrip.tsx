@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
-import { Cake, Heart, Link as LinkIcon, Printer } from "lucide-react";
+import type { TreeOccasion } from "@/lib/treeOccasions";
+import { Cake, Heart, Link as LinkIcon, Printer, CalendarPlus, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,12 @@ type Props = {
   onSeeAll?: () => void;
   onPrintOccasion?: (person: Person) => void;
   onCopyPersonLink?: (person: Person) => void;
+  onAddToCalendar?: (ev: TreeOccasion) => void;
+  onCopyGreeting?: (ev: TreeOccasion) => void;
   className?: string;
 };
 
-/** شريط مناسبات قريبة: أعياد ميلاد وذكريات زواج + طباعة/رابط */
+/** شريط مناسبات قريبة: أعياد ميلاد وذكريات زواج + طباعة/رابط/تقويم/تهنئة */
 export default function EventsStrip({
   people,
   rels,
@@ -24,6 +27,8 @@ export default function EventsStrip({
   onSeeAll,
   onPrintOccasion,
   onCopyPersonLink,
+  onAddToCalendar,
+  onCopyGreeting,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -45,6 +50,9 @@ export default function EventsStrip({
       </div>
     );
   }
+
+  const hasActions =
+    onPrintOccasion || onCopyPersonLink || onAddToCalendar || onCopyGreeting;
 
   return (
     <div className={cn("mb-4", className)}>
@@ -109,8 +117,38 @@ export default function EventsStrip({
                 </span>
               </span>
             </button>
-            {ev.person && (onPrintOccasion || onCopyPersonLink) && (
+            {ev.person && hasActions && (
               <div className="flex flex-col justify-center gap-0.5 border-s ps-1">
+                {onAddToCalendar && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    title={t("tree.occasionsAddCalendar")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToCalendar(ev);
+                    }}
+                  >
+                    <CalendarPlus className="h-3 w-3" />
+                  </Button>
+                )}
+                {onCopyGreeting && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    title={t("tree.occasionsCopyGreeting")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCopyGreeting(ev);
+                    }}
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                  </Button>
+                )}
                 {onPrintOccasion && (
                   <Button
                     type="button"

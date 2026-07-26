@@ -1,0 +1,162 @@
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { Person } from "@db/tables";
+import type { PersonGap } from "@/lib/personGaps";
+import {
+  buildResearchTourItems,
+  type ResearchTourItem,
+} from "@/lib/researchTour";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Network,
+  Wrench,
+  X,
+} from "lucide-react";
+
+type Props = {
+  gapsById: Map<number, PersonGap[]>;
+  peopleById: Map<number, Person>;
+  dismissedKeys: string[];
+  homePersonId?: number | null;
+  favoriteIds?: number[];
+  recentIds?: number[];
+  canWrite?: boolean;
+  onFix: (person: Person, kind: PersonGap["kind"]) => void;
+  onShow: (person: Person) => void;
+  onSkip: (key: string) => void;
+  className?: string;
+};
+
+/** شريط جولة البحث: التالي / إصلاح / إظهار / تخطّي */
+export default function ResearchTourStrip({
+  gapsById,
+  peopleById,
+  dismissedKeys,
+  homePersonId = null,
+  favoriteIds = [],
+  recentIds = [],
+  canWrite,
+  onFix,
+  onShow,
+  onSkip,
+  className,
+}: Props) {
+  const { t } = useTranslation();
+  const items = useMemo(
+    () =>
+      buildResearchTourItems(gapsById, peopleById, dismissedKeys, {
+        homeId: homePersonId,
+        favoriteIds,
+        recentIds,
+      }),
+    [gapsById, peopleById, dismissedKeys, homePersonId, favoriteIds, recentIds],
+  );
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (index >= items.length) setIndex(Math.max(0, items.length - 1));
+  }, [items.length, index]);
+
+  if (items.length === 0) return null;
+
+  const current: ResearchTourItem = items[Math.min(index, items.length - 1)]!;
+  const person = peopleById.get(current.personId);
+  if (!person) return null;
+
+  const goNext = () => setIndex((i) => (i + 1) % items.length);
+  const goPrev = () =>
+    setIndex((i) => (i - 1 + items.length) % items.length);
+
+  return (
+    <div
+      className={cn(
+        "mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/80 bg-amber-50/70 px-3 py-2 text-sm",
+        className,
+      )}
+      data-research-tour
+    >
+      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" />
+      <span className="text-[11px] font-semibold text-amber-900">
+        {t("tree.researchTourProgress", {
+          current: Math.min(index, items.length - 1) + 1,
+          total: items.length,
+        })}
+      </span>
+      <button
+        type="button"
+        className="min-w-0 flex-1 truncate text-start font-medium text-amber-950 underline-offset-2 hover:underline"
+        onClick={() => onShow(person)}
+      >
+        {current.personName}
+        <span className="ms-1 font-normal text-amber-900/75">
+          — {t(`detail.gap.${current.kind}`)}
+        </span>
+      </button>
+      <div className="flex flex-wrap items-center gap-1">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          title={t("tree.researchTourPrev")}
+          onClick={goPrev}
+        >
+          <ChevronRight className="h-3.5 w-3.5 rtl:hidden" />
+          <ChevronLeft className="hidden h-3.5 w-3.5 rtl:block" />
+        </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            title={t("tree.researchTourNext")}
+            data-research-next
+            onClick={goNext}
+          >
+          <ChevronLeft className="h-3.5 w-3.5 rtl:hidden" />
+          <ChevronRight className="hidden h-3.5 w-3.5 rtl:block" />
+        </Button>
+        {canWrite && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-7 gap-1 text-xs"
+            onClick={() => onFix(person, current.kind)}
+          >
+            <Wrench className="h-3 w-3" />
+            {t("tree.growthFix")}
+          </Button>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1 text-xs"
+          onClick={() => onShow(person)}
+        >
+          <Network className="h-3 w-3" />
+          {t("detail.showOnChart")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 text-xs"
+          title={t("tree.researchTourSkip")}
+          onClick={() => {
+            onSkip(current.key);
+            goNext();
+          }}
+        >
+          <X className="h-3 w-3" />
+          {t("tree.researchTourSkip")}
+        </Button>
+      </div>
+    </div>
+  );
+}

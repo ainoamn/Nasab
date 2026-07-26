@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
-import { Cake, Heart, Network, Printer, Gift } from "lucide-react";
+import { Cake, Heart, Network, Printer, Gift, CalendarPlus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   buildTreeOccasions,
   groupOccasionsByMonth,
+  type TreeOccasion,
 } from "@/lib/treeOccasions";
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
   rels: Relationship[];
   onPersonClick: (person: Person) => void;
   onPrintOccasion?: (person: Person) => void;
+  onAddToCalendar?: (ev: TreeOccasion) => void;
+  onCopyGreeting?: (ev: TreeOccasion) => void;
 };
 
 const MONTH_KEYS = [
@@ -38,6 +41,8 @@ export default function OccasionsPanel({
   rels,
   onPersonClick,
   onPrintOccasion,
+  onAddToCalendar,
+  onCopyGreeting,
 }: Props) {
   const { t } = useTranslation();
   const events = useMemo(() => buildTreeOccasions(people, rels), [people, rels]);
@@ -159,6 +164,30 @@ export default function OccasionsPanel({
                       <Network className="h-3 w-3" />
                       {t("detail.showOnChart")}
                     </Button>
+                    {onAddToCalendar && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => onAddToCalendar(ev)}
+                      >
+                        <CalendarPlus className="h-3 w-3" />
+                        {t("tree.occasionsAddCalendar")}
+                      </Button>
+                    )}
+                    {onCopyGreeting && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => onCopyGreeting(ev)}
+                      >
+                        <MessageSquare className="h-3 w-3" />
+                        {t("tree.occasionsCopyGreeting")}
+                      </Button>
+                    )}
                     {onPrintOccasion && (
                       <Button
                         type="button"

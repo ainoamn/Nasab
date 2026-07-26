@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
+import type { TreeOccasion } from "@/lib/treeOccasions";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
 import {
   dismissTodayEvents,
   isTodayEventsDismissed,
 } from "@/lib/dismissedTodayEvents";
-import { Cake, Heart, X } from "lucide-react";
+import { Cake, Heart, X, CalendarPlus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,8 @@ type Props = {
   people: Person[];
   rels: Relationship[];
   onPersonClick: (person: Person) => void;
+  onAddToCalendar?: (ev: TreeOccasion) => void;
+  onCopyGreeting?: (ev: TreeOccasion) => void;
   className?: string;
 };
 
@@ -24,6 +27,8 @@ export default function TodayEventsBanner({
   people,
   rels,
   onPersonClick,
+  onAddToCalendar,
+  onCopyGreeting,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -48,22 +53,50 @@ export default function TodayEventsBanner({
       </p>
       <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
         {today.map((ev) => (
-          <button
+          <div
             key={ev.key}
-            type="button"
-            onClick={() => ev.person && onPersonClick(ev.person)}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100/70"
+            className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-amber-200 bg-white pe-1 text-xs font-medium text-amber-950"
           >
-            {ev.kind === "birthday" ? (
-              <Cake className="h-3 w-3 shrink-0 text-sky-600" />
-            ) : (
-              <Heart className="h-3 w-3 shrink-0 text-pink-600" />
+            <button
+              type="button"
+              onClick={() => ev.person && onPersonClick(ev.person)}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 hover:bg-amber-100/70"
+            >
+              {ev.kind === "birthday" ? (
+                <Cake className="h-3 w-3 shrink-0 text-sky-600" />
+              ) : (
+                <Heart className="h-3 w-3 shrink-0 text-pink-600" />
+              )}
+              <span className="truncate">{ev.label}</span>
+              <span className="shrink-0 text-amber-800/70">
+                {t("tree.eventToday")}
+              </span>
+            </button>
+            {onAddToCalendar && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 shrink-0"
+                title={t("tree.occasionsAddCalendar")}
+                onClick={() => onAddToCalendar(ev)}
+              >
+                <CalendarPlus className="h-3 w-3" />
+              </Button>
             )}
-            <span className="truncate">{ev.label}</span>
-            <span className="shrink-0 text-amber-800/70">
-              {t("tree.eventToday")}
-            </span>
-          </button>
+            {onCopyGreeting && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 shrink-0"
+                title={t("tree.occasionsCopyGreeting")}
+                onClick={() => onCopyGreeting(ev)}
+              >
+                <MessageSquare className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
         ))}
       </div>
       <Button
