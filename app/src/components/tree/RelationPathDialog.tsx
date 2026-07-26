@@ -33,6 +33,7 @@ import {
   Copy,
   Printer,
   Star,
+  MessageCircle,
 } from "lucide-react";
 import type { RecentRelatePair } from "@/lib/recentRelates";
 import type { FavoriteRelatePair } from "@/lib/favoriteRelates";
@@ -51,6 +52,7 @@ type Props = {
   onShowOnChart?: (pathIds: number[]) => void;
   onCopyPathLink?: (fromId: number, toId: number) => void;
   onCopyPathText?: (fromId: number, toId: number) => void;
+  onWhatsAppPath?: (fromId: number, toId: number) => void;
   onCopyPersonCard?: (person: Person) => void;
   onCopyBothCards?: (fromId: number, toId: number) => void;
   onPrintCertificate?: (fromId: number, toId: number) => void;
@@ -234,6 +236,7 @@ export default function RelationPathDialog({
   onShowOnChart,
   onCopyPathLink,
   onCopyPathText,
+  onWhatsAppPath,
   onCopyPersonCard,
   onCopyBothCards,
   onPrintCertificate,
@@ -605,6 +608,17 @@ export default function RelationPathDialog({
                   >
                     <Copy className="h-4 w-4" />
                     {t("tree.copyPathText")}
+                  </Button>
+                )}
+                {onWhatsAppPath && path.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => onWhatsAppPath(fromNum, toNum)}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    {t("tree.sharePathWhatsApp")}
                   </Button>
                 )}
                 {onCopyPathLink && path.length > 1 && (

@@ -34,6 +34,7 @@ import FavoritesStrip from "@/components/tree/FavoritesStrip";
 import FavoriteRelatesStrip from "@/components/tree/FavoriteRelatesStrip";
 import RecentRelatesStrip from "@/components/tree/RecentRelatesStrip";
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
+import FamilyBriefPrintDialog from "@/components/tree/FamilyBriefPrintDialog";
 import ConsistencyTourStrip from "@/components/tree/ConsistencyTourStrip";
 import TreeGrowthChecklist from "@/components/tree/TreeGrowthChecklist";
 import SpouseDatesDialog from "@/components/tree/SpouseDatesDialog";
@@ -111,6 +112,7 @@ import {
   downloadIcs,
   occasionGreetingText,
 } from "@/lib/occasionShare";
+import { openWhatsAppShare } from "@/lib/whatsAppShare";
 import type { TreeOccasion } from "@/lib/treeOccasions";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
 import {
@@ -266,6 +268,7 @@ export default function TreeWorkspace() {
     null,
   );
   const [printOccasion, setPrintOccasion] = useState<TreeOccasion | null>(null);
+  const [familyBriefPrintOpen, setFamilyBriefPrintOpen] = useState(false);
   const [dismissedDiscoveryKeys, setDismissedDiscoveryKeys] = useState<string[]>([]);
   const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
@@ -929,6 +932,50 @@ export default function TreeWorkspace() {
     toast.success(t("tree.pathTextCopied"));
   };
 
+  const sharePathWhatsApp = (fromId: number, toId: number) => {
+    const from = peopleById.get(fromId);
+    const to = peopleById.get(toId);
+    if (!from || !to) return;
+    const hops = findRelationPath(fromId, toId, people, rels);
+    if (!hops || hops.length < 2) {
+      toast.error(t("tree.howRelatedNone"));
+      return;
+    }
+    const relKey = classifyRelationPath(fromId, toId, people, rels, hops);
+    const url = absoluteUrl(
+      buildTreePersonPath(treeId, fromId, { relate: toId, tab: "chart" }),
+    );
+    const viaLabel = (via: "parent" | "child" | "spouse") => {
+      if (via === "parent") return t("tree.pathViaParent");
+      if (via === "child") return t("tree.pathViaChild");
+      return t("tree.pathViaSpouse");
+    };
+    const text = formatRelationPathText({
+      fromName: from.givenName,
+      toName: to.givenName,
+      relationLabel: t(`tree.rel.${relKey}`),
+      hops,
+      peopleById,
+      viaLabel,
+      url,
+      commonAncestorName:
+        (() => {
+          const id = findCommonAncestorId(hops);
+          return id != null ? peopleById.get(id)?.givenName ?? null : null;
+        })(),
+      labels: {
+        headline: t("tree.pathTextHeadline"),
+        hopsHeader: t("tree.pathTextHops"),
+        linkHeader: t("tree.pathTextLink"),
+        commonAncestor: t("tree.commonAncestorAt"),
+      },
+    });
+    openWhatsAppShare(text);
+    setUrlRelateId(toId);
+    rememberRelate(fromId, toId);
+    toast.success(t("tree.whatsAppOpened"));
+  };
+
   const copyPersonCard = (person: Person) => {
     const url = absoluteUrl(
       buildTreePersonPath(treeId, person.id, { tab: "chart" }),
@@ -1000,23 +1047,30 @@ export default function TreeWorkspace() {
     toast.success(t("tree.icsDownloaded"));
   };
 
-  const shareOccasionGreeting = (ev: TreeOccasion) => {
-    if (!ev.person) return;
+  const buildGreetingForOccasion = (ev: TreeOccasion): string | null => {
+    if (!ev.person) return null;
     const personUrl = absoluteUrl(
       buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
     );
-    const text = occasionGreetingText(
-      ev.kind,
-      ev.person.givenName,
-      personUrl,
-      {
-        birthday: t("tree.greetingBirthday"),
-        anniversary: t("tree.greetingAnniversary"),
-        memorial: t("tree.greetingMemorial"),
-      },
-    );
+    return occasionGreetingText(ev.kind, ev.person.givenName, personUrl, {
+      birthday: t("tree.greetingBirthday"),
+      anniversary: t("tree.greetingAnniversary"),
+      memorial: t("tree.greetingMemorial"),
+    });
+  };
+
+  const shareOccasionGreeting = (ev: TreeOccasion) => {
+    const text = buildGreetingForOccasion(ev);
+    if (!text) return;
     void navigator.clipboard.writeText(text);
     toast.success(t("tree.greetingCopied"));
+  };
+
+  const shareOccasionWhatsApp = (ev: TreeOccasion) => {
+    const text = buildGreetingForOccasion(ev);
+    if (!text) return;
+    openWhatsAppShare(text);
+    toast.success(t("tree.whatsAppOpened"));
   };
 
   const downloadUpcomingOccasionsCalendar = () => {
@@ -1102,6 +1156,62 @@ export default function TreeWorkspace() {
     void navigator.clipboard.writeText(text);
     toast.success(t("tree.familyBriefCopied"));
   };
+
+  const familyBriefPrintData = useMemo(() => {
+    const all = buildTreeOccasions(occasionsPeople, occasionsRels);
+    const today = all.filter((e) => e.daysUntil === 0);
+    const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
+    const gaps = buildPersonGapsMap(people, rels, { skipNoPhoto: true });
+    const researchItems = buildResearchTourItems(
+      gaps,
+      peopleById,
+      dismissedDiscoveryKeys,
+      {
+        homeId: homePersonId,
+        favoriteIds,
+        recentIds,
+        allowedPersonIds: researchTourAllowedIds,
+      },
+    );
+    const top = researchItems.slice(0, 5);
+    const urlFor = (ev: TreeOccasion) =>
+      ev.person
+        ? absoluteUrl(
+            buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
+          )
+        : null;
+    return {
+      today: today.map((occasion) => ({
+        occasion,
+        url: urlFor(occasion),
+      })),
+      week: week.map((occasion) => ({
+        occasion,
+        url: urlFor(occasion),
+      })),
+      researchItems: top.map((item) => ({
+        name: item.personName,
+        gapLabel: t(`detail.gap.${item.kind}`),
+        url: absoluteUrl(
+          buildTreePersonPath(treeId, item.personId, { tab: "chart" }),
+        ),
+      })),
+      researchCount: researchItems.length,
+    };
+  }, [
+    occasionsPeople,
+    occasionsRels,
+    people,
+    rels,
+    peopleById,
+    dismissedDiscoveryKeys,
+    homePersonId,
+    favoriteIds,
+    recentIds,
+    researchTourAllowedIds,
+    treeId,
+    t,
+  ]);
 
   const filtered = useMemo(() => {
     const q = search.trim();
@@ -1424,6 +1534,7 @@ export default function TreeWorkspace() {
           onPersonClick={(p) => revealOnChart(p)}
           onAddToCalendar={shareOccasionCalendar}
           onCopyGreeting={shareOccasionGreeting}
+          onWhatsAppGreeting={shareOccasionWhatsApp}
         />
 
         <EventsStrip
@@ -1441,8 +1552,10 @@ export default function TreeWorkspace() {
           }}
           onAddToCalendar={shareOccasionCalendar}
           onCopyGreeting={shareOccasionGreeting}
+          onWhatsAppGreeting={shareOccasionWhatsApp}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
           onCopyFamilyBrief={copyFamilyBrief}
+          onPrintFamilyBrief={() => setFamilyBriefPrintOpen(true)}
         />
 
         <DiscoveriesPanel
@@ -2204,6 +2317,7 @@ export default function TreeWorkspace() {
               onPrintOccasion={(ev) => setPrintOccasion(ev)}
               onAddToCalendar={shareOccasionCalendar}
               onCopyGreeting={shareOccasionGreeting}
+              onWhatsAppGreeting={shareOccasionWhatsApp}
               onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
             />
           </TabsContent>
@@ -2338,6 +2452,7 @@ export default function TreeWorkspace() {
         }}
         onCopyPathLink={copyPathLink}
         onCopyPathText={copyPathText}
+        onWhatsAppPath={sharePathWhatsApp}
         recentPairs={recentRelatePairs}
         favoritePairs={favoriteRelatePairs}
         homePersonId={homePersonId}
@@ -2438,6 +2553,16 @@ export default function TreeWorkspace() {
               )
             : ""
         }
+      />
+
+      <FamilyBriefPrintDialog
+        open={familyBriefPrintOpen}
+        onOpenChange={setFamilyBriefPrintOpen}
+        today={familyBriefPrintData.today}
+        week={familyBriefPrintData.week}
+        researchItems={familyBriefPrintData.researchItems}
+        researchCount={familyBriefPrintData.researchCount}
+        treeName={tree.name}
       />
 
       <PersonProfilePrintDialog

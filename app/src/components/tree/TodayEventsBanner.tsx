@@ -7,7 +7,7 @@ import {
   dismissTodayEvents,
   isTodayEventsDismissed,
 } from "@/lib/dismissedTodayEvents";
-import { Cake, Heart, Flower2, X, CalendarPlus, MessageSquare } from "lucide-react";
+import { Cake, Heart, Flower2, X, CalendarPlus, MessageSquare, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ type Props = {
   onPersonClick: (person: Person) => void;
   onAddToCalendar?: (ev: TreeOccasion) => void;
   onCopyGreeting?: (ev: TreeOccasion) => void;
+  onWhatsAppGreeting?: (ev: TreeOccasion) => void;
   className?: string;
 };
 
@@ -29,6 +30,7 @@ export default function TodayEventsBanner({
   onPersonClick,
   onAddToCalendar,
   onCopyGreeting,
+  onWhatsAppGreeting,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -96,6 +98,18 @@ export default function TodayEventsBanner({
                 onClick={() => onCopyGreeting(ev)}
               >
                 <MessageSquare className="h-3 w-3" />
+              </Button>
+            )}
+            {onWhatsAppGreeting && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 shrink-0"
+                title={t("tree.occasionsWhatsApp")}
+                onClick={() => onWhatsAppGreeting(ev)}
+              >
+                <MessageCircle className="h-3 w-3" />
               </Button>
             )}
           </div>

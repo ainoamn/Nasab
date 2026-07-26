@@ -4,10 +4,13 @@ import { useTranslation } from "react-i18next";
 import FamilyChart from "@/components/tree/FamilyChart";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import EventsStrip from "@/components/tree/EventsStrip";
+import TodayEventsBanner from "@/components/tree/TodayEventsBanner";
+import OccasionsPanel from "@/components/tree/OccasionsPanel";
 import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
+import FamilyBriefPrintDialog from "@/components/tree/FamilyBriefPrintDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -23,6 +26,7 @@ import {
   ChevronLeft,
   Eye,
   Printer,
+  MessageCircle,
 } from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -54,6 +58,7 @@ import {
   downloadIcs,
   occasionGreetingText,
 } from "@/lib/occasionShare";
+import { openWhatsAppShare } from "@/lib/whatsAppShare";
 import { formatFamilyBrief } from "@/lib/familyBrief";
 import { buildTreeOccasions, type TreeOccasion } from "@/lib/treeOccasions";
 import {
@@ -94,6 +99,8 @@ export default function ShareView() {
   const [certOpen, setCertOpen] = useState(false);
   const [profilePrintOpen, setProfilePrintOpen] = useState(false);
   const [printOccasion, setPrintOccasion] = useState<TreeOccasion | null>(null);
+  const [familyBriefPrintOpen, setFamilyBriefPrintOpen] = useState(false);
+  const [showOccasionsPanel, setShowOccasionsPanel] = useState(false);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -254,6 +261,31 @@ export default function ShareView() {
     toast.success(t("tree.pathTextCopied"));
   };
 
+  const sharePathWhatsApp = () => {
+    if (!detail || !pathInfo) return;
+    const url = absoluteUrl(
+      buildSharePersonPath(shareToken, detail.id, { relate: relateId }),
+    );
+    const text = formatRelationPathText({
+      fromName: detail.givenName,
+      toName: pathInfo.relate.givenName,
+      relationLabel: pathInfo.label,
+      hops: pathInfo.hops,
+      peopleById,
+      viaLabel: (via) => viaLabel(via) ?? via,
+      url,
+      commonAncestorName: pathInfo.mrca?.givenName ?? null,
+      labels: {
+        headline: t("tree.pathTextHeadline"),
+        hopsHeader: t("tree.pathTextHops"),
+        linkHeader: t("tree.pathTextLink"),
+        commonAncestor: t("tree.commonAncestorAt"),
+      },
+    });
+    openWhatsAppShare(text);
+    toast.success(t("tree.whatsAppOpened"));
+  };
+
   const copyPersonCard = (person: Person) => {
     const url = absoluteUrl(buildSharePersonPath(shareToken, person.id));
     let relationLabel: string | null = null;
@@ -317,19 +349,30 @@ export default function ShareView() {
     toast.success(t("tree.icsDownloaded"));
   };
 
-  const shareOccasionGreeting = (ev: TreeOccasion) => {
-    if (!ev.person) return;
+  const buildGreetingForOccasion = (ev: TreeOccasion): string | null => {
+    if (!ev.person) return null;
     const personUrl = absoluteUrl(
       buildSharePersonPath(shareToken, ev.person.id),
     );
-    void navigator.clipboard.writeText(
-      occasionGreetingText(ev.kind, ev.person.givenName, personUrl, {
-        birthday: t("tree.greetingBirthday"),
-        anniversary: t("tree.greetingAnniversary"),
-        memorial: t("tree.greetingMemorial"),
-      }),
-    );
+    return occasionGreetingText(ev.kind, ev.person.givenName, personUrl, {
+      birthday: t("tree.greetingBirthday"),
+      anniversary: t("tree.greetingAnniversary"),
+      memorial: t("tree.greetingMemorial"),
+    });
+  };
+
+  const shareOccasionGreeting = (ev: TreeOccasion) => {
+    const text = buildGreetingForOccasion(ev);
+    if (!text) return;
+    void navigator.clipboard.writeText(text);
     toast.success(t("tree.greetingCopied"));
+  };
+
+  const shareOccasionWhatsApp = (ev: TreeOccasion) => {
+    const text = buildGreetingForOccasion(ev);
+    if (!text) return;
+    openWhatsAppShare(text);
+    toast.success(t("tree.whatsAppOpened"));
   };
 
   const downloadUpcomingOccasionsCalendar = () => {
@@ -384,6 +427,26 @@ export default function ShareView() {
     void navigator.clipboard.writeText(text);
     toast.success(t("tree.familyBriefCopied"));
   };
+
+  const familyBriefPrintData = useMemo(() => {
+    const all = buildTreeOccasions(occasionsPeople, occasionsRels);
+    const today = all.filter((e) => e.daysUntil === 0);
+    const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
+    const urlFor = (ev: TreeOccasion) =>
+      ev.person
+        ? absoluteUrl(buildSharePersonPath(shareToken, ev.person.id))
+        : null;
+    return {
+      today: today.map((occasion) => ({
+        occasion,
+        url: urlFor(occasion),
+      })),
+      week: week.map((occasion) => ({
+        occasion,
+        url: urlFor(occasion),
+      })),
+    };
+  }, [occasionsPeople, occasionsRels, shareToken]);
 
   if (query.isLoading) {
     return (
@@ -494,6 +557,16 @@ export default function ShareView() {
                   size="sm"
                   variant="ghost"
                   className="h-7 gap-1 text-xs"
+                  onClick={sharePathWhatsApp}
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  {t("tree.sharePathWhatsApp")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 text-xs"
                   onClick={() => setCertOpen(true)}
                 >
                   <Printer className="h-3 w-3" />
@@ -575,10 +648,21 @@ export default function ShareView() {
           }}
         />
 
+        <TodayEventsBanner
+          treeId={treeId}
+          people={occasionsPeople}
+          rels={occasionsRels}
+          onPersonClick={(p) => openPerson(p)}
+          onAddToCalendar={shareOccasionCalendar}
+          onCopyGreeting={shareOccasionGreeting}
+          onWhatsAppGreeting={shareOccasionWhatsApp}
+        />
+
         <EventsStrip
           people={occasionsPeople}
           rels={occasionsRels}
           onPersonClick={(p) => openPerson(p)}
+          onSeeAll={() => setShowOccasionsPanel((v) => !v)}
           onPrintOccasion={(ev) => setPrintOccasion(ev)}
           onCopyPersonLink={(p) => {
             const url = absoluteUrl(buildSharePersonPath(shareToken, p.id));
@@ -587,9 +671,26 @@ export default function ShareView() {
           }}
           onAddToCalendar={shareOccasionCalendar}
           onCopyGreeting={shareOccasionGreeting}
+          onWhatsAppGreeting={shareOccasionWhatsApp}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
           onCopyFamilyBrief={copyFamilyBrief}
+          onPrintFamilyBrief={() => setFamilyBriefPrintOpen(true)}
         />
+
+        {showOccasionsPanel && (
+          <div className="mb-4 rounded-2xl border bg-card p-4 shadow-sm">
+            <OccasionsPanel
+              people={occasionsPeople}
+              rels={occasionsRels}
+              onPersonClick={(p) => openPerson(p)}
+              onPrintOccasion={(ev) => setPrintOccasion(ev)}
+              onAddToCalendar={shareOccasionCalendar}
+              onCopyGreeting={shareOccasionGreeting}
+              onWhatsAppGreeting={shareOccasionWhatsApp}
+              onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
+            />
+          </div>
+        )}
 
         <Card>
           <CardContent className="p-2">
@@ -779,6 +880,14 @@ export default function ShareView() {
               )
             : ""
         }
+      />
+
+      <FamilyBriefPrintDialog
+        open={familyBriefPrintOpen}
+        onOpenChange={setFamilyBriefPrintOpen}
+        today={familyBriefPrintData.today}
+        week={familyBriefPrintData.week}
+        treeName={tree.name}
       />
 
       <PersonProfilePrintDialog

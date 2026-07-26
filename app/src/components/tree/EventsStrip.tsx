@@ -12,6 +12,7 @@ import {
   MessageSquare,
   CalendarRange,
   ClipboardList,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
@@ -26,8 +27,10 @@ type Props = {
   onCopyPersonLink?: (person: Person) => void;
   onAddToCalendar?: (ev: TreeOccasion) => void;
   onCopyGreeting?: (ev: TreeOccasion) => void;
+  onWhatsAppGreeting?: (ev: TreeOccasion) => void;
   onDownloadUpcomingCalendar?: () => void;
   onCopyFamilyBrief?: () => void;
+  onPrintFamilyBrief?: () => void;
   className?: string;
 };
 
@@ -66,8 +69,10 @@ export default function EventsStrip({
   onCopyPersonLink,
   onAddToCalendar,
   onCopyGreeting,
+  onWhatsAppGreeting,
   onDownloadUpcomingCalendar,
   onCopyFamilyBrief,
+  onPrintFamilyBrief,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -91,7 +96,11 @@ export default function EventsStrip({
   }
 
   const hasActions =
-    onPrintOccasion || onCopyPersonLink || onAddToCalendar || onCopyGreeting;
+    onPrintOccasion ||
+    onCopyPersonLink ||
+    onAddToCalendar ||
+    onCopyGreeting ||
+    onWhatsAppGreeting;
 
   return (
     <div className={cn("mb-4", className)}>
@@ -109,6 +118,18 @@ export default function EventsStrip({
             >
               <ClipboardList className="h-3 w-3" />
               {t("tree.copyFamilyBrief")}
+            </Button>
+          )}
+          {onPrintFamilyBrief && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={onPrintFamilyBrief}
+            >
+              <Printer className="h-3 w-3" />
+              {t("tree.printFamilyBrief")}
             </Button>
           )}
           {onDownloadUpcomingCalendar && (
@@ -205,6 +226,21 @@ export default function EventsStrip({
                       }}
                     >
                       <MessageSquare className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onWhatsAppGreeting && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title={t("tree.occasionsWhatsApp")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onWhatsAppGreeting(ev);
+                      }}
+                    >
+                      <MessageCircle className="h-3 w-3" />
                     </Button>
                   )}
                   {onPrintOccasion && (

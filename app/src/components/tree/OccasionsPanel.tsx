@@ -10,6 +10,7 @@ import {
   Gift,
   CalendarPlus,
   MessageSquare,
+  MessageCircle,
   CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ type Props = {
   onPrintOccasion?: (ev: TreeOccasion) => void;
   onAddToCalendar?: (ev: TreeOccasion) => void;
   onCopyGreeting?: (ev: TreeOccasion) => void;
+  onWhatsAppGreeting?: (ev: TreeOccasion) => void;
   onDownloadUpcomingCalendar?: () => void;
 };
 
@@ -82,6 +84,7 @@ export default function OccasionsPanel({
   onPrintOccasion,
   onAddToCalendar,
   onCopyGreeting,
+  onWhatsAppGreeting,
   onDownloadUpcomingCalendar,
 }: Props) {
   const { t } = useTranslation();
@@ -233,6 +236,18 @@ export default function OccasionsPanel({
                         >
                           <MessageSquare className="h-3 w-3" />
                           {t("tree.occasionsCopyGreeting")}
+                        </Button>
+                      )}
+                      {onWhatsAppGreeting && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => onWhatsAppGreeting(ev)}
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                          {t("tree.occasionsWhatsApp")}
                         </Button>
                       )}
                       {onPrintOccasion && (
