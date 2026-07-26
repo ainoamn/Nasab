@@ -7,7 +7,7 @@ import {
   dismissTodayEvents,
   isTodayEventsDismissed,
 } from "@/lib/dismissedTodayEvents";
-import { Cake, Heart, X, CalendarPlus, MessageSquare } from "lucide-react";
+import { Cake, Heart, Flower2, X, CalendarPlus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +64,8 @@ export default function TodayEventsBanner({
             >
               {ev.kind === "birthday" ? (
                 <Cake className="h-3 w-3 shrink-0 text-sky-600" />
+              ) : ev.kind === "memorial" ? (
+                <Flower2 className="h-3 w-3 shrink-0 text-stone-600" />
               ) : (
                 <Heart className="h-3 w-3 shrink-0 text-pink-600" />
               )}

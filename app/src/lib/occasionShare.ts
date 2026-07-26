@@ -105,11 +105,13 @@ export function occasionGreetingText(
   kind: TreeOccasion["kind"],
   name: string,
   personUrl: string,
-  labels: { birthday: string; anniversary: string },
+  labels: { birthday: string; anniversary: string; memorial: string },
 ): string {
   const body =
     kind === "birthday"
       ? labels.birthday.replace("{{name}}", name)
-      : labels.anniversary.replace("{{name}}", name);
+      : kind === "memorial"
+        ? labels.memorial.replace("{{name}}", name)
+        : labels.anniversary.replace("{{name}}", name);
   return `${body}\n${personUrl}`;
 }

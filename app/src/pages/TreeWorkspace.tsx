@@ -32,6 +32,8 @@ import GedcomImportDialog from "@/components/tree/GedcomImportDialog";
 import RecentPeopleStrip from "@/components/tree/RecentPeopleStrip";
 import FavoritesStrip from "@/components/tree/FavoritesStrip";
 import FavoriteRelatesStrip from "@/components/tree/FavoriteRelatesStrip";
+import RecentRelatesStrip from "@/components/tree/RecentRelatesStrip";
+import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
 import ConsistencyTourStrip from "@/components/tree/ConsistencyTourStrip";
 import TreeGrowthChecklist from "@/components/tree/TreeGrowthChecklist";
 import SpouseDatesDialog from "@/components/tree/SpouseDatesDialog";
@@ -263,6 +265,7 @@ export default function TreeWorkspace() {
   const [profilePrintPerson, setProfilePrintPerson] = useState<Person | null>(
     null,
   );
+  const [printOccasion, setPrintOccasion] = useState<TreeOccasion | null>(null);
   const [dismissedDiscoveryKeys, setDismissedDiscoveryKeys] = useState<string[]>([]);
   const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
@@ -969,17 +972,27 @@ export default function TreeWorkspace() {
     toast.success(t("tree.personCardCopied"));
   };
 
+  const occasionIcsTitle = (ev: TreeOccasion) => {
+    if (ev.kind === "birthday") {
+      return t("tree.icsBirthdayTitle", {
+        name: ev.person?.givenName ?? ev.label,
+      });
+    }
+    if (ev.kind === "memorial") {
+      return t("tree.icsMemorialTitle", {
+        name: ev.person?.givenName ?? ev.label,
+      });
+    }
+    return t("tree.icsAnniversaryTitle", { name: ev.label });
+  };
+
   const shareOccasionCalendar = (ev: TreeOccasion) => {
     if (!ev.person) return;
     const personUrl = absoluteUrl(
       buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
     );
-    const title =
-      ev.kind === "birthday"
-        ? t("tree.icsBirthdayTitle", { name: ev.person.givenName })
-        : t("tree.icsAnniversaryTitle", { name: ev.label });
     const content = buildOccasionIcs(ev, {
-      title,
+      title: occasionIcsTitle(ev),
       description: t("tree.icsDescription", { url: personUrl }),
       url: personUrl,
     });
@@ -999,6 +1012,7 @@ export default function TreeWorkspace() {
       {
         birthday: t("tree.greetingBirthday"),
         anniversary: t("tree.greetingAnniversary"),
+        memorial: t("tree.greetingMemorial"),
       },
     );
     void navigator.clipboard.writeText(text);
@@ -1020,15 +1034,9 @@ export default function TreeWorkspace() {
             buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
           )
         : undefined;
-      const title =
-        ev.kind === "birthday"
-          ? t("tree.icsBirthdayTitle", {
-              name: ev.person?.givenName ?? ev.label,
-            })
-          : t("tree.icsAnniversaryTitle", { name: ev.label });
       return {
         ev,
-        title,
+        title: occasionIcsTitle(ev),
         description: t("tree.icsDescription", {
           url: personUrl ?? "",
         }),
@@ -1084,6 +1092,7 @@ export default function TreeWorkspace() {
         emptyWeek: t("tree.familyBriefEmptyWeek"),
         birthday: t("tree.eventBirthday"),
         anniversary: t("tree.eventAnniversary"),
+        memorial: t("tree.eventMemorial"),
         todayTag: t("tree.eventToday"),
         inDays: t("tree.familyBriefInDays"),
         researchHeader: t("tree.familyBriefResearchHeader"),
@@ -1358,6 +1367,41 @@ export default function TreeWorkspace() {
           }}
         />
 
+        <RecentRelatesStrip
+          people={people}
+          rels={rels}
+          pairs={recentRelatePairs}
+          onOpenCompare={(a, b) => {
+            setHowRelatedPair({ from: a, to: b });
+            setHowRelatedOpen(true);
+          }}
+          onShowPath={(ids) => {
+            setHighlightPathIds(ids);
+            setChartView("family");
+            setMainTab("chart");
+            if (ids.length >= 2) setUrlRelateId(ids[ids.length - 1]!);
+            if (ids[0] != null) requestCenterOn(ids[0]);
+            toast.success(t("tree.pathHighlightActive", { count: ids.length }));
+          }}
+          onPrintCert={(a, b) => {
+            setKinshipCertPair({ from: a, to: b });
+            setKinshipCertOpen(true);
+          }}
+          onPin={(a, b) => {
+            const next = toggleFavoriteRelate(treeId, a, b);
+            setFavoriteRelatePairs(next);
+            const pinned = next.some(
+              (p) =>
+                (p.a === a && p.b === b) || (p.a === b && p.b === a),
+            );
+            toast.success(
+              pinned
+                ? t("tree.favoriteRelateAdded")
+                : t("tree.favoriteRelateRemoved"),
+            );
+          }}
+        />
+
         <RecentPeopleStrip
           people={people}
           recentIds={recentIds}
@@ -1387,11 +1431,7 @@ export default function TreeWorkspace() {
           rels={occasionsRels}
           onPersonClick={(p) => revealOnChart(p)}
           onSeeAll={() => setMainTab("occasions")}
-          onPrintOccasion={(p) =>
-            navigate(
-              buildPrintRootPath(treeId, p.id, { template: "occasions" }),
-            )
-          }
+          onPrintOccasion={(ev) => setPrintOccasion(ev)}
           onCopyPersonLink={(p) => {
             const url = absoluteUrl(
               buildTreePersonPath(treeId, p.id, { tab: "chart" }),
@@ -2161,11 +2201,7 @@ export default function TreeWorkspace() {
               people={occasionsPeople}
               rels={occasionsRels}
               onPersonClick={(p) => revealOnChart(p)}
-              onPrintOccasion={(p) =>
-                navigate(
-                  buildPrintRootPath(treeId, p.id, { template: "occasions" }),
-                )
-              }
+              onPrintOccasion={(ev) => setPrintOccasion(ev)}
               onAddToCalendar={shareOccasionCalendar}
               onCopyGreeting={shareOccasionGreeting}
               onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
@@ -2378,6 +2414,25 @@ export default function TreeWorkspace() {
             ? absoluteUrl(
                 buildTreePersonPath(treeId, kinshipCertPair.from, {
                   relate: kinshipCertPair.to,
+                  tab: "chart",
+                }),
+              )
+            : ""
+        }
+      />
+
+      <OccasionCardPrintDialog
+        open={!!printOccasion}
+        onOpenChange={(o) => !o && setPrintOccasion(null)}
+        occasion={printOccasion}
+        people={people}
+        rels={rels}
+        homePersonId={homePersonId}
+        treeName={tree.name}
+        personUrl={
+          printOccasion?.person
+            ? absoluteUrl(
+                buildTreePersonPath(treeId, printOccasion.person.id, {
                   tab: "chart",
                 }),
               )

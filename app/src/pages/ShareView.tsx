@@ -7,6 +7,7 @@ import EventsStrip from "@/components/tree/EventsStrip";
 import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
+import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ export default function ShareView() {
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [certOpen, setCertOpen] = useState(false);
   const [profilePrintOpen, setProfilePrintOpen] = useState(false);
+  const [printOccasion, setPrintOccasion] = useState<TreeOccasion | null>(null);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -285,19 +287,29 @@ export default function ShareView() {
     toast.success(t("tree.personCardCopied"));
   };
 
+  const occasionIcsTitle = (ev: TreeOccasion) => {
+    if (ev.kind === "birthday") {
+      return t("tree.icsBirthdayTitle", {
+        name: ev.person?.givenName ?? ev.label,
+      });
+    }
+    if (ev.kind === "memorial") {
+      return t("tree.icsMemorialTitle", {
+        name: ev.person?.givenName ?? ev.label,
+      });
+    }
+    return t("tree.icsAnniversaryTitle", { name: ev.label });
+  };
+
   const shareOccasionCalendar = (ev: TreeOccasion) => {
     if (!ev.person) return;
     const personUrl = absoluteUrl(
       buildSharePersonPath(shareToken, ev.person.id),
     );
-    const title =
-      ev.kind === "birthday"
-        ? t("tree.icsBirthdayTitle", { name: ev.person.givenName })
-        : t("tree.icsAnniversaryTitle", { name: ev.label });
     downloadIcs(
       `nasab-${ev.key}`,
       buildOccasionIcs(ev, {
-        title,
+        title: occasionIcsTitle(ev),
         description: t("tree.icsDescription", { url: personUrl }),
         url: personUrl,
       }),
@@ -314,6 +326,7 @@ export default function ShareView() {
       occasionGreetingText(ev.kind, ev.person.givenName, personUrl, {
         birthday: t("tree.greetingBirthday"),
         anniversary: t("tree.greetingAnniversary"),
+        memorial: t("tree.greetingMemorial"),
       }),
     );
     toast.success(t("tree.greetingCopied"));
@@ -333,12 +346,7 @@ export default function ShareView() {
         : undefined;
       return {
         ev,
-        title:
-          ev.kind === "birthday"
-            ? t("tree.icsBirthdayTitle", {
-                name: ev.person?.givenName ?? ev.label,
-              })
-            : t("tree.icsAnniversaryTitle", { name: ev.label }),
+        title: occasionIcsTitle(ev),
         description: t("tree.icsDescription", { url: personUrl ?? "" }),
         url: personUrl,
       };
@@ -367,6 +375,7 @@ export default function ShareView() {
         emptyWeek: t("tree.familyBriefEmptyWeek"),
         birthday: t("tree.eventBirthday"),
         anniversary: t("tree.eventAnniversary"),
+        memorial: t("tree.eventMemorial"),
         todayTag: t("tree.eventToday"),
         inDays: t("tree.familyBriefInDays"),
         researchFooter: t("tree.familyBriefResearch"),
@@ -570,6 +579,7 @@ export default function ShareView() {
           people={occasionsPeople}
           rels={occasionsRels}
           onPersonClick={(p) => openPerson(p)}
+          onPrintOccasion={(ev) => setPrintOccasion(ev)}
           onCopyPersonLink={(p) => {
             const url = absoluteUrl(buildSharePersonPath(shareToken, p.id));
             void navigator.clipboard.writeText(url);
@@ -749,6 +759,23 @@ export default function ShareView() {
                 buildSharePersonPath(shareToken, detail.id, {
                   relate: relateId,
                 }),
+              )
+            : ""
+        }
+      />
+
+      <OccasionCardPrintDialog
+        open={!!printOccasion}
+        onOpenChange={(o) => !o && setPrintOccasion(null)}
+        occasion={printOccasion}
+        people={people}
+        rels={rels}
+        homePersonId={detail?.id ?? null}
+        treeName={tree.name}
+        personUrl={
+          printOccasion?.person
+            ? absoluteUrl(
+                buildSharePersonPath(shareToken, printOccasion.person.id),
               )
             : ""
         }

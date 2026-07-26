@@ -48,6 +48,7 @@ describe("formatFamilyBrief", () => {
         emptyWeek: "لا شيء قريباً",
         birthday: "عيد ميلاد",
         anniversary: "زواج",
+        memorial: "ذكرى",
         todayTag: "اليوم",
         inDays: "خلال {{n}} يوم",
         researchHeader: "أولويات البحث:",
@@ -60,6 +61,40 @@ describe("formatFamilyBrief", () => {
     expect(text).toContain("خالد");
     expect(text).toContain("سنة الميلاد ناقصة");
     expect(text).toContain("3 نقص بحث");
+  });
+
+  it("labels memorial occasions", () => {
+    const today: TreeOccasion[] = [
+      {
+        key: "d-1",
+        kind: "memorial",
+        month: 7,
+        day: 26,
+        label: "فاطمة",
+        daysUntil: 0,
+      },
+    ];
+    const text = formatFamilyBrief({
+      today,
+      week: [],
+      researchCount: 0,
+      urlFor: () => null,
+      labels: {
+        title: "ملخص",
+        todayHeader: "اليوم",
+        weekHeader: "أسبوع",
+        emptyToday: "—",
+        emptyWeek: "—",
+        birthday: "عيد ميلاد",
+        anniversary: "زواج",
+        memorial: "ذكرى وفاة",
+        todayTag: "اليوم",
+        inDays: "خلال {{n}} يوم",
+        researchFooter: "{{count}}",
+      },
+    });
+    expect(text).toContain("فاطمة");
+    expect(text).toContain("ذكرى وفاة");
   });
 });
 

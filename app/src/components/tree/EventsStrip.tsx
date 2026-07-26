@@ -2,7 +2,17 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import type { TreeOccasion } from "@/lib/treeOccasions";
-import { Cake, Heart, Link as LinkIcon, Printer, CalendarPlus, MessageSquare, CalendarRange, ClipboardList } from "lucide-react";
+import {
+  Cake,
+  Heart,
+  Flower2,
+  Link as LinkIcon,
+  Printer,
+  CalendarPlus,
+  MessageSquare,
+  CalendarRange,
+  ClipboardList,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
 import { Button } from "@/components/ui/button";
@@ -12,7 +22,7 @@ type Props = {
   rels: Relationship[];
   onPersonClick?: (person: Person) => void;
   onSeeAll?: () => void;
-  onPrintOccasion?: (person: Person) => void;
+  onPrintOccasion?: (ev: TreeOccasion) => void;
   onCopyPersonLink?: (person: Person) => void;
   onAddToCalendar?: (ev: TreeOccasion) => void;
   onCopyGreeting?: (ev: TreeOccasion) => void;
@@ -21,7 +31,32 @@ type Props = {
   className?: string;
 };
 
-/** شريط مناسبات قريبة: أعياد ميلاد وذكريات زواج + طباعة/رابط/تقويم/تهنئة */
+function kindMeta(kind: TreeOccasion["kind"], t: (k: string) => string) {
+  if (kind === "memorial") {
+    return {
+      border: "border-stone-200",
+      iconBg: "bg-stone-100 text-stone-700",
+      Icon: Flower2,
+      label: t("tree.eventMemorial"),
+    };
+  }
+  if (kind === "anniversary") {
+    return {
+      border: "border-pink-200",
+      iconBg: "bg-pink-100 text-pink-700",
+      Icon: Heart,
+      label: t("tree.eventAnniversary"),
+    };
+  }
+  return {
+    border: "border-sky-200",
+    iconBg: "bg-sky-100 text-sky-700",
+    Icon: Cake,
+    label: t("tree.eventBirthday"),
+  };
+}
+
+/** شريط مناسبات قريبة: ميلاد / زواج / ذكرى + طباعة/رابط/تقويم/تهنئة */
 export default function EventsStrip({
   people,
   rels,
@@ -102,115 +137,111 @@ export default function EventsStrip({
         </div>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {events.map((ev) => (
-          <div
-            key={ev.key}
-            className={cn(
-              "flex min-w-[11rem] shrink-0 items-stretch gap-1 rounded-xl border bg-card px-2 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
-              ev.kind === "birthday" ? "border-sky-200" : "border-pink-200",
-              ev.daysUntil === 0 && "ring-1 ring-amber-400/60",
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => ev.person && onPersonClick?.(ev.person)}
-              className="flex min-w-0 flex-1 items-center gap-2 text-start"
+        {events.map((ev) => {
+          const meta = kindMeta(ev.kind, t);
+          const Icon = meta.Icon;
+          return (
+            <div
+              key={ev.key}
+              className={cn(
+                "flex min-w-[11rem] shrink-0 items-stretch gap-1 rounded-xl border bg-card px-2 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+                meta.border,
+                ev.daysUntil === 0 && "ring-1 ring-amber-400/60",
+              )}
             >
-              <span
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                  ev.kind === "birthday"
-                    ? "bg-sky-100 text-sky-700"
-                    : "bg-pink-100 text-pink-700",
-                )}
+              <button
+                type="button"
+                onClick={() => ev.person && onPersonClick?.(ev.person)}
+                className="flex min-w-0 flex-1 items-center gap-2 text-start"
               >
-                {ev.kind === "birthday" ? (
-                  <Cake className="h-4 w-4" />
-                ) : (
-                  <Heart className="h-4 w-4" />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-xs font-semibold">
-                  {ev.label}
+                <span
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    meta.iconBg,
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
                 </span>
-                <span className="block text-[10px] text-muted-foreground">
-                  {ev.kind === "birthday"
-                    ? t("tree.eventBirthday")
-                    : t("tree.eventAnniversary")}
-                  {" · "}
-                  {ev.daysUntil === 0
-                    ? t("tree.eventToday")
-                    : t("tree.eventInDays", { n: ev.daysUntil })}
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-semibold">
+                    {ev.label}
+                  </span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {meta.label}
+                    {" · "}
+                    {ev.daysUntil === 0
+                      ? t("tree.eventToday")
+                      : t("tree.eventInDays", { n: ev.daysUntil })}
+                  </span>
                 </span>
-              </span>
-            </button>
-            {ev.person && hasActions && (
-              <div className="flex flex-col justify-center gap-0.5 border-s ps-1">
-                {onAddToCalendar && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    title={t("tree.occasionsAddCalendar")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddToCalendar(ev);
-                    }}
-                  >
-                    <CalendarPlus className="h-3 w-3" />
-                  </Button>
-                )}
-                {onCopyGreeting && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    title={t("tree.occasionsCopyGreeting")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCopyGreeting(ev);
-                    }}
-                  >
-                    <MessageSquare className="h-3 w-3" />
-                  </Button>
-                )}
-                {onPrintOccasion && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    title={t("tree.occasionsPrint")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPrintOccasion(ev.person!);
-                    }}
-                  >
-                    <Printer className="h-3 w-3" />
-                  </Button>
-                )}
-                {onCopyPersonLink && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    title={t("detail.copyPersonLink")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCopyPersonLink(ev.person!);
-                    }}
-                  >
-                    <LinkIcon className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+              </button>
+              {ev.person && hasActions && (
+                <div className="flex flex-col justify-center gap-0.5 border-s ps-1">
+                  {onAddToCalendar && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title={t("tree.occasionsAddCalendar")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToCalendar(ev);
+                      }}
+                    >
+                      <CalendarPlus className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onCopyGreeting && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title={t("tree.occasionsCopyGreeting")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCopyGreeting(ev);
+                      }}
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onPrintOccasion && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title={t("tree.occasionsPrint")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPrintOccasion(ev);
+                      }}
+                    >
+                      <Printer className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onCopyPersonLink && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title={t("detail.copyPersonLink")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCopyPersonLink(ev.person!);
+                      }}
+                    >
+                      <LinkIcon className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

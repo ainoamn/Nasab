@@ -1,8 +1,10 @@
 import type { Person, Relationship } from "@db/tables";
 
+export type TreeOccasionKind = "birthday" | "anniversary" | "memorial";
+
 export type TreeOccasion = {
   key: string;
-  kind: "birthday" | "anniversary";
+  kind: TreeOccasionKind;
   month: number;
   day: number;
   label: string;
@@ -20,7 +22,7 @@ export function daysUntilMd(month: number, day: number, from = new Date()): numb
   return Math.round((next.getTime() - today.getTime()) / 86400000);
 }
 
-/** مناسبات السنة القادمة: أعياد ميلاد وذكريات زواج */
+/** مناسبات السنة القادمة: ميلاد، زواج، وذكرى وفاة */
 export function buildTreeOccasions(
   people: Person[],
   rels: Relationship[],
@@ -39,6 +41,17 @@ export function buildTreeOccasions(
         label: p.givenName,
         person: p,
         daysUntil: daysUntilMd(p.birthMonth, p.birthDay),
+      });
+    }
+    if (p.deathMonth && p.deathDay) {
+      list.push({
+        key: `d-${p.id}`,
+        kind: "memorial",
+        month: p.deathMonth,
+        day: p.deathDay,
+        label: p.givenName,
+        person: p,
+        daysUntil: daysUntilMd(p.deathMonth, p.deathDay),
       });
     }
   }

@@ -21,6 +21,7 @@ export function formatFamilyBrief(opts: {
     emptyWeek: string;
     birthday: string;
     anniversary: string;
+    memorial: string;
     todayTag: string;
     inDays: string; // "{{n}}"
     researchFooter: string; // "{{count}}"
@@ -29,13 +30,18 @@ export function formatFamilyBrief(opts: {
 }): string {
   const lines: string[] = [opts.labels.title, ""];
 
+  const kindLabel = (kind: TreeOccasion["kind"]) => {
+    if (kind === "birthday") return opts.labels.birthday;
+    if (kind === "memorial") return opts.labels.memorial;
+    return opts.labels.anniversary;
+  };
+
   lines.push(opts.labels.todayHeader);
   if (opts.today.length === 0) {
     lines.push(opts.labels.emptyToday);
   } else {
     for (const ev of opts.today) {
-      const kind =
-        ev.kind === "birthday" ? opts.labels.birthday : opts.labels.anniversary;
+      const kind = kindLabel(ev.kind);
       const url = opts.urlFor(ev);
       lines.push(`• ${ev.label} — ${kind} (${opts.labels.todayTag})`);
       if (url) lines.push(`  ${url}`);
@@ -47,8 +53,7 @@ export function formatFamilyBrief(opts: {
     lines.push(opts.labels.emptyWeek);
   } else {
     for (const ev of opts.week) {
-      const kind =
-        ev.kind === "birthday" ? opts.labels.birthday : opts.labels.anniversary;
+      const kind = kindLabel(ev.kind);
       const when = opts.labels.inDays.replace("{{n}}", String(ev.daysUntil));
       const url = opts.urlFor(ev);
       lines.push(`• ${ev.label} — ${kind} (${when})`);
