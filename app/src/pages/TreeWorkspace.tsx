@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
@@ -11,6 +11,7 @@ import TreeHomeBanner from "@/components/tree/TreeHomeBanner";
 import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
 import PhotosGallery from "@/components/tree/PhotosGallery";
 import EventsStrip from "@/components/tree/EventsStrip";
+import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -26,6 +27,8 @@ import {
 } from "@/lib/familyGraph";
 import { relationToFocus } from "@/lib/relationshipLabel";
 import { collectCloseFamily } from "@/lib/closeFamily";
+import { limitPeopleByGenerations } from "@/lib/generationLimit";
+import { buildGedcom, downloadGedcom } from "@/lib/gedcomExport";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -108,6 +111,9 @@ import {
   GitBranch,
   Fan,
   Home,
+  Maximize2,
+  Minimize2,
+  Download,
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -139,6 +145,17 @@ export default function TreeWorkspace() {
   const [chartView, setChartView] = useState<
     "family" | "close" | "pedigree" | "fan"
   >("family");
+  const [chartFullscreen, setChartFullscreen] = useState(false);
+  const [maxGenerations, setMaxGenerations] = useState(8);
+
+  useEffect(() => {
+    if (!chartFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChartFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chartFullscreen]);
 
   /** بعد إضافة/تعديل: اخرج من وضع التركيز دون إعادة تركيب المخطط (يحافظ على السحب والتكبير) */
   const refreshChart = () => {
@@ -184,6 +201,24 @@ export default function TreeWorkspace() {
     }
     return collectCloseFamily(closeFocusId, people, rels);
   }, [chartView, closeFocusId, chartPeople, chartRels, people, rels]);
+
+  const familyViewData = useMemo(() => {
+    if (chartView === "close") return closeSubgraph;
+    if (chartView !== "family") return { people: chartPeople, rels: chartRels };
+    return limitPeopleByGenerations(
+      chartPeople,
+      chartRels,
+      maxGenerations,
+      chartFocusId,
+    );
+  }, [
+    chartView,
+    closeSubgraph,
+    chartPeople,
+    chartRels,
+    maxGenerations,
+    chartFocusId,
+  ]);
 
   const unlinkedIds = useMemo(
     () => findUnlinkedPersonIds(people, rels),
@@ -397,6 +432,20 @@ export default function TreeWorkspace() {
                   <span className="hidden sm:inline">{t("tree.print")}</span>
                 </Link>
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                title={t("tree.exportGedcom")}
+                onClick={() => {
+                  const content = buildGedcom(tree.name, people, rels);
+                  downloadGedcom(`${tree.name || "nasab"}.ged`, content);
+                  toast.success(t("tree.exportGedcomDone"));
+                }}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("tree.exportGedcom")}</span>
+              </Button>
               {canAdmin && treeStatus === "active" && (
                 <Button
                   size="sm"
@@ -450,6 +499,20 @@ export default function TreeWorkspace() {
             setDetailPerson(p);
             setChartFocusId(p.id);
           }}
+        />
+
+        <DiscoveriesPanel
+          people={people}
+          rels={rels}
+          canWrite={canWrite}
+          onOpenPerson={(id) => {
+            const p = peopleById.get(id);
+            if (p) {
+              setDetailPerson(p);
+              setChartFocusId(id);
+            }
+          }}
+          onAddParent={(personId, role) => openAddRelative(personId, role)}
         />
 
         <Tabs defaultValue="chart" className="min-w-0">
@@ -515,25 +578,80 @@ export default function TreeWorkspace() {
                   onSelect={(p) => {
                     setDetailPerson(p);
                     setChartFocusId(p.id);
-                    if (chartView === "family") {
-                      // يبقى في العرض العائلي مع تمييز البطاقة
-                    }
                   }}
                 />
+                {chartView === "family" && (
+                  <div className="flex items-center gap-1.5 rounded-xl border bg-card px-2 py-1 text-xs">
+                    <Label htmlFor="max-gen" className="text-muted-foreground whitespace-nowrap">
+                      {t("chart.maxGenerations")}
+                    </Label>
+                    <select
+                      id="max-gen"
+                      className="h-7 rounded-md border bg-background px-1.5 text-xs"
+                      value={maxGenerations}
+                      onChange={(e) => setMaxGenerations(Number(e.target.value))}
+                    >
+                      {[3, 4, 5, 6, 8, 10, 12, 99].map((n) => (
+                        <option key={n} value={n}>
+                          {n >= 99 ? t("chart.allGenerations") : n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  title={
+                    chartFullscreen
+                      ? t("chart.exitFullscreen")
+                      : t("chart.fullscreen")
+                  }
+                  onClick={() => setChartFullscreen((v) => !v)}
+                >
+                  {chartFullscreen ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 {t("chart.showingCount", {
                   shown:
-                    chartView === "close"
-                      ? closeSubgraph.people.length
+                    chartView === "family" || chartView === "close"
+                      ? familyViewData.people.length
                       : chartPeople.length,
                   total: people.length,
                 })}
               </p>
             </div>
 
-            <Card className="overflow-hidden">
-              <CardContent className="p-2 sm:p-3 min-w-0 overflow-hidden">
+            <div
+              className={
+                chartFullscreen
+                  ? "fixed inset-0 z-50 flex flex-col bg-[#ececec] p-3"
+                  : undefined
+              }
+            >
+              {chartFullscreen && (
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">{tree.name}</p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1.5"
+                    onClick={() => setChartFullscreen(false)}
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                    {t("chart.exitFullscreen")}
+                  </Button>
+                </div>
+              )}
+            <Card className={chartFullscreen ? "flex-1 overflow-hidden" : "overflow-hidden"}>
+              <CardContent className={chartFullscreen ? "h-full p-2 sm:p-3 min-w-0 overflow-hidden" : "p-2 sm:p-3 min-w-0 overflow-hidden"}>
                 {(chartView === "family" || chartView === "close") && (
                   chartView === "close" && closeFocusId == null ? (
                     <p className="py-16 text-center text-sm text-muted-foreground">
@@ -541,9 +659,9 @@ export default function TreeWorkspace() {
                     </p>
                   ) : (
                   <FamilyChart
-                    key={`${chartRevision}-${chartView}-${closeFocusId ?? "all"}`}
-                    people={chartView === "close" ? closeSubgraph.people : chartPeople}
-                    rels={chartView === "close" ? closeSubgraph.rels : chartRels}
+                    key={`${chartRevision}-${chartView}-${closeFocusId ?? "all"}-${maxGenerations}`}
+                    people={familyViewData.people}
+                    rels={familyViewData.rels}
                     branches={branches}
                     remotePeople={remotePeople}
                     focusMode={chartFocusId != null || chartView === "close"}
@@ -630,6 +748,7 @@ export default function TreeWorkspace() {
                 )}
               </CardContent>
             </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="list">
