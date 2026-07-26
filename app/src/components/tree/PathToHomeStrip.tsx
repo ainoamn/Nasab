@@ -7,7 +7,7 @@ import {
 } from "@/lib/relationPath";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { House, Eye, ChevronLeft, Link as LinkIcon } from "lucide-react";
+import { House, Eye, ChevronLeft, Link as LinkIcon, Copy } from "lucide-react";
 
 type Props = {
   homePerson: Person;
@@ -17,6 +17,7 @@ type Props = {
   onSelectHop: (person: Person) => void;
   onHighlightPath: (pathIds: number[]) => void;
   onCopyPathLink?: () => void;
+  onCopyPathText?: () => void;
   className?: string;
 };
 
@@ -29,6 +30,7 @@ export default function PathToHomeStrip({
   onSelectHop,
   onHighlightPath,
   onCopyPathLink,
+  onCopyPathText,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -87,6 +89,18 @@ export default function PathToHomeStrip({
             <Eye className="h-3 w-3" />
             {t("tree.showPathOnChart")}
           </Button>
+          {onCopyPathText && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 text-xs"
+              onClick={onCopyPathText}
+            >
+              <Copy className="h-3 w-3" />
+              {t("tree.copyPathText")}
+            </Button>
+          )}
           {onCopyPathLink && (
             <Button
               type="button"

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
-import { Cake, Heart, Network, Printer, Gift, CalendarPlus, MessageSquare } from "lucide-react";
+import { Cake, Heart, Network, Printer, Gift, CalendarPlus, MessageSquare, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ type Props = {
   onPrintOccasion?: (person: Person) => void;
   onAddToCalendar?: (ev: TreeOccasion) => void;
   onCopyGreeting?: (ev: TreeOccasion) => void;
+  onDownloadUpcomingCalendar?: () => void;
 };
 
 const MONTH_KEYS = [
@@ -43,6 +44,7 @@ export default function OccasionsPanel({
   onPrintOccasion,
   onAddToCalendar,
   onCopyGreeting,
+  onDownloadUpcomingCalendar,
 }: Props) {
   const { t } = useTranslation();
   const events = useMemo(() => buildTreeOccasions(people, rels), [people, rels]);
@@ -75,6 +77,18 @@ export default function OccasionsPanel({
             })}
           </p>
         </div>
+        {onDownloadUpcomingCalendar && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs"
+            onClick={onDownloadUpcomingCalendar}
+          >
+            <CalendarRange className="h-3.5 w-3.5" />
+            {t("tree.occasionsDownload90")}
+          </Button>
+        )}
       </div>
 
       {upcoming.length > 0 && (

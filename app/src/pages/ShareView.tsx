@@ -129,7 +129,7 @@ export default function ShareView() {
     );
   }
 
-  const { tree, rels } = query.data;
+  const { tree } = query.data;
   const isMember = !!tree.myRole;
   const treeId = tree.id;
 

@@ -62,6 +62,45 @@ export function downloadIcs(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+/** تقويم واحد بعدة مناسبات (RRULE سنوي + روابط عميقة) */
+export function buildMultiOccasionIcs(
+  items: Array<{
+    ev: TreeOccasion;
+    title: string;
+    description: string;
+    url?: string;
+  }>,
+): string {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Nasab//Occasions//AR",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+  ];
+  for (const item of items) {
+    const dt = nextOccurrenceDate(item.ev.month, item.ev.day);
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:nasab-${item.ev.key}@nasab.app`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${dt}`,
+      `DTEND;VALUE=DATE:${dt}`,
+      `SUMMARY:${icsEscape(item.title)}`,
+      `DESCRIPTION:${icsEscape(item.description)}`,
+      "RRULE:FREQ=YEARLY",
+    );
+    if (item.url) lines.push(`URL:${item.url}`);
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+
 export function occasionGreetingText(
   kind: TreeOccasion["kind"],
   name: string,

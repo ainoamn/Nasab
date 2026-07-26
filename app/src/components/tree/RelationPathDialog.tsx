@@ -17,7 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { GitCompareArrows, ChevronLeft, Link as LinkIcon } from "lucide-react";
+import { GitCompareArrows, ChevronLeft, Link as LinkIcon, Copy } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -31,6 +31,8 @@ type Props = {
   onShowOnChart?: (pathIds: number[]) => void;
   /** نسخ رابط عميق للمسار */
   onCopyPathLink?: (fromId: number, toId: number) => void;
+  /** نسخ نص المسار للواتساب */
+  onCopyPathText?: (fromId: number, toId: number) => void;
 };
 
 function viaLabel(
@@ -58,6 +60,7 @@ export default function RelationPathDialog({
   onOpenPerson,
   onShowOnChart,
   onCopyPathLink,
+  onCopyPathText,
 }: Props) {
   const { t } = useTranslation();
   const [fromId, setFromId] = useState("");
@@ -211,6 +214,17 @@ export default function RelationPathDialog({
                 >
                   <GitCompareArrows className="h-4 w-4" />
                   {t("tree.showPathOnChart")}
+                </Button>
+              )}
+              {onCopyPathText && fromNum != null && toNum != null && path.length > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => onCopyPathText(fromNum, toNum)}
+                >
+                  <Copy className="h-4 w-4" />
+                  {t("tree.copyPathText")}
                 </Button>
               )}
               {onCopyPathLink && fromNum != null && toNum != null && path.length > 1 && (

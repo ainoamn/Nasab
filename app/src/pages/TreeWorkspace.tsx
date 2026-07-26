@@ -18,6 +18,7 @@ import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
 import OccasionsPanel from "@/components/tree/OccasionsPanel";
+import OccasionsScopeChips from "@/components/tree/OccasionsScopeChips";
 import ResearchTourStrip from "@/components/tree/ResearchTourStrip";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
@@ -77,10 +78,21 @@ import {
 } from "@/lib/treeUrl";
 import {
   buildOccasionIcs,
+  buildMultiOccasionIcs,
   downloadIcs,
   occasionGreetingText,
 } from "@/lib/occasionShare";
 import type { TreeOccasion } from "@/lib/treeOccasions";
+import { buildTreeOccasions } from "@/lib/treeOccasions";
+import {
+  getOccasionsScope,
+  setOccasionsScope,
+  type OccasionsScope,
+} from "@/lib/occasionsScope";
+import {
+  formatPersonShareCard,
+  formatRelationPathText,
+} from "@/lib/relationShare";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -180,6 +192,7 @@ import {
   Link as LinkIcon,
   MapPin,
   Gift,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -235,6 +248,8 @@ export default function TreeWorkspace() {
     b: Person;
   } | null>(null);
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
+  const [occasionsScope, setOccasionsScopeState] =
+    useState<OccasionsScope>("close");
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
   const [urlRelateId, setUrlRelateId] = useState<number | null>(null);
@@ -260,6 +275,7 @@ export default function TreeWorkspace() {
       setRecentIds(getRecentPersonIds(treeId));
       setFavoriteIds(getFavoritePersonIds(treeId));
       setDismissedDiscoveryKeys(getDismissedDiscoveryKeys(treeId));
+      setOccasionsScopeState(getOccasionsScope(treeId));
     }
   }, [treeId]);
 
@@ -728,6 +744,115 @@ export default function TreeWorkspace() {
     toast.success(t("tree.pathLinkCopied"));
   };
 
+  const { occasionsPeople, occasionsRels } = useMemo(() => {
+    if (occasionsScope === "all") {
+      return { occasionsPeople: people, occasionsRels: rels };
+    }
+    if (occasionsScope === "favorites") {
+      const ids = new Set(favoriteIds);
+      if (homePersonId != null) ids.add(homePersonId);
+      return {
+        occasionsPeople: people.filter((p) => ids.has(p.id)),
+        occasionsRels: rels.filter(
+          (r) => ids.has(r.fromPersonId) && ids.has(r.toPersonId),
+        ),
+      };
+    }
+    const focus =
+      homePersonId ?? chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
+    if (focus == null) return { occasionsPeople: people, occasionsRels: rels };
+    const close = collectCloseFamily(focus, people, rels);
+    return { occasionsPeople: close.people, occasionsRels: close.rels };
+  }, [
+    occasionsScope,
+    people,
+    rels,
+    favoriteIds,
+    homePersonId,
+    chartFocusId,
+    detailPerson?.id,
+  ]);
+
+  const copyPathText = (fromId: number, toId: number) => {
+    const from = peopleById.get(fromId);
+    const to = peopleById.get(toId);
+    if (!from || !to) return;
+    const hops = findRelationPath(fromId, toId, people, rels);
+    if (!hops || hops.length < 2) {
+      toast.error(t("tree.howRelatedNone"));
+      return;
+    }
+    const relKey = classifyRelationPath(fromId, toId, people, rels, hops);
+    const url = absoluteUrl(
+      buildTreePersonPath(treeId, fromId, { relate: toId, tab: "chart" }),
+    );
+    const viaLabel = (via: "parent" | "child" | "spouse") => {
+      if (via === "parent") return t("tree.pathViaParent");
+      if (via === "child") return t("tree.pathViaChild");
+      return t("tree.pathViaSpouse");
+    };
+    const text = formatRelationPathText({
+      fromName: from.givenName,
+      toName: to.givenName,
+      relationLabel: t(`tree.rel.${relKey}`),
+      hops,
+      peopleById,
+      viaLabel,
+      url,
+      labels: {
+        headline: t("tree.pathTextHeadline"),
+        hopsHeader: t("tree.pathTextHops"),
+        linkHeader: t("tree.pathTextLink"),
+      },
+    });
+    void navigator.clipboard.writeText(text);
+    setUrlRelateId(toId);
+    toast.success(t("tree.pathTextCopied"));
+  };
+
+  const copyPersonCard = (person: Person) => {
+    const url = absoluteUrl(
+      buildTreePersonPath(treeId, person.id, { tab: "chart" }),
+    );
+    let relationLabel: string | null = null;
+    let homeName: string | null = null;
+    let hopNames: string[] | undefined;
+    if (homePersonId != null && homePersonId !== person.id) {
+      const home = peopleById.get(homePersonId);
+      if (home) {
+        homeName = home.givenName;
+        const hops = findRelationPath(homePersonId, person.id, people, rels);
+        const key = classifyRelationPath(
+          homePersonId,
+          person.id,
+          people,
+          rels,
+          hops,
+        );
+        relationLabel = t(`tree.rel.${key}`);
+        if (hops && hops.length > 1) {
+          hopNames = hops
+            .map((h) => peopleById.get(h.personId)?.givenName)
+            .filter((n): n is string => !!n);
+        }
+      }
+    }
+    const text = formatPersonShareCard({
+      person,
+      relationLabel,
+      homeName,
+      hopNames,
+      url,
+      labels: {
+        kinship: t("tree.personCardKinship"),
+        pathHeader: t("tree.pathTextHops"),
+        linkHeader: t("tree.pathTextLink"),
+      },
+    });
+    void navigator.clipboard.writeText(text);
+    toast.success(t("tree.personCardCopied"));
+  };
+
   const shareOccasionCalendar = (ev: TreeOccasion) => {
     if (!ev.person) return;
     const personUrl = absoluteUrl(
@@ -762,6 +887,43 @@ export default function TreeWorkspace() {
     );
     void navigator.clipboard.writeText(text);
     toast.success(t("tree.greetingCopied"));
+  };
+
+  const downloadUpcomingOccasionsCalendar = () => {
+    const upcoming = buildTreeOccasions(
+      occasionsPeople,
+      occasionsRels,
+    ).filter((e) => e.daysUntil <= 90);
+    if (upcoming.length === 0) {
+      toast.error(t("tree.occasionsDownloadEmpty"));
+      return;
+    }
+    const items = upcoming.map((ev) => {
+      const personUrl = ev.person
+        ? absoluteUrl(
+            buildTreePersonPath(treeId, ev.person.id, { tab: "chart" }),
+          )
+        : undefined;
+      const title =
+        ev.kind === "birthday"
+          ? t("tree.icsBirthdayTitle", {
+              name: ev.person?.givenName ?? ev.label,
+            })
+          : t("tree.icsAnniversaryTitle", { name: ev.label });
+      return {
+        ev,
+        title,
+        description: t("tree.icsDescription", {
+          url: personUrl ?? "",
+        }),
+        url: personUrl,
+      };
+    });
+    downloadIcs(
+      `nasab-occasions-${occasionsScope}-90d`,
+      buildMultiOccasionIcs(items),
+    );
+    toast.success(t("tree.occasionsDownloadDone", { count: upcoming.length }));
   };
 
   const filtered = useMemo(() => {
@@ -1012,18 +1174,27 @@ export default function TreeWorkspace() {
           onSelect={(p) => revealOnChart(p)}
         />
 
+        <OccasionsScopeChips
+          className="mb-2"
+          value={occasionsScope}
+          onChange={(scope) => {
+            setOccasionsScope(treeId, scope);
+            setOccasionsScopeState(scope);
+          }}
+        />
+
         <TodayEventsBanner
           treeId={treeId}
-          people={people}
-          rels={rels}
+          people={occasionsPeople}
+          rels={occasionsRels}
           onPersonClick={(p) => revealOnChart(p)}
           onAddToCalendar={shareOccasionCalendar}
           onCopyGreeting={shareOccasionGreeting}
         />
 
         <EventsStrip
-          people={people}
-          rels={rels}
+          people={occasionsPeople}
+          rels={occasionsRels}
           onPersonClick={(p) => revealOnChart(p)}
           onSeeAll={() => setMainTab("occasions")}
           onPrintOccasion={(p) =>
@@ -1040,6 +1211,7 @@ export default function TreeWorkspace() {
           }}
           onAddToCalendar={shareOccasionCalendar}
           onCopyGreeting={shareOccasionGreeting}
+          onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
         />
 
         <DiscoveriesPanel
@@ -1748,9 +1920,18 @@ export default function TreeWorkspace() {
           </TabsContent>
 
           <TabsContent value="occasions">
+            <div className="mb-3">
+              <OccasionsScopeChips
+                value={occasionsScope}
+                onChange={(scope) => {
+                  setOccasionsScope(treeId, scope);
+                  setOccasionsScopeState(scope);
+                }}
+              />
+            </div>
             <OccasionsPanel
-              people={people}
-              rels={rels}
+              people={occasionsPeople}
+              rels={occasionsRels}
               onPersonClick={(p) => revealOnChart(p)}
               onPrintOccasion={(p) =>
                 navigate(
@@ -1759,6 +1940,7 @@ export default function TreeWorkspace() {
               }
               onAddToCalendar={shareOccasionCalendar}
               onCopyGreeting={shareOccasionGreeting}
+              onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
             />
           </TabsContent>
 
@@ -1890,6 +2072,7 @@ export default function TreeWorkspace() {
           toast.success(t("tree.pathHighlightActive", { count: ids.length }));
         }}
         onCopyPathLink={copyPathLink}
+        onCopyPathText={copyPathText}
       />
 
       {/* بطاقة الشخص */}
@@ -2228,6 +2411,15 @@ export default function TreeWorkspace() {
                   <LinkIcon className="h-3.5 w-3.5" />
                   {t("detail.copyPersonLink")}
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => copyPersonCard(detailPerson)}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {t("tree.copyPersonCard")}
+                </Button>
                 {shareUrl && (
                   <Button
                     size="sm"
@@ -2297,6 +2489,9 @@ export default function TreeWorkspace() {
                     }}
                     onCopyPathLink={() =>
                       copyPathLink(detailPerson.id, homePersonId)
+                    }
+                    onCopyPathText={() =>
+                      copyPathText(homePersonId, detailPerson.id)
                     }
                   />
                 )}
