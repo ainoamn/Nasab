@@ -5,6 +5,8 @@ import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import AppHeader from "@/components/AppHeader";
 import FamilyChart from "@/components/tree/FamilyChart";
+import PedigreeView from "@/components/tree/PedigreeView";
+import FanChartView from "@/components/tree/FanChartView";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -96,6 +98,9 @@ import {
   Eye,
   Focus,
   Unlink,
+  Network,
+  GitBranch,
+  Fan,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -120,6 +125,7 @@ export default function TreeWorkspace() {
   const [search, setSearch] = useState("");
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
+  const [chartView, setChartView] = useState<"family" | "pedigree" | "fan">("family");
 
   /** بعد إضافة/تعديل: اخرج من وضع التركيز دون إعادة تركيب المخطط (يحافظ على السحب والتكبير) */
   const refreshChart = () => {
@@ -407,25 +413,115 @@ export default function TreeWorkspace() {
                 </Button>
               </div>
             )}
+
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1 rounded-xl border bg-card p-0.5 shadow-sm">
+                {(
+                  [
+                    { id: "family" as const, icon: Network, label: t("chart.viewFamily") },
+                    { id: "pedigree" as const, icon: GitBranch, label: t("chart.viewPedigree") },
+                    { id: "fan" as const, icon: Fan, label: t("chart.viewFan") },
+                  ] as const
+                ).map((v) => (
+                  <Button
+                    key={v.id}
+                    type="button"
+                    size="sm"
+                    variant={chartView === v.id ? "secondary" : "ghost"}
+                    className="gap-1.5 h-8"
+                    onClick={() => setChartView(v.id)}
+                    title={v.label}
+                  >
+                    <v.icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{v.label}</span>
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("chart.showingCount", {
+                  shown: chartPeople.length,
+                  total: people.length,
+                })}
+              </p>
+            </div>
+
             <Card className="overflow-hidden">
               <CardContent className="p-2 sm:p-3 min-w-0 overflow-hidden">
-                <FamilyChart
-                  key={chartRevision}
-                  people={chartPeople}
-                  rels={chartRels}
-                  branches={branches}
-                  remotePeople={remotePeople}
-                  focusMode={chartFocusId != null}
-                  selectedPersonId={detailPerson?.id ?? null}
-                  onPersonClick={(p) => setDetailPerson(p)}
-                  onOpenSideTree={(p) => void openPersonTree(p.id)}
-                  onToggleBranch={
-                    canWrite
-                      ? (branchId, isHidden) =>
-                          toggleBranchMut.mutate({ treeId, branchId, isHidden })
-                      : undefined
-                  }
-                />
+                {chartView === "family" && (
+                  <FamilyChart
+                    key={chartRevision}
+                    people={chartPeople}
+                    rels={chartRels}
+                    branches={branches}
+                    remotePeople={remotePeople}
+                    focusMode={chartFocusId != null}
+                    selectedPersonId={detailPerson?.id ?? null}
+                    onPersonClick={(p) => setDetailPerson(p)}
+                    onOpenSideTree={(p) => void openPersonTree(p.id)}
+                    onToggleBranch={
+                      canWrite
+                        ? (branchId, isHidden) =>
+                            toggleBranchMut.mutate({ treeId, branchId, isHidden })
+                        : undefined
+                    }
+                  />
+                )}
+                {chartView === "pedigree" && (
+                  (() => {
+                    const focusId =
+                      chartFocusId ??
+                      detailPerson?.id ??
+                      chartPeople.find((p) => p.gender !== "female")?.id ??
+                      chartPeople[0]?.id;
+                    if (!focusId) {
+                      return (
+                        <p className="py-16 text-center text-sm text-muted-foreground">
+                          {t("chart.pickFocus")}
+                        </p>
+                      );
+                    }
+                    return (
+                      <PedigreeView
+                        people={chartPeople}
+                        rels={chartRels}
+                        focusId={focusId}
+                        selectedPersonId={detailPerson?.id ?? null}
+                        onPersonClick={(p) => {
+                          setDetailPerson(p);
+                          setChartFocusId(p.id);
+                        }}
+                      />
+                    );
+                  })()
+                )}
+                {chartView === "fan" && (
+                  (() => {
+                    const focusId =
+                      chartFocusId ??
+                      detailPerson?.id ??
+                      chartPeople.find((p) => p.gender !== "female")?.id ??
+                      chartPeople[0]?.id;
+                    if (!focusId) {
+                      return (
+                        <p className="py-16 text-center text-sm text-muted-foreground">
+                          {t("chart.pickFocus")}
+                        </p>
+                      );
+                    }
+                    return (
+                      <FanChartView
+                        people={chartPeople}
+                        rels={chartRels}
+                        focusId={focusId}
+                        selectedPersonId={detailPerson?.id ?? null}
+                        onPersonClick={(p) => {
+                          setDetailPerson(p);
+                          setChartFocusId(p.id);
+                        }}
+                      />
+                    );
+                  })()
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -466,15 +562,36 @@ export default function TreeWorkspace() {
                         filtered.map((p) => (
                           <TableRow key={p.id} className="cursor-pointer" onClick={() => setDetailPerson(p)}>
                             <TableCell className="font-bold">
-                              <span>{p.givenName}</span>
-                              {unlinkedIds.has(p.id) && (
-                                <Badge
-                                  variant="outline"
-                                  className="ms-2 text-[10px] text-amber-800 border-amber-300"
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span
+                                  className={`flex h-9 w-9 shrink-0 overflow-hidden rounded-full ring-2 ${
+                                    p.gender === "female" ? "ring-pink-300 bg-pink-100" : "ring-sky-300 bg-sky-100"
+                                  }`}
                                 >
-                                  {t("relation.notInChart")} #{p.id}
-                                </Badge>
-                              )}
+                                  {p.photoUrl ? (
+                                    <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <span
+                                      className={`flex h-full w-full items-center justify-center text-white text-xs ${
+                                        p.gender === "female" ? "bg-pink-500" : "bg-sky-600"
+                                      }`}
+                                    >
+                                      {p.givenName.slice(0, 1)}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block truncate">{p.givenName}</span>
+                                  {unlinkedIds.has(p.id) && (
+                                    <Badge
+                                      variant="outline"
+                                      className="mt-0.5 text-[10px] text-amber-800 border-amber-300"
+                                    >
+                                      {t("relation.notInChart")} #{p.id}
+                                    </Badge>
+                                  )}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell className="font-display text-muted-foreground">{p.fatherName ?? "—"}</TableCell>
                             <TableCell>{p.kunya ?? "—"}</TableCell>
