@@ -54,6 +54,75 @@ export function buildSpousesOf(rels: Relationship[]): Map<number, number[]> {
   return spousesOf;
 }
 
+/**
+ * إذا اشترك ذكر وأنثى كأبوين لنفس الابن دون رابط زوجية صريح،
+ * نعتبرهما زوجين للتخطيط حتى لا تنفصل الزوجة عن الزوج في المخطط.
+ */
+export function augmentSpousesFromCoParents(
+  rels: Relationship[],
+  byId: Map<number, Person>,
+  spousesOf: Map<number, number[]>,
+): Map<number, number[]> {
+  const result = new Map<number, number[]>();
+  for (const [k, v] of spousesOf) {
+    result.set(k, [...v]);
+  }
+
+  const add = (a: number, b: number) => {
+    if (a === b) return;
+    const arr = result.get(a) ?? [];
+    if (!arr.includes(b)) {
+      arr.push(b);
+      result.set(a, arr);
+    }
+  };
+
+  const parentsOfChild = new Map<number, number[]>();
+  for (const r of rels) {
+    if (r.type !== "parent") continue;
+    if (!byId.has(r.fromPersonId) || !byId.has(r.toPersonId)) continue;
+    const arr = parentsOfChild.get(r.toPersonId) ?? [];
+    if (!arr.includes(r.fromPersonId)) arr.push(r.fromPersonId);
+    parentsOfChild.set(r.toPersonId, arr);
+  }
+
+  for (const parentIds of parentsOfChild.values()) {
+    const parents = parentIds
+      .map((id) => byId.get(id))
+      .filter((p): p is Person => !!p);
+    const males = parents.filter((p) => p.gender === "male");
+    const females = parents.filter((p) => p.gender === "female");
+    for (const m of males) {
+      for (const f of females) {
+        add(m.id, f.id);
+        add(f.id, m.id);
+      }
+    }
+  }
+
+  return result;
+}
+
+/** عدد الأحفاد عبر الأبناء فقط (لتفضيل الجذر الأقوى) */
+export function countDescendants(
+  rootId: number,
+  childrenOf: Map<number, number[]>,
+): number {
+  let n = 0;
+  const queue = [rootId];
+  const seen = new Set<number>();
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const kid of childrenOf.get(id) ?? []) {
+      n++;
+      queue.push(kid);
+    }
+  }
+  return n;
+}
+
 export function buildChildrenOf(rels: Relationship[]): Map<number, number[]> {
   const childrenOf = new Map<number, number[]>();
   for (const r of rels) {

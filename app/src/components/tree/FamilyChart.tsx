@@ -18,6 +18,9 @@ import {
   childrenWithFatherOnly,
   collectReachableFromRoots,
   getParents,
+  augmentSpousesFromCoParents,
+  countDescendants,
+  buildSpousesOf,
 } from "@/lib/familyGraph";
 import PersonRankLines from "@/components/tree/PersonRankLines";
 import {
@@ -123,7 +126,6 @@ export default function FamilyChart({
   const graph = useMemo(() => {
     const byId = new Map<number, Person>(people.map((p) => [p.id, p]));
     const childrenOf = new Map<number, number[]>();
-    const spousesOf = new Map<number, number[]>();
     const childIds = new Set<number>();
 
     for (const r of rels) {
@@ -133,15 +135,6 @@ export default function FamilyChart({
         const kids = childrenOf.get(r.fromPersonId) ?? [];
         if (!kids.includes(r.toPersonId)) kids.push(r.toPersonId);
         childrenOf.set(r.fromPersonId, kids);
-      } else {
-        for (const [a, b] of [
-          [r.fromPersonId, r.toPersonId],
-          [r.toPersonId, r.fromPersonId],
-        ] as const) {
-          const arr = spousesOf.get(a) ?? [];
-          if (!arr.includes(b)) arr.push(b);
-          spousesOf.set(a, arr);
-        }
       }
     }
 
@@ -154,6 +147,13 @@ export default function FamilyChart({
       });
       childrenOf.set(pid, kids);
     }
+
+    // روابط زوجية صريحة + استنتاج من الأبوين المشتركين لنفس الابن
+    const spousesOf = augmentSpousesFromCoParents(
+      rels,
+      byId,
+      buildSpousesOf(rels),
+    );
 
     const hiddenBranchIds = new Set(
       branches.filter((b) => b.isHidden).map((b) => b.id),
@@ -232,15 +232,18 @@ export default function FamilyChart({
     };
 
     const isAncestorOf = (ancestorId: number, personId: number): boolean => {
-      let current = personId;
+      const queue = [personId];
       const seen = new Set<number>();
-      for (let i = 0; i < 40; i++) {
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        if (seen.has(current)) continue;
+        seen.add(current);
         const { fatherId, motherId } = getParents(current, rels, byId);
-        const parentId = fatherId ?? motherId;
-        if (!parentId || seen.has(parentId)) break;
-        if (parentId === ancestorId) return true;
-        seen.add(parentId);
-        current = parentId;
+        for (const parentId of [fatherId, motherId]) {
+          if (parentId == null || !byId.has(parentId)) continue;
+          if (parentId === ancestorId) return true;
+          if (!seen.has(parentId)) queue.push(parentId);
+        }
       }
       return false;
     };
@@ -255,9 +258,24 @@ export default function FamilyChart({
       if (a.gender !== b.gender) return isFemale(a.gender) ? 1 : -1;
       return a.givenName.localeCompare(b.givenName, "ar");
     });
-    const finalRoots = mergedRoots.filter(
-      (r) => !mergedRoots.some((other) => other.id !== r.id && isAncestorOf(other.id, r.id)),
+    let finalRoots = mergedRoots.filter(
+      (r) =>
+        !mergedRoots.some(
+          (other) => other.id !== r.id && isAncestorOf(other.id, r.id),
+        ),
     );
+
+    // استبعد جذراً إن كان زوجاً لمن ينحدر من جذر آخر (يمنع انفصال الزوجة كشجرة مستقلة)
+    finalRoots = finalRoots.filter((r) => {
+      const spouseIds = spousesOf.get(r.id) ?? [];
+      return !spouseIds.some((sid) =>
+        finalRoots.some(
+          (other) =>
+            other.id !== r.id &&
+            (sid === other.id || isAncestorOf(other.id, sid)),
+        ),
+      );
+    });
 
     const isConnected = (p: Person) =>
       (childrenOf.get(p.id)?.length ?? 0) > 0 ||
@@ -292,9 +310,23 @@ export default function FamilyChart({
           : finalRoots.length > 0
             ? finalRoots
             : orderedRoots;
-      if (printLevels || focusMode) return base;
-      // الصفحة الرئيسية: الشجرة الرئيسية فقط (بدون جذور فروع النسب)
-      return base.filter((r) => !branchRootIds.has(r.id));
+      const filtered =
+        printLevels || focusMode
+          ? base
+          : base.filter((r) => !branchRootIds.has(r.id));
+
+      // الصفحة الرئيسية: جذر واحد (الأكثر أحفاداً) حتى لا تنقسم الشجرة أفقياً
+      if (!printLevels && !focusMode && filtered.length > 1) {
+        const scored = [...filtered].sort((a, b) => {
+          const da = countDescendants(a.id, childrenOf);
+          const db = countDescendants(b.id, childrenOf);
+          if (db !== da) return db - da;
+          if (a.gender !== b.gender) return isFemale(a.gender) ? 1 : -1;
+          return a.givenName.localeCompare(b.givenName, "ar");
+        });
+        return scored.slice(0, 1);
+      }
+      return filtered;
     })();
     const reachable = collectReachableFromRoots(
       displayRoots.map((r) => r.id),

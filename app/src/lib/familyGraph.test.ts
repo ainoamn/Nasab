@@ -4,6 +4,9 @@ import {
   buildSpousesOf,
   collectFocusedSubgraph,
   getParents,
+  augmentSpousesFromCoParents,
+  countDescendants,
+  buildChildrenOf,
 } from "@/lib/familyGraph";
 
 function p(
@@ -113,5 +116,25 @@ describe("familyGraph lineage", () => {
     expect(ids.has(3)).toBe(true);
     expect(ids.has(4)).toBe(true);
     expect(ids.has(5)).toBe(true);
+  });
+
+  it("infers spouse link when male and female co-parent a child", () => {
+    const people = [p(1, "زوج"), p(2, "زوجة", "female"), p(3, "ابن")];
+    const rels = [parent(1, 3), parent(2, 3)];
+    const byId = new Map(people.map((x) => [x.id, x]));
+    const spouses = augmentSpousesFromCoParents(
+      rels,
+      byId,
+      buildSpousesOf(rels),
+    );
+    expect(spouses.get(1)).toContain(2);
+    expect(spouses.get(2)).toContain(1);
+  });
+
+  it("counts descendants down the male line", () => {
+    const rels = [parent(1, 2), parent(2, 3), parent(2, 4)];
+    const childrenOf = buildChildrenOf(rels);
+    expect(countDescendants(1, childrenOf)).toBe(3);
+    expect(countDescendants(2, childrenOf)).toBe(2);
   });
 });

@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import { Children, isValidElement } from "react";
 import { Heart } from "lucide-react";
 
-const LINE = "#64748b";
-
 /** خط عمودي */
 export function VLine({
   className,
@@ -50,89 +48,61 @@ export function SpouseHeart({
   );
 }
 
-/** صف أفقي بخطوط متصلة — أعمدة متساوية العرض لمحاذاة دقيقة */
+/**
+ * صف أبناء/فروع بعرض طبيعي لكل عمود (ليس 1fr متساوٍ) —
+ * حتى لا تنفصل الزوجات عن الأزواج بسبب تمدد الأعمدة الفارغة.
+ */
 export function BranchRow({
   children,
   className,
-  busDrop = 14,
 }: {
   children: ReactNode;
   className?: string;
+  /** مهمل — أُبقي للتوافق */
   busDrop?: number;
 }) {
-  const count = Children.toArray(children).filter(isValidElement).length;
+  const items = Children.toArray(children).filter(isValidElement);
+  const count = items.length;
   if (count === 0) return null;
 
-  const busTop = 0;
-  const forkY = busDrop;
+  if (count === 1) {
+    return (
+      <div className={cn("flex flex-col items-center w-max", className)}>
+        <VLine h={14} />
+        {items}
+      </div>
+    );
+  }
 
   return (
-    <div className={cn("relative w-full", className)} style={{ paddingTop: forkY }}>
-      <svg
-        className="absolute inset-x-0 top-0 w-full overflow-visible pointer-events-none print:overflow-visible"
-        style={{ height: forkY }}
-        aria-hidden
-      >
-        <line
-          x1="50%"
-          y1={busTop}
-          x2="50%"
-          y2={Math.min(6, forkY - 4)}
-          stroke={LINE}
-          strokeWidth={1.5}
-          vectorEffect="non-scaling-stroke"
-        />
-        {count > 1 ? (
-          <>
-            <line
-              x1={`${100 / (2 * count)}%`}
-              y1={Math.min(6, forkY - 4)}
-              x2={`${100 - 100 / (2 * count)}%`}
-              y2={Math.min(6, forkY - 4)}
-              stroke={LINE}
-              strokeWidth={1.5}
-              vectorEffect="non-scaling-stroke"
-            />
-            {Array.from({ length: count }, (_, i) => {
-              const x = ((i + 0.5) / count) * 100;
-              return (
-                <line
-                  key={i}
-                  x1={`${x}%`}
-                  y1={Math.min(6, forkY - 4)}
-                  x2={`${x}%`}
-                  y2={forkY}
-                  stroke={LINE}
-                  strokeWidth={1.5}
-                  vectorEffect="non-scaling-stroke"
-                />
-              );
-            })}
-          </>
-        ) : (
-          <line
-            x1="50%"
-            y1={Math.min(6, forkY - 4)}
-            x2="50%"
-            y2={forkY}
-            stroke={LINE}
-            strokeWidth={1.5}
-            vectorEffect="non-scaling-stroke"
-          />
-        )}
-      </svg>
-      <div
-        className="grid w-full gap-x-4 sm:gap-x-8"
-        style={{ gridTemplateColumns: `repeat(${count}, minmax(7rem, 1fr))` }}
-        dir="rtl"
-      >
-        {children}
+    <div className={cn("flex flex-col items-center w-max max-w-none", className)}>
+      <VLine h={10} />
+      <div className="flex flex-nowrap items-start justify-center" dir="rtl">
+        {items.map((child, i) => (
+          <div
+            key={child.key ?? i}
+            className="relative flex flex-col items-center w-max px-2 sm:px-3"
+          >
+            <div className="relative h-4 w-full shrink-0">
+              {/* خط أفقي يمر عبر العمود ويتصل بالجوار */}
+              <div
+                className="absolute top-0 h-px bg-slate-400 print:bg-slate-600"
+                style={{
+                  left: i === count - 1 ? "50%" : 0,
+                  right: i === 0 ? "50%" : 0,
+                }}
+              />
+              <div className="absolute left-1/2 top-0 h-4 w-px -translate-x-1/2 bg-slate-400 print:bg-slate-600" />
+            </div>
+            {child}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-/** عمود تحت التفرّع */
+/** عمود تحت التفرّع — عرض المحتوى لا التمدد */
 export function BranchColumn({
   children,
   className,
@@ -141,7 +111,7 @@ export function BranchColumn({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center min-w-0 w-full", className)}>
+    <div className={cn("flex flex-col items-center w-max shrink-0", className)}>
       {children}
     </div>
   );
@@ -157,18 +127,14 @@ export function PolygamyLayout({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <BranchRow className={className} busDrop={16}>
-      {children}
-    </BranchRow>
-  );
+  return <BranchRow className={className}>{children}</BranchRow>;
 }
 
 /** خط أفقي بين الزوجين */
 export function CoupleBridge({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center shrink-0 self-center", className)}>
-      <div className="w-5 sm:w-7 h-px bg-slate-400 print:bg-slate-600" />
+    <div className={cn("flex items-center shrink-0 self-start mt-7", className)}>
+      <div className="w-3 sm:w-5 h-px bg-slate-400 print:bg-slate-600" />
     </div>
   );
 }
@@ -188,7 +154,7 @@ export function CoupleToChildrenConnector({
   );
 }
 
-/** شريط إخوة — يستخدم نفس BranchRow للمحاذاة */
+/** شريط إخوة */
 export function SiblingFork({
   childCount,
   children,
@@ -200,16 +166,12 @@ export function SiblingFork({
 }) {
   if (childCount <= 1) {
     return (
-      <div className={cn("flex flex-col items-center w-full", className)}>
+      <div className={cn("flex flex-col items-center w-max", className)}>
         <VLine h={18} />
         {children}
       </div>
     );
   }
 
-  return (
-    <BranchRow className={className} busDrop={18}>
-      {children}
-    </BranchRow>
-  );
+  return <BranchRow className={className}>{children}</BranchRow>;
 }
