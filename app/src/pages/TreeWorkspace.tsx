@@ -45,6 +45,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -408,6 +416,7 @@ export default function TreeWorkspace() {
                   branches={branches}
                   remotePeople={remotePeople}
                   focusMode={chartFocusId != null}
+                  selectedPersonId={detailPerson?.id ?? null}
                   onPersonClick={(p) => setDetailPerson(p)}
                   onOpenSideTree={(p) => void openPersonTree(p.id)}
                   onToggleBranch={
@@ -566,8 +575,9 @@ export default function TreeWorkspace() {
       <CsvImportDialog treeId={treeId} open={importOpen} onOpenChange={setImportOpen} />
 
       {/* بطاقة الشخص */}
-      <Dialog open={!!detailPerson} onOpenChange={(o) => !o && setDetailPerson(null)}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto w-[calc(100%-1.5rem)]">
+      <Sheet open={!!detailPerson} onOpenChange={(o) => !o && setDetailPerson(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0 gap-0">
+          <div className="flex flex-col gap-4 p-4 pb-8">
           {detailPerson && (() => {
             const ranks = computePersonRanks(detailPerson, people, rels);
             const birthLabel = formatBirthDate(detailPerson, localeTag(i18n.language));
@@ -590,7 +600,7 @@ export default function TreeWorkspace() {
             const hasLinks = !!(father || mother || spouses.length || children.length);
             return (
             <>
-              <DialogHeader className="text-start pe-8">
+              <SheetHeader className="text-start pe-8">
                 <div className="flex items-start gap-3">
                   <span
                     className={`flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl ring-2 ${
@@ -610,20 +620,20 @@ export default function TreeWorkspace() {
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <DialogTitle className="font-display text-xl sm:text-2xl flex flex-wrap items-center gap-2">
+                    <SheetTitle className="font-display text-xl sm:text-2xl flex flex-wrap items-center gap-2">
                       <span className={!detailPerson.isLiving ? "line-through decoration-2 text-rose-900" : ""}>
                         {detailPerson.givenName}
                       </span>
                       <Badge variant={detailPerson.isLiving ? "default" : "destructive"}>
                         {detailPerson.isLiving ? t("detail.alive") : t("detail.dead")}
                       </Badge>
-                    </DialogTitle>
-                    <DialogDescription className="font-display text-sm sm:text-base break-words">
+                    </SheetTitle>
+                    <SheetDescription className="font-display text-sm sm:text-base break-words">
                       {detailPerson.fatherName ?? ""}
-                    </DialogDescription>
+                    </SheetDescription>
                   </div>
                 </div>
-              </DialogHeader>
+              </SheetHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {detailPerson.kunya && <InfoRow label={t("detail.kunya")} value={detailPerson.kunya} />}
                 {detailPerson.laqab && <InfoRow label={t("detail.laqab")} value={detailPerson.laqab} />}
@@ -792,7 +802,7 @@ export default function TreeWorkspace() {
               {detailPerson.notes && (
                 <p className="rounded-lg bg-muted/50 p-3 text-sm leading-relaxed break-words">{detailPerson.notes}</p>
               )}
-              <DialogFooter className="gap-2 flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-start">
+              <SheetFooter className="gap-2 flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-start">
                 <Button
                   className="gap-2 w-full sm:w-auto"
                   variant={chartFocusId === detailPerson.id ? "secondary" : "default"}
@@ -815,9 +825,9 @@ export default function TreeWorkspace() {
                     {t("detail.viewFullTree")}
                   </Button>
                 )}
-              </DialogFooter>
+              </SheetFooter>
               {canWrite && (
-                <DialogFooter className="gap-2 flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-start pt-0">
+                <SheetFooter className="gap-2 flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-start pt-0">
                   <Button
                     className="gap-2 w-full sm:w-auto"
                     onClick={() => {
@@ -849,13 +859,14 @@ export default function TreeWorkspace() {
                   >
                     <Trash2 className="h-4 w-4" /> {t("common.delete")}
                   </Button>
-                </DialogFooter>
+                </SheetFooter>
               )}
             </>
             );
           })()}
-        </DialogContent>
-      </Dialog>
+                  </div>
+        </SheetContent>
+      </Sheet>
 
       {/* تأكيد الحذف */}
       <AlertDialog open={!!deletePerson} onOpenChange={(o) => !o && setDeletePerson(null)}>

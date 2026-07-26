@@ -61,6 +61,7 @@ const SideTreeContext = createContext<{
 
 /** معرفات المتزوجين (رابط زوجية صريح أو مستنتج) */
 const MarriedIdsContext = createContext<Set<number>>(new Set());
+const SelectedPersonContext = createContext<number | null>(null);
 
 type RemotePerson = Person & { linkId: number; forPersonId: number };
 
@@ -75,6 +76,8 @@ type Props = {
   onToggleBranch?: (branchId: number, isHidden: boolean) => void;
   compact?: boolean;
   disablePanZoom?: boolean;
+  /** تمييز البطاقة المحددة في لوحة التفاصيل */
+  selectedPersonId?: number | null;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
   focusMode?: boolean;
   /** جذر الشجرة في الطباعة — بدلاً من اكتشاف أعلى جد تلقائياً */
@@ -91,16 +94,45 @@ function isAlive(person: Person) {
   return person.isLiving === true || (person.isLiving as unknown) === 1;
 }
 
+/** ألوان بطاقات بأسلوب عائلي هادئ (أزرق/وردي فاتح) */
 function genderTheme(gender: string, living: boolean) {
   const female = isFemale(gender);
   if (!living) {
     return female
-      ? { bar: "#9d174d", avatar: "#9f1239", ring: "ring-pink-300", bg: "bg-pink-50", border: "border-pink-200" }
-      : { bar: "#1e3a8a", avatar: "#1e40af", ring: "ring-blue-300", bg: "bg-blue-50", border: "border-blue-200" };
+      ? {
+          bar: "#be185d",
+          avatar: "#9f1239",
+          ring: "ring-pink-200",
+          bg: "bg-[#f8e8ef]",
+          border: "border-pink-300/80",
+          card: "#f3d6e2",
+        }
+      : {
+          bar: "#1e40af",
+          avatar: "#1e3a8a",
+          ring: "ring-blue-200",
+          bg: "bg-[#e4eef8]",
+          border: "border-blue-300/80",
+          card: "#d4e4f4",
+        };
   }
   return female
-    ? { bar: "#ec4899", avatar: "#db2777", ring: "ring-pink-200", bg: "bg-pink-50/70", border: "border-pink-300" }
-    : { bar: "#2563eb", avatar: "#1d4ed8", ring: "ring-blue-200", bg: "bg-blue-50/70", border: "border-blue-300" };
+    ? {
+        bar: "#f9a8d4",
+        avatar: "#db2777",
+        ring: "ring-pink-100",
+        bg: "bg-[#fce8f1]",
+        border: "border-pink-200",
+        card: "#fce8f1",
+      }
+    : {
+        bar: "#93c5fd",
+        avatar: "#2563eb",
+        ring: "ring-blue-100",
+        bg: "bg-[#e3f0fb]",
+        border: "border-blue-200",
+        card: "#e3f0fb",
+      };
 }
 
 export default function FamilyChart({
@@ -113,6 +145,7 @@ export default function FamilyChart({
   onToggleBranch,
   compact,
   disablePanZoom,
+  selectedPersonId = null,
   focusMode,
   rootPersonId,
   printLevels,
@@ -549,16 +582,17 @@ export default function FamilyChart({
     >
     <SideTreeContext.Provider value={sideTreeCtx}>
     <MarriedIdsContext.Provider value={marriedIds}>
+    <SelectedPersonContext.Provider value={selectedPersonId ?? null}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
       {!disablePanZoom && (
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> {t("common.male")}
+            <span className="h-3.5 w-3.5 rounded-md border border-blue-200 bg-[#e3f0fb]" /> {t("common.male")}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-pink-500" /> {t("common.female")}
+            <span className="h-3.5 w-3.5 rounded-md border border-pink-200 bg-[#fce8f1]" /> {t("common.female")}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-3 w-5 rounded border-2 border-amber-500 bg-amber-50" />{" "}
@@ -618,11 +652,11 @@ export default function FamilyChart({
       <div
         ref={viewportRef}
         className={cn(
-          "relative w-full min-w-0 max-w-full rounded-2xl border bg-gradient-to-b from-slate-50 to-white",
+          "relative w-full min-w-0 max-w-full rounded-2xl border border-stone-200/80",
           !disablePanZoom &&
-            "h-[min(62vh,560px)] sm:h-[min(68vh,680px)] cursor-grab active:cursor-grabbing select-none overflow-hidden",
+            "h-[min(70vh,720px)] sm:h-[min(75vh,780px)] cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[#ececec]",
           disablePanZoom &&
-            "min-h-[320px] py-4 overflow-visible print:overflow-visible print:border-0 print:bg-transparent",
+            "min-h-[320px] py-4 overflow-visible print:overflow-visible print:border-0 print:bg-transparent bg-stone-100",
         )}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -720,6 +754,7 @@ export default function FamilyChart({
         </div>
       </div>
     </div>
+    </SelectedPersonContext.Provider>
     </MarriedIdsContext.Provider>
     </SideTreeContext.Provider>
     </PrintChartContext.Provider>
@@ -845,17 +880,13 @@ function PersonCard({
   const years = L.formatYears(person.birthYear, person.deathYear, living);
   const hasSideTree = Boolean(sideTree?.personIds.has(person.id));
   const marriedIds = useContext(MarriedIdsContext);
+  const selectedId = useContext(SelectedPersonContext);
   const isMarried = marriedIds.has(person.id);
-
-  // المتوفى: إطار أسود | المتزوج (حي): إطار ذهبي | غير ذلك: لون الجنس
-  const statusBorder = !living
-    ? "border-[2.5px] border-stone-900 shadow-[0_0_0_1px_rgba(28,25,23,0.35)]"
-    : isMarried
-      ? "border-[2.5px] border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]"
-      : cn("border", theme.border);
+  const isSelected = selectedId === person.id;
+  const female = isFemale(person.gender);
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div className="relative flex flex-col items-center pb-1.5">
       {hasSideTree && sideTree && (
         <button
           type="button"
@@ -873,105 +904,121 @@ function PersonCard({
           <span className="h-2.5 w-px bg-violet-400" />
         </button>
       )}
-    <button
-      type="button"
-      data-no-pan
-      title={
-        !living
-          ? t("chart.deceasedBorder")
-          : isMarried
-            ? t("chart.marriedBorder")
-            : undefined
-      }
-      onClick={(e) => {
-        e.stopPropagation();
-        onPersonClick?.(person);
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-      className={cn(
-        "relative shrink-0 overflow-hidden rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition text-start cursor-pointer z-[1]",
-        statusBorder,
-        theme.bg,
-        compact ? "w-[7rem] p-1.5" : "w-[8.5rem] sm:w-[9rem] p-2",
-      )}
-    >
-      {/* شريط علوي: أسود للمتوفى، ذهبي للمتزوج، وإلا لون الجنس */}
-      <span
-        className="absolute inset-x-0 top-0 h-1"
-        style={{
-          backgroundColor: !living
-            ? "#1c1917"
+      <button
+        type="button"
+        data-no-pan
+        title={
+          !living
+            ? t("chart.deceasedBorder")
             : isMarried
-              ? "#d97706"
-              : theme.bar,
+              ? t("chart.marriedBorder")
+              : undefined
+        }
+        onClick={(e) => {
+          e.stopPropagation();
+          onPersonClick?.(person);
         }}
-      />
-
-      {!living && (
-        <>
-          <span className="pointer-events-none absolute inset-x-3 top-2 h-0.5 bg-stone-800/70" />
-          <span className="pointer-events-none absolute inset-x-3 top-3.5 h-0.5 bg-stone-800/70" />
-          <span className="absolute top-1 start-1 rounded bg-rose-700 px-1 py-px text-[8px] font-bold text-white shadow">
-            {t("common.deceased")}
-          </span>
-        </>
-      )}
-
-      <div className={cn("flex items-start gap-1.5", !living && "mt-3")}>
+        onPointerDown={(e) => e.stopPropagation()}
+        className={cn(
+          "relative z-[1] flex shrink-0 cursor-pointer flex-col items-center text-center transition",
+          "rounded-2xl border shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md hover:-translate-y-0.5",
+          theme.bg,
+          !living
+            ? "border-stone-800 border-[2px]"
+            : isMarried
+              ? "border-amber-400 border-[2px]"
+              : cn("border", theme.border),
+          isSelected && "ring-2 ring-sky-500 ring-offset-2 ring-offset-[#ececec]",
+          compact ? "w-[6.75rem] px-2 pb-2.5 pt-2" : "w-[7.75rem] sm:w-[8.25rem] px-2.5 pb-3 pt-2.5",
+        )}
+      >
         <span
           className={cn(
-            "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full text-white font-bold ring-1 ring-offset-1",
-            theme.ring,
-            compact ? "h-7 w-7 text-[10px]" : "h-8 w-8 sm:h-9 sm:w-9 text-xs",
+            "relative mb-1.5 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm",
+            female ? "ring-2 ring-pink-300" : "ring-2 ring-sky-300",
+            compact ? "h-11 w-11" : "h-14 w-14 sm:h-[3.75rem] sm:w-[3.75rem]",
           )}
-          style={{ backgroundColor: theme.avatar }}
         >
           {person.photoUrl ? (
             <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
-          ) : isFemale(person.gender) ? (
-            "♀"
           ) : (
-            "♂"
+            <span
+              className="flex h-full w-full items-center justify-center text-white"
+              style={{ backgroundColor: theme.avatar }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className={cn(compact ? "h-6 w-6" : "h-8 w-8", "opacity-90")}
+                fill="currentColor"
+                aria-hidden
+              >
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5 19.5c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5" />
+              </svg>
+            </span>
+          )}
+          {!living && (
+            <span className="absolute -bottom-0.5 inset-x-0 mx-auto w-fit rounded bg-stone-900 px-1 text-[7px] font-bold leading-tight text-white">
+              {t("common.deceased")}
+            </span>
           )}
         </span>
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "font-bold leading-tight truncate",
-              compact ? "text-xs" : "text-[13px] sm:text-sm",
-              !living && "line-through decoration-stone-700 text-stone-700",
-            )}
-          >
+
+        <p
+          className={cn(
+            "w-full font-semibold leading-snug text-stone-900",
+            compact ? "text-[11px]" : "text-xs sm:text-[13px]",
+            !living && "text-stone-600",
+          )}
+        >
+          <span className={cn("line-clamp-2", !living && "line-through decoration-stone-500")}>
             {person.givenName}
-          </p>
-          <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-px leading-none">
-            {printLevel != null
-              ? printLevel < 0
-                ? t("printPage.ancestorLabel", { n: Math.abs(printLevel) })
-                : printLevel === 0
-                  ? t("chart.generationRoot")
-                  : t("chart.generationN", { n: displayGenerationNumber(printLevel) })
-              : depth === 0
-                ? t("chart.generationRoot")
-                : t("chart.generationN", { n: depth + 1 })}
-          </p>
-        </div>
-      </div>
-
-      {!compact && person.fatherName && (
-        <p className="mt-1 text-[8px] text-muted-foreground truncate font-display leading-snug">
-          {person.fatherName}
+          </span>
         </p>
-      )}
 
-      {!compact && !chartMode && (
-        <PersonRankLines ranks={ranks} gender={person.gender} t={t} dense />
-      )}
+        {!compact && person.fatherName && (
+          <p className="mt-0.5 w-full truncate text-[9px] leading-tight text-stone-500 font-display">
+            {person.fatherName.split(/\s+/).slice(0, 3).join(" ")}
+          </p>
+        )}
 
-      {!compact && years && (
-        <p className="mt-1 text-[8px] text-slate-500 leading-none truncate">{years}</p>
-      )}
-    </button>
+        {years && (
+          <p className="mt-1 w-full truncate text-[9px] leading-none text-stone-500">{years}</p>
+        )}
+
+        {!compact && !chartMode && (
+          <div className="mt-1 w-full">
+            <PersonRankLines ranks={ranks} gender={person.gender} t={t} dense />
+          </div>
+        )}
+
+        <p className="mt-1 text-[8px] text-stone-400 leading-none">
+          {printLevel != null
+            ? printLevel < 0
+              ? t("printPage.ancestorLabel", { n: Math.abs(printLevel) })
+              : printLevel === 0
+                ? t("chart.generationRoot")
+                : t("chart.generationN", { n: displayGenerationNumber(printLevel) })
+            : depth === 0
+              ? t("chart.generationRoot")
+              : t("chart.generationN", { n: depth + 1 })}
+        </p>
+
+        <span
+          className={cn(
+            "pointer-events-none absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-e",
+            theme.bg,
+            !living
+              ? "border-stone-800"
+              : isMarried
+                ? "border-amber-400"
+                : female
+                  ? "border-pink-200"
+                  : "border-blue-200",
+          )}
+          aria-hidden
+        />
+      </button>
     </div>
   );
 }
