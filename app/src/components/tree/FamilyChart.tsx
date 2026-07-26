@@ -36,7 +36,7 @@ import {
   SiblingFork,
   VLine,
 } from "@/components/tree/ChartConnectors";
-import { Baby, Minus, Plus, RotateCcw, Move } from "lucide-react";
+import { Baby, Minus, Plus, RotateCcw, Move, Maximize, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { displayGenerationNumber, printGenerationLevel } from "@/lib/printData";
@@ -65,6 +65,7 @@ const SideTreeContext = createContext<{
 /** معرفات المتزوجين (رابط زوجية صريح أو مستنتج) */
 const MarriedIdsContext = createContext<Set<number>>(new Set());
 const SelectedPersonContext = createContext<number | null>(null);
+const PathHighlightContext = createContext<Set<number> | null>(null);
 const QuickAddContext = createContext<
   ((person: Person, kinship: QuickKinship) => void) | null
 >(null);
@@ -84,6 +85,10 @@ type Props = {
   disablePanZoom?: boolean;
   /** تمييز البطاقة المحددة في لوحة التفاصيل */
   selectedPersonId?: number | null;
+  /** طلب توسيط شخص (يتغيّر token لإعادة التوسيط) */
+  centerRequest?: { personId: number; token: number } | null;
+  /** إبراز مسار قرابة على المخطط (كيف يرتبطان) */
+  highlightPathIds?: number[] | null;
   /** إضافة قريب سريعة من البطاقة (+) مع اختيار الصلة */
   onQuickAdd?: (person: Person, kinship: QuickKinship) => void;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
@@ -154,6 +159,8 @@ export default function FamilyChart({
   compact,
   disablePanZoom,
   selectedPersonId = null,
+  centerRequest = null,
+  highlightPathIds = null,
   onQuickAdd,
   focusMode,
   rootPersonId,
@@ -167,6 +174,13 @@ export default function FamilyChart({
   const last = useRef({ x: 0, y: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const pathHighlightSet = useMemo(
+    () =>
+      highlightPathIds && highlightPathIds.length > 0
+        ? new Set(highlightPathIds)
+        : null,
+    [highlightPathIds],
+  );
 
   const graph = useMemo(() => {
     const byId = new Map<number, Person>(people.map((p) => [p.id, p]));
@@ -494,6 +508,55 @@ export default function FamilyChart({
     setPan({ x: 0, y: 0 });
   }, []);
 
+  const centerOnPersonId = useCallback((personId: number) => {
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content || disablePanZoom) return;
+    const card = content.querySelector(
+      `[data-person-id="${personId}"]`,
+    ) as HTMLElement | null;
+    if (!card) return;
+
+    const vRect = viewport.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const dx =
+      vRect.left + vRect.width / 2 - (cardRect.left + cardRect.width / 2);
+    const dy =
+      vRect.top + vRect.height / 2 - (cardRect.top + cardRect.height / 2);
+    setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+  }, [disablePanZoom]);
+
+  const fitToView = useCallback(() => {
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content || disablePanZoom) return;
+    // أعد القياس بدون تحويل مؤقتاً عبر حساب scrollWidth/Height
+    const pad = 48;
+    const vw = viewport.clientWidth - pad;
+    const vh = viewport.clientHeight - pad;
+    // reverse current transform to estimate natural size
+    const naturalW = content.scrollWidth;
+    const naturalH = content.scrollHeight;
+    if (naturalW <= 0 || naturalH <= 0 || vw <= 0 || vh <= 0) {
+      resetView();
+      return;
+    }
+    const scale = Math.min(2.2, Math.max(0.35, Math.min(vw / naturalW, vh / naturalH)));
+    const rounded = Math.round(scale * 100) / 100;
+    setZoom(rounded);
+    setPan({ x: 0, y: 0 });
+  }, [disablePanZoom, resetView]);
+
+  useEffect(() => {
+    if (!centerRequest || disablePanZoom) return;
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        centerOnPersonId(centerRequest.personId);
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [centerRequest, centerOnPersonId, disablePanZoom]);
+
   // ضبط حجم الشجرة للطباعة والمعاينة
   useEffect(() => {
     if (!disablePanZoom) return;
@@ -592,6 +655,7 @@ export default function FamilyChart({
     <SideTreeContext.Provider value={sideTreeCtx}>
     <MarriedIdsContext.Provider value={marriedIds}>
     <SelectedPersonContext.Provider value={selectedPersonId ?? null}>
+    <PathHighlightContext.Provider value={pathHighlightSet}>
     <QuickAddContext.Provider value={onQuickAdd ?? null}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
@@ -634,6 +698,29 @@ export default function FamilyChart({
               title={t("chart.zoomOut")}
             >
               <Minus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={() => {
+                if (selectedPersonId != null) centerOnPersonId(selectedPersonId);
+              }}
+              title={t("chart.centerOnSelected")}
+              disabled={selectedPersonId == null}
+            >
+              <Crosshair className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={fitToView}
+              title={t("chart.fitToView")}
+            >
+              <Maximize className="h-4 w-4" />
             </Button>
             <Button
               type="button"
@@ -765,6 +852,7 @@ export default function FamilyChart({
       </div>
     </div>
     </QuickAddContext.Provider>
+    </PathHighlightContext.Provider>
     </SelectedPersonContext.Provider>
     </MarriedIdsContext.Provider>
     </SideTreeContext.Provider>
@@ -892,13 +980,23 @@ function PersonCard({
   const hasSideTree = Boolean(sideTree?.personIds.has(person.id));
   const marriedIds = useContext(MarriedIdsContext);
   const selectedId = useContext(SelectedPersonContext);
+  const pathHighlight = useContext(PathHighlightContext);
   const onQuickAdd = useContext(QuickAddContext);
   const isMarried = marriedIds.has(person.id);
   const isSelected = selectedId === person.id;
   const female = isFemale(person.gender);
+  const onPath = pathHighlight?.has(person.id) ?? false;
+  const dimmed = pathHighlight != null && !onPath;
 
   return (
-    <div className="relative flex flex-col items-center pb-1.5">
+    <div
+      className={cn(
+        "relative flex flex-col items-center pb-1.5 transition",
+        dimmed && "opacity-30 grayscale-[40%]",
+        onPath && "z-[3]",
+      )}
+      data-person-id={person.id}
+    >
       {hasSideTree && sideTree && (
         <button
           type="button"
@@ -941,6 +1039,9 @@ function PersonCard({
               ? "border-amber-400 border-[2px]"
               : cn("border", theme.border),
           isSelected && "ring-2 ring-sky-500 ring-offset-2 ring-offset-[#ececec]",
+          onPath &&
+            !isSelected &&
+            "ring-2 ring-violet-500 ring-offset-2 ring-offset-[#ececec] shadow-[0_0_0_3px_rgba(139,92,246,0.25)]",
           compact ? "w-[6.75rem] px-2 pb-2.5 pt-2" : "w-[7.75rem] sm:w-[8.25rem] px-2.5 pb-3 pt-2.5",
         )}
       >

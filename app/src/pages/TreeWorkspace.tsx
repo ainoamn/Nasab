@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
@@ -157,6 +157,18 @@ export default function TreeWorkspace() {
   const [maxGenerations, setMaxGenerations] = useState(8);
   const [howRelatedOpen, setHowRelatedOpen] = useState(false);
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
+  const [focusTrail, setFocusTrail] = useState<number[]>([]);
+  const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
+  const [centerRequest, setCenterRequest] = useState<{
+    personId: number;
+    token: number;
+  } | null>(null);
+  const centerTokenRef = useRef(0);
+
+  const requestCenterOn = (personId: number) => {
+    centerTokenRef.current += 1;
+    setCenterRequest({ personId, token: centerTokenRef.current });
+  };
 
   useEffect(() => {
     if (treeId > 0) setHomePersonIdState(getHomePersonId(treeId));
@@ -240,9 +252,33 @@ export default function TreeWorkspace() {
   );
 
   const focusOnPerson = (personId: number) => {
-    setChartFocusId(personId);
+    setChartFocusId((prev) => {
+      if (prev != null && prev !== personId) {
+        setFocusTrail((trail) =>
+          [prev, ...trail.filter((id) => id !== prev && id !== personId)].slice(
+            0,
+            8,
+          ),
+        );
+      }
+      return personId;
+    });
     setChartRevision((n) => n + 1);
     setDetailPerson(null);
+    requestCenterOn(personId);
+  };
+
+  const goBackFocus = () => {
+    setFocusTrail((trail) => {
+      if (trail.length === 0) {
+        setChartFocusId(null);
+        return trail;
+      }
+      const [prev, ...rest] = trail;
+      setChartFocusId(prev);
+      requestCenterOn(prev);
+      return rest;
+    });
   };
 
   const myRole = (tree?.myRole ?? "viewer") as TreeRole;
@@ -546,18 +582,79 @@ export default function TreeWorkspace() {
           </TabsList>
 
           <TabsContent value="chart" className="min-w-0">
-            {chartFocusPerson && (
+            {(chartFocusPerson || focusTrail.length > 0) && (
               <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
                 <Focus className="h-4 w-4 shrink-0 text-primary" />
-                <span className="flex-1 min-w-0">
-                  {t("tree.chartFocusedOn", { name: chartFocusPerson.givenName })}
+                {chartFocusPerson ? (
+                  <span className="flex-1 min-w-0">
+                    {t("tree.chartFocusedOn", { name: chartFocusPerson.givenName })}
+                  </span>
+                ) : (
+                  <span className="flex-1 min-w-0 text-muted-foreground">
+                    {t("tree.focusTrail")}
+                  </span>
+                )}
+                {focusTrail.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={goBackFocus}>
+                      {t("tree.focusBack")}
+                    </Button>
+                    {focusTrail.slice(0, 4).map((id) => {
+                      const p = peopleById.get(id);
+                      if (!p) return null;
+                      return (
+                        <Button
+                          key={id}
+                          size="sm"
+                          variant="outline"
+                          className="h-7 max-w-[7rem] truncate px-2 text-xs"
+                          onClick={() => {
+                            setChartFocusId((cur) => {
+                              if (cur != null && cur !== id) {
+                                setFocusTrail((trail) =>
+                                  [
+                                    cur,
+                                    ...trail.filter((x) => x !== cur && x !== id),
+                                  ].slice(0, 8),
+                                );
+                              }
+                              return id;
+                            });
+                            setFocusTrail((trail) => trail.filter((x) => x !== id));
+                            requestCenterOn(id);
+                          }}
+                          title={p.givenName}
+                        >
+                          {p.givenName}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setChartFocusId(null);
+                    setFocusTrail([]);
+                  }}
+                >
+                  {t("tree.viewFullTree")}
+                </Button>
+              </div>
+            )}
+            {highlightPathIds && highlightPathIds.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-violet-300 bg-violet-50 px-3 py-2 text-sm">
+                <GitCompareArrows className="h-4 w-4 shrink-0 text-violet-700" />
+                <span className="flex-1 min-w-0 text-violet-950">
+                  {t("tree.pathHighlightActive", { count: highlightPathIds.length })}
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setChartFocusId(null)}
+                  onClick={() => setHighlightPathIds(null)}
                 >
-                  {t("tree.viewFullTree")}
+                  {t("tree.clearPathHighlight")}
                 </Button>
               </div>
             )}
@@ -596,7 +693,18 @@ export default function TreeWorkspace() {
                   people={chartPeople}
                   onSelect={(p) => {
                     setDetailPerson(p);
-                    setChartFocusId(p.id);
+                    setChartFocusId((prev) => {
+                      if (prev != null && prev !== p.id) {
+                        setFocusTrail((trail) =>
+                          [
+                            prev,
+                            ...trail.filter((id) => id !== prev && id !== p.id),
+                          ].slice(0, 8),
+                        );
+                      }
+                      return p.id;
+                    });
+                    requestCenterOn(p.id);
                   }}
                 />
                 {chartView === "family" || chartView === "descendants" ? (
@@ -642,8 +750,19 @@ export default function TreeWorkspace() {
                     }
                     const p = peopleById.get(hid)!;
                     setDetailPerson(p);
-                    setChartFocusId(hid);
+                    setChartFocusId((prev) => {
+                      if (prev != null && prev !== hid) {
+                        setFocusTrail((trail) =>
+                          [
+                            prev,
+                            ...trail.filter((id) => id !== prev && id !== hid),
+                          ].slice(0, 8),
+                        );
+                      }
+                      return hid;
+                    });
                     setHomePersonIdState(hid);
+                    requestCenterOn(hid);
                   }}
                 >
                   <House className="h-4 w-4" />
@@ -715,6 +834,8 @@ export default function TreeWorkspace() {
                     remotePeople={remotePeople}
                     focusMode={chartFocusId != null || chartView === "close"}
                     selectedPersonId={detailPerson?.id ?? null}
+                    centerRequest={centerRequest}
+                    highlightPathIds={highlightPathIds}
                     onPersonClick={(p) => setDetailPerson(p)}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
                     onQuickAdd={
@@ -1029,6 +1150,14 @@ export default function TreeWorkspace() {
           setDetailPerson(p);
           setChartFocusId(p.id);
           setHowRelatedOpen(false);
+          requestCenterOn(p.id);
+        }}
+        onShowOnChart={(ids) => {
+          setHighlightPathIds(ids);
+          setChartView("family");
+          setChartFocusId(null);
+          if (ids[0] != null) requestCenterOn(ids[0]);
+          toast.success(t("tree.pathHighlightActive", { count: ids.length }));
         }}
       />
 

@@ -26,6 +26,8 @@ type Props = {
   rels: Relationship[];
   defaultFromId?: number | null;
   onOpenPerson?: (person: Person) => void;
+  /** عرض المسار على مخطط العائلة */
+  onShowOnChart?: (pathIds: number[]) => void;
 };
 
 function viaLabel(
@@ -50,6 +52,7 @@ export default function RelationPathDialog({
   rels,
   defaultFromId,
   onOpenPerson,
+  onShowOnChart,
 }: Props) {
   const { t } = useTranslation();
   const [fromId, setFromId] = useState("");
@@ -142,6 +145,7 @@ export default function RelationPathDialog({
                 {t("tree.howRelatedNone")}
               </p>
             ) : (
+              <>
               <ol className="flex flex-col gap-1">
                 {path.map((hop, i) => {
                   const person = byId.get(hop.personId);
@@ -190,6 +194,20 @@ export default function RelationPathDialog({
                   );
                 })}
               </ol>
+              {onShowOnChart && path.length > 1 && (
+                <Button
+                  type="button"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    onShowOnChart(path.map((h) => h.personId));
+                    onOpenChange(false);
+                  }}
+                >
+                  <GitCompareArrows className="h-4 w-4" />
+                  {t("tree.showPathOnChart")}
+                </Button>
+              )}
+              </>
             )}
           </div>
         )}
