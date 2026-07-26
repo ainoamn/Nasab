@@ -12,6 +12,9 @@ import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
 import PhotosGallery from "@/components/tree/PhotosGallery";
 import EventsStrip from "@/components/tree/EventsStrip";
 import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
+import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
+import DescendantsView from "@/components/tree/DescendantsView";
+import QuickAddMenu from "@/components/tree/QuickAddMenu";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -115,6 +118,7 @@ import {
   Minimize2,
   Download,
   Image as ImageIcon,
+  ArrowDownToLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -143,7 +147,7 @@ export default function TreeWorkspace() {
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
   const [chartView, setChartView] = useState<
-    "family" | "close" | "pedigree" | "fan"
+    "family" | "close" | "pedigree" | "fan" | "descendants"
   >("family");
   const [chartFullscreen, setChartFullscreen] = useState(false);
   const [maxGenerations, setMaxGenerations] = useState(8);
@@ -556,6 +560,11 @@ export default function TreeWorkspace() {
                       { id: "family" as const, icon: Network, label: t("chart.viewFamily") },
                       { id: "close" as const, icon: Home, label: t("chart.viewClose") },
                       { id: "pedigree" as const, icon: GitBranch, label: t("chart.viewPedigree") },
+                      {
+                        id: "descendants" as const,
+                        icon: ArrowDownToLine,
+                        label: t("chart.viewDescendants"),
+                      },
                       { id: "fan" as const, icon: Fan, label: t("chart.viewFan") },
                     ] as const
                   ).map((v) => (
@@ -580,7 +589,7 @@ export default function TreeWorkspace() {
                     setChartFocusId(p.id);
                   }}
                 />
-                {chartView === "family" && (
+                {chartView === "family" || chartView === "descendants" ? (
                   <div className="flex items-center gap-1.5 rounded-xl border bg-card px-2 py-1 text-xs">
                     <Label htmlFor="max-gen" className="text-muted-foreground whitespace-nowrap">
                       {t("chart.maxGenerations")}
@@ -598,7 +607,7 @@ export default function TreeWorkspace() {
                       ))}
                     </select>
                   </div>
-                )}
+                ) : null}
                 <Button
                   type="button"
                   size="icon"
@@ -669,7 +678,9 @@ export default function TreeWorkspace() {
                     onPersonClick={(p) => setDetailPerson(p)}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
                     onQuickAdd={
-                      canWrite ? (p) => openAddRelative(p.id, "son") : undefined
+                      canWrite
+                        ? (p, kinship) => openAddRelative(p.id, kinship)
+                        : undefined
                     }
                     onToggleBranch={
                       canWrite
@@ -740,6 +751,40 @@ export default function TreeWorkspace() {
                         onAddParent={
                           canWrite
                             ? (childId, role) => openAddRelative(childId, role)
+                            : undefined
+                        }
+                      />
+                    );
+                  })()
+                )}
+                {chartView === "descendants" && (
+                  (() => {
+                    const focusId =
+                      chartFocusId ??
+                      detailPerson?.id ??
+                      chartPeople.find((p) => p.gender !== "female")?.id ??
+                      chartPeople[0]?.id;
+                    if (!focusId) {
+                      return (
+                        <p className="py-16 text-center text-sm text-muted-foreground">
+                          {t("chart.pickFocus")}
+                        </p>
+                      );
+                    }
+                    return (
+                      <DescendantsView
+                        people={chartPeople}
+                        rels={chartRels}
+                        focusId={focusId}
+                        generations={Math.min(maxGenerations, 6)}
+                        selectedPersonId={detailPerson?.id ?? null}
+                        onPersonClick={(p) => {
+                          setDetailPerson(p);
+                          setChartFocusId(p.id);
+                        }}
+                        onAddChild={
+                          canWrite
+                            ? (parentId) => openAddRelative(parentId, "son")
                             : undefined
                         }
                       />
@@ -958,6 +1003,23 @@ export default function TreeWorkspace() {
               .map((id) => peopleById.get(id))
               .filter((p): p is Person => !!p)
               .sort((a, b) => a.givenName.localeCompare(b.givenName, "ar"));
+            const siblingIds = new Set<number>();
+            for (const pid of [fatherId, motherId]) {
+              if (pid == null) continue;
+              for (const sid of childrenOf.get(pid) ?? []) {
+                if (sid !== detailPerson.id) siblingIds.add(sid);
+              }
+            }
+            const siblings = [...siblingIds]
+              .map((id) => peopleById.get(id))
+              .filter((p): p is Person => !!p);
+            const immediateMembers = [
+              ...(father ? [{ person: father, role: "father" as const }] : []),
+              ...(mother ? [{ person: mother, role: "mother" as const }] : []),
+              ...spouses.map((p) => ({ person: p, role: "spouse" as const })),
+              ...siblings.map((p) => ({ person: p, role: "sibling" as const })),
+              ...children.map((p) => ({ person: p, role: "child" as const })),
+            ];
             const hasLinks = !!(father || mother || spouses.length || children.length);
             const timeline: Array<{ year: number | null; label: string; key: string }> = [];
             if (detailPerson.birthYear) {
@@ -1054,15 +1116,11 @@ export default function TreeWorkspace() {
                   </Button>
                 )}
                 {canWrite && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    onClick={() => openAddRelative(detailPerson.id, "son")}
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    {t("common.add")}
-                  </Button>
+                  <QuickAddMenu
+                    onPick={(kinship) =>
+                      openAddRelative(detailPerson.id, kinship)
+                    }
+                  />
                 )}
                 <Button
                   size="sm"
@@ -1077,6 +1135,13 @@ export default function TreeWorkspace() {
                   {t("chart.viewClose")}
                 </Button>
               </div>
+              <ImmediateFamilyStrip
+                members={immediateMembers}
+                onSelect={(p) => {
+                  setDetailPerson(p);
+                  setChartFocusId(p.id);
+                }}
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {detailPerson.kunya && <InfoRow label={t("detail.kunya")} value={detailPerson.kunya} />}
                 {detailPerson.laqab && <InfoRow label={t("detail.laqab")} value={detailPerson.laqab} />}

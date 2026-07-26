@@ -17,6 +17,8 @@ type Props = {
 
 function iconFor(kind: Discovery["kind"]) {
   if (kind === "noPhoto") return Camera;
+  if (kind === "deathBeforeBirth" || kind === "childBeforeParent") return AlertTriangle;
+  if (kind === "possibleDuplicate" || kind === "livingNoBirthYear") return AlertTriangle;
   if (kind.startsWith("missing") || kind === "childNoSpouseLink") return UserRoundPlus;
   return AlertTriangle;
 }
@@ -71,6 +73,7 @@ export default function DiscoveriesPanel({
                 {d.personName}
                 <span className="ms-1 font-normal text-muted-foreground">
                   — {t(`tree.discovery.${d.kind}`)}
+                  {d.otherPersonName ? ` (${d.otherPersonName})` : ""}
                 </span>
               </button>
               {canWrite && d.kind === "missingFather" && onAddParent && (

@@ -69,4 +69,13 @@ describe("findDiscoveries", () => {
       true,
     );
   });
+
+  it("flags death before birth", () => {
+    const p = person(1, "شخص");
+    p.birthYear = 1990;
+    p.deathYear = 1980;
+    p.isLiving = false;
+    const d = findDiscoveries([p], []);
+    expect(d.some((x) => x.kind === "deathBeforeBirth")).toBe(true);
+  });
 });

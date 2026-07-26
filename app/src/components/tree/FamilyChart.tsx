@@ -41,6 +41,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { displayGenerationNumber, printGenerationLevel } from "@/lib/printData";
 import { parseLineageChain } from "@/lib/lineageParser";
+import QuickAddMenu, {
+  type QuickKinship,
+} from "@/components/tree/QuickAddMenu";
 
 type Labels = ReturnType<typeof useLabels>;
 
@@ -62,7 +65,9 @@ const SideTreeContext = createContext<{
 /** معرفات المتزوجين (رابط زوجية صريح أو مستنتج) */
 const MarriedIdsContext = createContext<Set<number>>(new Set());
 const SelectedPersonContext = createContext<number | null>(null);
-const QuickAddContext = createContext<((person: Person) => void) | null>(null);
+const QuickAddContext = createContext<
+  ((person: Person, kinship: QuickKinship) => void) | null
+>(null);
 
 type RemotePerson = Person & { linkId: number; forPersonId: number };
 
@@ -79,8 +84,8 @@ type Props = {
   disablePanZoom?: boolean;
   /** تمييز البطاقة المحددة في لوحة التفاصيل */
   selectedPersonId?: number | null;
-  /** إضافة قريب سريعة من البطاقة (+) */
-  onQuickAdd?: (person: Person) => void;
+  /** إضافة قريب سريعة من البطاقة (+) مع اختيار الصلة */
+  onQuickAdd?: (person: Person, kinship: QuickKinship) => void;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
   focusMode?: boolean;
   /** جذر الشجرة في الطباعة — بدلاً من اكتشاف أعلى جد تلقائياً */
@@ -1027,20 +1032,10 @@ function PersonCard({
         />
       </button>
       {onQuickAdd && !compact && (
-        <button
-          type="button"
-          data-no-pan
-          title={t("tree.addRelative")}
-          aria-label={t("tree.addRelative")}
-          onClick={(e) => {
-            e.stopPropagation();
-            onQuickAdd(person);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="z-[2] -mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-600 shadow-sm hover:border-sky-400 hover:bg-sky-50 hover:text-sky-700"
-        >
-          <Plus className="h-3 w-3" />
-        </button>
+        <QuickAddMenu
+          compact
+          onPick={(kinship) => onQuickAdd(person, kinship)}
+        />
       )}
     </div>
   );
