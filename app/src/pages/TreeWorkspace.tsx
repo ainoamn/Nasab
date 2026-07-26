@@ -11,6 +11,7 @@ import TreeHomeBanner from "@/components/tree/TreeHomeBanner";
 import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
 import PhotosGallery from "@/components/tree/PhotosGallery";
 import EventsStrip from "@/components/tree/EventsStrip";
+import TodayEventsBanner from "@/components/tree/TodayEventsBanner";
 import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
@@ -49,6 +50,7 @@ import {
   classifyRelationPath,
   findRelationPath,
 } from "@/lib/relationPath";
+import { buildPersonGapsMap, type PersonGap } from "@/lib/personGaps";
 import {
   getRecentPersonIds,
   pushRecentPersonId,
@@ -649,6 +651,25 @@ export default function TreeWorkspace() {
     setAddOpen(true);
   };
 
+  const fixResearchGap = (person: Person, kind: PersonGap["kind"]) => {
+    if (kind === "noPhoto" || kind === "noBirthYear") {
+      setEditPerson(person);
+      setDetailPerson(null);
+      return;
+    }
+    if (kind === "missingFather" || kind === "missingBothParents") {
+      openAddRelative(person.id, "father");
+      return;
+    }
+    if (kind === "missingMother") {
+      openAddRelative(person.id, "mother");
+      return;
+    }
+    if (kind === "childNoSpouseLink") {
+      openAddRelative(person.id, "spouse");
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim();
     return people.filter((p) => {
@@ -665,6 +686,11 @@ export default function TreeWorkspace() {
 
   const completeness = useMemo(
     () => computeTreeCompleteness(people, rels),
+    [people, rels],
+  );
+
+  const researchGapsById = useMemo(
+    () => buildPersonGapsMap(people, rels, { skipNoPhoto: true }),
     [people, rels],
   );
 
@@ -892,11 +918,30 @@ export default function TreeWorkspace() {
           onSelect={(p) => revealOnChart(p)}
         />
 
+        <TodayEventsBanner
+          treeId={treeId}
+          people={people}
+          rels={rels}
+          onPersonClick={(p) => revealOnChart(p)}
+        />
+
         <EventsStrip
           people={people}
           rels={rels}
           onPersonClick={(p) => revealOnChart(p)}
           onSeeAll={() => setMainTab("occasions")}
+          onPrintOccasion={(p) =>
+            navigate(
+              buildPrintRootPath(treeId, p.id, { template: "occasions" }),
+            )
+          }
+          onCopyPersonLink={(p) => {
+            const url = absoluteUrl(
+              buildTreePersonPath(treeId, p.id, { tab: "chart" }),
+            );
+            void navigator.clipboard.writeText(url);
+            toast.success(t("detail.linkCopied"));
+          }}
         />
 
         <DiscoveriesPanel
@@ -1272,6 +1317,9 @@ export default function TreeWorkspace() {
                         : undefined
                     }
                     onPersonClick={(p) => setDetailPerson(p)}
+                    gapsById={researchGapsById}
+                    canWriteGaps={canWrite}
+                    onFixGap={canWrite ? fixResearchGap : undefined}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
                     onQuickAdd={
                       canWrite
@@ -1309,6 +1357,7 @@ export default function TreeWorkspace() {
                         generations={Math.min(maxGenerations, 8)}
                         selectedPersonId={detailPerson?.id ?? null}
                         kinshipFocusId={kinshipFocusForViews}
+                        gapsById={researchGapsById}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
                           setChartFocusId(p.id);
@@ -1388,6 +1437,7 @@ export default function TreeWorkspace() {
                         generations={Math.min(maxGenerations, 6)}
                         selectedPersonId={detailPerson?.id ?? null}
                         kinshipFocusId={kinshipFocusForViews}
+                        gapsById={researchGapsById}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
                           setChartFocusId(p.id);

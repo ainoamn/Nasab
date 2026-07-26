@@ -15,6 +15,7 @@ type Props = {
   generations?: number;
   selectedPersonId?: number | null;
   kinshipFocusId?: number | null;
+  gapsById?: Map<number, { kind: string }[]>;
   onPersonClick?: (person: Person) => void;
   onFocusPerson?: (person: Person) => void;
   onHowRelated?: (person: Person) => void;
@@ -38,6 +39,7 @@ export default function DescendantsView({
   generations = 4,
   selectedPersonId,
   kinshipFocusId = null,
+  gapsById,
   onPersonClick,
   onFocusPerson,
   onHowRelated,
@@ -176,6 +178,11 @@ export default function DescendantsView({
                             cell.person && onHowRelated
                               ? () => onHowRelated(cell.person!)
                               : undefined
+                          }
+                          researchCount={
+                            cell.person
+                              ? (gapsById?.get(cell.person.id)?.length ?? 0)
+                              : 0
                           }
                           onPlaceholderClick={
                             !cell.person &&

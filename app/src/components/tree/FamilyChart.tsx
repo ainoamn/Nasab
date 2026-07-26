@@ -36,7 +36,7 @@ import {
   SiblingFork,
   VLine,
 } from "@/components/tree/ChartConnectors";
-import { Baby, Minus, Plus, RotateCcw, Move, Maximize, Crosshair } from "lucide-react";
+import { Baby, Minus, Plus, RotateCcw, Move, Maximize, Crosshair, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { displayGenerationNumber, printGenerationLevel } from "@/lib/printData";
@@ -45,6 +45,7 @@ import QuickAddMenu, {
   type QuickKinship,
 } from "@/components/tree/QuickAddMenu";
 import { relationToFocus } from "@/lib/relationshipLabel";
+import type { PersonGap } from "@/lib/personGaps";
 import {
   HoverCard,
   HoverCardContent,
@@ -86,6 +87,14 @@ const ChartActionsContext = createContext<{
 const QuickAddContext = createContext<
   ((person: Person, kinship: QuickKinship) => void) | null
 >(null);
+const GapsContext = createContext<{
+  gapsById: Map<number, PersonGap[]>;
+  canWrite: boolean;
+  onFixGap?: (
+    person: Person,
+    kind: PersonGap["kind"],
+  ) => void;
+} | null>(null);
 
 type RemotePerson = Person & { linkId: number; forPersonId: number };
 
@@ -113,6 +122,10 @@ type Props = {
   onEditSpouse?: (rel: Relationship, a: Person, b: Person) => void;
   /** إضافة قريب سريعة من البطاقة (+) مع اختيار الصلة */
   onQuickAdd?: (person: Person, kinship: QuickKinship) => void;
+  /** نواقص البحث على البطاقات (نقطة كهرمانية) */
+  gapsById?: Map<number, PersonGap[]>;
+  canWriteGaps?: boolean;
+  onFixGap?: (person: Person, kind: PersonGap["kind"]) => void;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
   focusMode?: boolean;
   /** جذر الشجرة في الطباعة — بدلاً من اكتشاف أعلى جد تلقائياً */
@@ -188,6 +201,9 @@ export default function FamilyChart({
   onHowRelated,
   onEditSpouse,
   onQuickAdd,
+  gapsById,
+  canWriteGaps = false,
+  onFixGap,
   focusMode,
   rootPersonId,
   printLevels,
@@ -202,6 +218,14 @@ export default function FamilyChart({
       editSpouseTitle: t("spouseDates.editLink"),
     }),
     [onFocusPerson, onHowRelated, onEditSpouse, t],
+  );
+  const gapsCtx = useMemo(
+    () => ({
+      gapsById: gapsById ?? new Map<number, PersonGap[]>(),
+      canWrite: canWriteGaps,
+      onFixGap,
+    }),
+    [gapsById, canWriteGaps, onFixGap],
   );
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -702,6 +726,7 @@ export default function FamilyChart({
     <KinshipFocusContext.Provider value={kinshipFocus}>
     <ChartActionsContext.Provider value={chartActions}>
     <QuickAddContext.Provider value={onQuickAdd ?? null}>
+    <GapsContext.Provider value={gapsCtx}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
       {!disablePanZoom && (
@@ -896,6 +921,7 @@ export default function FamilyChart({
         </div>
       </div>
     </div>
+    </GapsContext.Provider>
     </QuickAddContext.Provider>
     </ChartActionsContext.Provider>
     </KinshipFocusContext.Provider>
@@ -1031,6 +1057,7 @@ function PersonCard({
   const kinshipCtx = useContext(KinshipFocusContext);
   const chartActions = useContext(ChartActionsContext);
   const onQuickAdd = useContext(QuickAddContext);
+  const gapsCtx = useContext(GapsContext);
   const isMarried = marriedIds.has(person.id);
   const isSelected = selectedId === person.id;
   const female = isFemale(person.gender);
@@ -1045,6 +1072,8 @@ function PersonCard({
           kinshipCtx.rels,
         )
       : null;
+  const personGaps = gapsCtx?.gapsById.get(person.id) ?? [];
+  const hasResearch = personGaps.length > 0;
 
   return (
     <div
@@ -1112,6 +1141,17 @@ function PersonCard({
                 : "w-[7.75rem] sm:w-[8.25rem] px-2.5 pb-3 pt-2.5",
             )}
           >
+            {hasResearch && (
+              <span
+                className="absolute -end-1 -top-1 z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-bold text-white shadow-sm ring-2 ring-[#ececec]"
+                title={t("chart.researchDot", { count: personGaps.length })}
+              >
+                {personGaps.length > 1 ? personGaps.length : ""}
+                {personGaps.length === 1 && (
+                  <AlertCircle className="h-2.5 w-2.5" />
+                )}
+              </span>
+            )}
             <span
               className={cn(
                 "relative mb-1.5 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm",
@@ -1273,6 +1313,34 @@ function PersonCard({
               >
                 {t("tree.howRelatedTitle")}
               </Button>
+            )}
+            {hasResearch && (
+              <div className="mt-1 space-y-1 rounded-lg border border-amber-200/80 bg-amber-50/60 p-1.5">
+                <p className="px-1 text-[10px] font-semibold text-amber-900">
+                  {t("chart.researchTitle")}
+                </p>
+                {personGaps.slice(0, 3).map((g) => (
+                  <div
+                    key={g.kind}
+                    className="flex items-center gap-1 px-1 text-[10px] text-amber-950"
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {t(`detail.gap.${g.kind}`)}
+                    </span>
+                    {gapsCtx?.canWrite && gapsCtx.onFixGap && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-5 px-1.5 text-[10px]"
+                        onClick={() => gapsCtx.onFixGap?.(person, g.kind)}
+                      >
+                        {t("tree.growthFix")}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </HoverCardContent>

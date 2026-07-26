@@ -237,6 +237,8 @@ export const ar = {
     densityComfortable: "عرض مريح",
     focusHere: "تركيز هنا",
     doubleClickFocus: "نقر مزدوج للتركيز",
+    researchDot: "{{count}} نقص للبحث",
+    researchTitle: "بحث مقترح",
   },
   login: {
     title: "أهلاً بك في نَسَب",
@@ -607,6 +609,8 @@ export const ar = {
     eventAnniversary: "ذكرى زواج",
     eventToday: "اليوم",
     eventInDays: "بعد {{n}} يوم",
+    todayEventsTitle: "مناسبات اليوم",
+    todayEventsDismiss: "إخفاء لليوم",
     occasionsTitle: "تقويم المناسبات",
     occasionsHint: "{{total}} مناسبة · {{soon}} خلال ٣٠ يوماً",
     occasionsSoon: "خلال الشهر القادم",

@@ -15,6 +15,7 @@ type Props = {
   selectedPersonId?: number | null;
   /** محور تسمية القرابة في معاينة التحويم */
   kinshipFocusId?: number | null;
+  gapsById?: Map<number, { kind: string }[]>;
   onPersonClick?: (person: Person) => void;
   onFocusPerson?: (person: Person) => void;
   onHowRelated?: (person: Person) => void;
@@ -40,6 +41,7 @@ export default function PedigreeView({
   generations = 4,
   selectedPersonId,
   kinshipFocusId = null,
+  gapsById,
   onPersonClick,
   onFocusPerson,
   onHowRelated,
@@ -199,6 +201,11 @@ export default function PedigreeView({
                           cell.person && onHowRelated
                             ? () => onHowRelated(cell.person!)
                             : undefined
+                        }
+                        researchCount={
+                          cell.person
+                            ? (gapsById?.get(cell.person.id)?.length ?? 0)
+                            : 0
                         }
                         onPlaceholderClick={
                           !cell.person &&

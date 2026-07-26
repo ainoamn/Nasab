@@ -20,6 +20,8 @@ type Props = {
   relationLabel?: string | null;
   onFocus?: () => void;
   onHowRelated?: () => void;
+  /** عدد نواقص البحث — نقطة كهرمانية */
+  researchCount?: number;
 };
 
 /** كبسولة أفقية بأسلوب مخطط الأسلاف (MyHeritage pedigree) */
@@ -34,6 +36,7 @@ export function MhPersonPill({
   relationLabel,
   onFocus,
   onHowRelated,
+  researchCount = 0,
 }: Props) {
   const { t } = useTranslation();
 
@@ -69,7 +72,7 @@ export function MhPersonPill({
         onFocus?.();
       }}
       className={cn(
-        "flex h-12 w-[11.5rem] items-center gap-2 rounded-full border px-2 text-start shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+        "relative flex h-12 w-[11.5rem] items-center gap-2 rounded-full border px-2 text-start shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
         female
           ? "border-pink-200 bg-[#fce8f1]"
           : "border-sky-200 bg-[#e3f0fb]",
@@ -77,6 +80,12 @@ export function MhPersonPill({
         className,
       )}
     >
+      {researchCount > 0 && (
+        <span
+          className="absolute -end-0.5 -top-0.5 z-[1] h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white"
+          title={t("chart.researchDot", { count: researchCount })}
+        />
+      )}
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white ring-2",

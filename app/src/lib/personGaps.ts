@@ -47,3 +47,20 @@ export function findPersonGaps(
 
   return gaps;
 }
+
+/** خريطة نواقص لكل الأفراد — لنقاط البحث على المخطط */
+export function buildPersonGapsMap(
+  people: Person[],
+  rels: Relationship[],
+  opts?: { skipNoPhoto?: boolean },
+): Map<number, PersonGap[]> {
+  const map = new Map<number, PersonGap[]>();
+  for (const p of people) {
+    let gaps = findPersonGaps(p, people, rels);
+    if (opts?.skipNoPhoto) {
+      gaps = gaps.filter((g) => g.kind !== "noPhoto");
+    }
+    if (gaps.length > 0) map.set(p.id, gaps);
+  }
+  return map;
+}

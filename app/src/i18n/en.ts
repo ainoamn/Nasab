@@ -237,6 +237,8 @@ export const en = {
     densityComfortable: "Comfortable density",
     focusHere: "Focus here",
     doubleClickFocus: "Double-click to focus",
+    researchDot: "{{count}} research gaps",
+    researchTitle: "Suggested research",
   },
   login: {
     title: "Welcome to Nasab",
@@ -607,6 +609,8 @@ export const en = {
     eventAnniversary: "Anniversary",
     eventToday: "Today",
     eventInDays: "In {{n}} days",
+    todayEventsTitle: "Today's occasions",
+    todayEventsDismiss: "Dismiss for today",
     occasionsTitle: "Occasions calendar",
     occasionsHint: "{{total}} occasions · {{soon}} within 30 days",
     occasionsSoon: "Coming this month",
