@@ -16,6 +16,7 @@ import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
+import PersonShareQrDialog from "@/components/tree/PersonShareQrDialog";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
 import OccasionsPanel from "@/components/tree/OccasionsPanel";
@@ -61,7 +62,7 @@ import {
   findCommonAncestorId,
   findRelationPath,
 } from "@/lib/relationPath";
-import { buildPersonGapsMap, type PersonGap } from "@/lib/personGaps";
+import { buildPersonGapsMap, findPersonGaps, type PersonGap } from "@/lib/personGaps";
 import {
   getRecentPersonIds,
   pushRecentPersonId,
@@ -129,6 +130,8 @@ import {
   downloadPersonJson,
   downloadPersonVCard,
 } from "@/lib/personExport";
+import { downloadOccasionsCsv } from "@/lib/occasionsCsv";
+import { formatPersonGapsDigest } from "@/lib/researchDigest";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -231,6 +234,7 @@ import {
   Copy,
   Contact,
   MessageCircle,
+  QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -276,6 +280,7 @@ export default function TreeWorkspace() {
   );
   const [printOccasion, setPrintOccasion] = useState<TreeOccasion | null>(null);
   const [familyBriefPrintOpen, setFamilyBriefPrintOpen] = useState(false);
+  const [qrPerson, setQrPerson] = useState<Person | null>(null);
   const [dismissedDiscoveryKeys, setDismissedDiscoveryKeys] = useState<string[]>([]);
   const [completenessOpen, setCompletenessOpen] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
@@ -1180,6 +1185,44 @@ export default function TreeWorkspace() {
     toast.success(t("tree.whatsAppOpened"));
   };
 
+  const downloadOccasionsCsvFile = () => {
+    const all = buildTreeOccasions(occasionsPeople, occasionsRels);
+    if (all.length === 0) {
+      toast.error(t("tree.occasionsDownloadEmpty"));
+      return;
+    }
+    const kindLabel = (kind: TreeOccasion["kind"]) => {
+      if (kind === "birthday") return t("tree.eventBirthday");
+      if (kind === "memorial") return t("tree.eventMemorial");
+      return t("tree.eventAnniversary");
+    };
+    downloadOccasionsCsv(
+      `nasab-occasions-${occasionsScope}`,
+      all,
+      kindLabel,
+    );
+    toast.success(t("tree.occasionsCsvDone", { count: all.length }));
+  };
+
+  const sharePersonGapsWhatsApp = (person: Person) => {
+    const gaps = findPersonGaps(person, people, rels);
+    const text = formatPersonGapsDigest({
+      personName: person.givenName,
+      gaps,
+      gapLabel: (kind) => t(`detail.gap.${kind}`),
+      url: absoluteUrl(
+        buildTreePersonPath(treeId, person.id, { tab: "chart" }),
+      ),
+      labels: {
+        title: t("detail.gapsDigestTitle"),
+        linkHeader: t("tree.pathTextLink"),
+        empty: t("detail.gapsEmpty"),
+      },
+    });
+    openWhatsAppShare(text);
+    toast.success(t("tree.whatsAppOpened"));
+  };
+
   const familyBriefPrintData = useMemo(() => {
     const all = buildTreeOccasions(occasionsPeople, occasionsRels);
     const today = all.filter((e) => e.daysUntil === 0);
@@ -1577,6 +1620,7 @@ export default function TreeWorkspace() {
           onCopyGreeting={shareOccasionGreeting}
           onWhatsAppGreeting={shareOccasionWhatsApp}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
+          onDownloadOccasionsCsv={downloadOccasionsCsvFile}
           onCopyFamilyBrief={copyFamilyBrief}
           onWhatsAppFamilyBrief={shareFamilyBriefWhatsApp}
           onPrintFamilyBrief={() => setFamilyBriefPrintOpen(true)}
@@ -2589,6 +2633,19 @@ export default function TreeWorkspace() {
         treeName={tree.name}
       />
 
+      <PersonShareQrDialog
+        open={!!qrPerson}
+        onOpenChange={(o) => !o && setQrPerson(null)}
+        url={
+          qrPerson
+            ? absoluteUrl(
+                buildTreePersonPath(treeId, qrPerson.id, { tab: "chart" }),
+              )
+            : ""
+        }
+        personName={qrPerson?.givenName}
+      />
+
       <PersonProfilePrintDialog
         open={!!profilePrintPerson}
         onOpenChange={(o) => !o && setProfilePrintPerson(null)}
@@ -2966,6 +3023,15 @@ export default function TreeWorkspace() {
                   size="sm"
                   variant="outline"
                   className="gap-1.5"
+                  onClick={() => setQrPerson(detailPerson)}
+                >
+                  <QrCode className="h-3.5 w-3.5" />
+                  {t("share.showQR")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
                   onClick={() => {
                     downloadPersonVCard(detailPerson, {
                       url: absoluteUrl(
@@ -3120,6 +3186,7 @@ export default function TreeWorkspace() {
                 onAddSpouse={() =>
                   openAddRelative(detailPerson.id, "spouse")
                 }
+                onWhatsAppGaps={() => sharePersonGapsWhatsApp(detailPerson)}
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {detailPerson.kunya && <InfoRow label={t("detail.kunya")} value={detailPerson.kunya} />}

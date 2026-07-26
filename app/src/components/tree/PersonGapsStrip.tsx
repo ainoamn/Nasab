@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { findPersonGaps, type PersonGapKind } from "@/lib/personGaps";
 import { Button } from "@/components/ui/button";
-import { Camera, Calendar, UserRoundPlus, Heart } from "lucide-react";
+import { Camera, Calendar, UserRoundPlus, Heart, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -14,6 +14,7 @@ type Props = {
   onEdit?: () => void;
   onAddParent?: (role: "father" | "mother") => void;
   onAddSpouse?: () => void;
+  onWhatsAppGaps?: () => void;
   className?: string;
 };
 
@@ -33,6 +34,7 @@ export default function PersonGapsStrip({
   onEdit,
   onAddParent,
   onAddSpouse,
+  onWhatsAppGaps,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -50,12 +52,26 @@ export default function PersonGapsStrip({
         className,
       )}
     >
-      <p className="text-sm font-semibold text-sky-950">
-        {t("detail.gapsTitle")}
-        <span className="ms-1 text-xs font-normal text-sky-800/80">
-          ({gaps.length})
-        </span>
-      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-semibold text-sky-950">
+          {t("detail.gapsTitle")}
+          <span className="ms-1 text-xs font-normal text-sky-800/80">
+            ({gaps.length})
+          </span>
+        </p>
+        {onWhatsAppGaps && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="ms-auto h-7 gap-1 text-xs"
+            onClick={onWhatsAppGaps}
+          >
+            <MessageCircle className="h-3 w-3" />
+            {t("detail.shareGapsWhatsApp")}
+          </Button>
+        )}
+      </div>
       <ul className="space-y-1.5">
         {gaps.map((g) => {
           const Icon = iconFor(g.kind);
@@ -90,6 +106,7 @@ export default function PersonGapsStrip({
               )}
               {canWrite && g.kind === "missingMother" && onAddParent && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs"

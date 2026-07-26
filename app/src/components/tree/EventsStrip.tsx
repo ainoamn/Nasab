@@ -13,6 +13,7 @@ import {
   CalendarRange,
   ClipboardList,
   MessageCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
@@ -29,6 +30,7 @@ type Props = {
   onCopyGreeting?: (ev: TreeOccasion) => void;
   onWhatsAppGreeting?: (ev: TreeOccasion) => void;
   onDownloadUpcomingCalendar?: () => void;
+  onDownloadOccasionsCsv?: () => void;
   onCopyFamilyBrief?: () => void;
   onWhatsAppFamilyBrief?: () => void;
   onPrintFamilyBrief?: () => void;
@@ -72,6 +74,7 @@ export default function EventsStrip({
   onCopyGreeting,
   onWhatsAppGreeting,
   onDownloadUpcomingCalendar,
+  onDownloadOccasionsCsv,
   onCopyFamilyBrief,
   onWhatsAppFamilyBrief,
   onPrintFamilyBrief,
@@ -156,6 +159,18 @@ export default function EventsStrip({
             >
               <CalendarRange className="h-3 w-3" />
               {t("tree.occasionsDownload90")}
+            </Button>
+          )}
+          {onDownloadOccasionsCsv && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={onDownloadOccasionsCsv}
+            >
+              <FileSpreadsheet className="h-3 w-3" />
+              {t("tree.occasionsDownloadCsv")}
             </Button>
           )}
           {onSeeAll && (

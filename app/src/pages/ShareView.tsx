@@ -11,6 +11,9 @@ import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
+import PersonShareQrDialog from "@/components/tree/PersonShareQrDialog";
+import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
+import PhotosGallery from "@/components/tree/PhotosGallery";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
@@ -34,6 +37,8 @@ import {
   Contact,
   FileDown,
   MapPin,
+  Image as ImageIcon,
+  QrCode,
 } from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -70,6 +75,9 @@ import {
   downloadPersonJson,
   downloadPersonVCard,
 } from "@/lib/personExport";
+import { downloadOccasionsCsv } from "@/lib/occasionsCsv";
+import { formatPersonGapsDigest } from "@/lib/researchDigest";
+import { findPersonGaps } from "@/lib/personGaps";
 import { formatFamilyBrief } from "@/lib/familyBrief";
 import { buildTreeOccasions, type TreeOccasion } from "@/lib/treeOccasions";
 import {
@@ -113,6 +121,8 @@ export default function ShareView() {
   const [familyBriefPrintOpen, setFamilyBriefPrintOpen] = useState(false);
   const [showOccasionsPanel, setShowOccasionsPanel] = useState(false);
   const [showPlacesPanel, setShowPlacesPanel] = useState(false);
+  const [showPhotosPanel, setShowPhotosPanel] = useState(false);
+  const [qrPerson, setQrPerson] = useState<Person | null>(null);
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -456,6 +466,38 @@ export default function ShareView() {
     toast.success(t("tree.whatsAppOpened"));
   };
 
+  const downloadOccasionsCsvFile = () => {
+    const all = buildTreeOccasions(occasionsPeople, occasionsRels);
+    if (all.length === 0) {
+      toast.error(t("tree.occasionsDownloadEmpty"));
+      return;
+    }
+    const kindLabel = (kind: TreeOccasion["kind"]) => {
+      if (kind === "birthday") return t("tree.eventBirthday");
+      if (kind === "memorial") return t("tree.eventMemorial");
+      return t("tree.eventAnniversary");
+    };
+    downloadOccasionsCsv(`nasab-share-occasions`, all, kindLabel);
+    toast.success(t("tree.occasionsCsvDone", { count: all.length }));
+  };
+
+  const sharePersonGapsWhatsApp = (person: Person) => {
+    const gaps = findPersonGaps(person, people, rels);
+    const text = formatPersonGapsDigest({
+      personName: person.givenName,
+      gaps,
+      gapLabel: (kind) => t(`detail.gap.${kind}`),
+      url: absoluteUrl(buildSharePersonPath(shareToken, person.id)),
+      labels: {
+        title: t("detail.gapsDigestTitle"),
+        linkHeader: t("tree.pathTextLink"),
+        empty: t("detail.gapsEmpty"),
+      },
+    });
+    openWhatsAppShare(text);
+    toast.success(t("tree.whatsAppOpened"));
+  };
+
   const familyBriefPrintData = useMemo(() => {
     const all = buildTreeOccasions(occasionsPeople, occasionsRels);
     const today = all.filter((e) => e.daysUntil === 0);
@@ -701,6 +743,7 @@ export default function ShareView() {
           onCopyGreeting={shareOccasionGreeting}
           onWhatsAppGreeting={shareOccasionWhatsApp}
           onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
+          onDownloadOccasionsCsv={downloadOccasionsCsvFile}
           onCopyFamilyBrief={copyFamilyBrief}
           onWhatsAppFamilyBrief={shareFamilyBriefWhatsApp}
           onPrintFamilyBrief={() => setFamilyBriefPrintOpen(true)}
@@ -719,6 +762,18 @@ export default function ShareView() {
               ? t("share.hidePlaces")
               : t("share.showPlaces")}
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={showPhotosPanel ? "secondary" : "outline"}
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setShowPhotosPanel((v) => !v)}
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            {showPhotosPanel
+              ? t("share.hidePhotos")
+              : t("share.showPhotos")}
+          </Button>
         </div>
 
         {showPlacesPanel && (
@@ -727,6 +782,18 @@ export default function ShareView() {
               people={people}
               rels={rels}
               kinshipFocusId={detail?.id ?? null}
+              onPersonClick={(p) => openPerson(p)}
+            />
+          </div>
+        )}
+
+        {showPhotosPanel && (
+          <div className="mb-4 rounded-2xl border bg-card p-4 shadow-sm">
+            <PhotosGallery
+              people={people}
+              rels={rels}
+              kinshipFocusId={detail?.id ?? null}
+              favoriteIds={favoriteIds}
               onPersonClick={(p) => openPerson(p)}
             />
           </div>
@@ -892,6 +959,16 @@ export default function ShareView() {
                       size="sm"
                       variant="outline"
                       className="gap-1.5"
+                      onClick={() => setQrPerson(detail)}
+                    >
+                      <QrCode className="h-3.5 w-3.5" />
+                      {t("share.showQR")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
                       onClick={() => {
                         downloadPersonVCard(detail, {
                           url: absoluteUrl(
@@ -989,11 +1066,41 @@ export default function ShareView() {
                     rels={rels}
                     onSelect={openPerson}
                   />
+                  {relateId != null &&
+                    peopleById.get(relateId) &&
+                    relateId !== detail.id && (
+                      <PathToHomeStrip
+                        homePerson={peopleById.get(relateId)!}
+                        detailPerson={detail}
+                        people={people}
+                        rels={rels}
+                        onSelectHop={openPerson}
+                        onHighlightPath={(ids) => {
+                          setHighlightPathIds(ids);
+                          toast.success(
+                            t("tree.pathHighlightActive", {
+                              count: ids.length,
+                            }),
+                          );
+                        }}
+                        onCopyPathLink={() => {
+                          const url = absoluteUrl(
+                            buildSharePersonPath(shareToken, detail.id, {
+                              relate: relateId,
+                            }),
+                          );
+                          void navigator.clipboard.writeText(url);
+                          toast.success(t("tree.pathLinkCopied"));
+                        }}
+                        onCopyPathText={copyPathText}
+                      />
+                    )}
                   <PersonGapsStrip
                     person={detail}
                     people={people}
                     rels={rels}
                     canWrite={false}
+                    onWhatsAppGaps={() => sharePersonGapsWhatsApp(detail)}
                   />
                 </div>
               </>
@@ -1044,6 +1151,17 @@ export default function ShareView() {
         today={familyBriefPrintData.today}
         week={familyBriefPrintData.week}
         treeName={tree.name}
+      />
+
+      <PersonShareQrDialog
+        open={!!qrPerson}
+        onOpenChange={(o) => !o && setQrPerson(null)}
+        url={
+          qrPerson
+            ? absoluteUrl(buildSharePersonPath(shareToken, qrPerson.id))
+            : ""
+        }
+        personName={qrPerson?.givenName}
       />
 
       <PersonProfilePrintDialog
