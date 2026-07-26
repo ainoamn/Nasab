@@ -18,6 +18,7 @@ const KEYS = [
   { keys: "Esc", labelKey: "shortcuts.escape" },
   { keys: "H", labelKey: "shortcuts.home" },
   { keys: "R", labelKey: "shortcuts.related" },
+  { keys: "← →", labelKey: "shortcuts.siblings" },
   { keys: "2×", labelKey: "shortcuts.dblFocus" },
   { keys: "?", labelKey: "shortcuts.help" },
 ] as const;

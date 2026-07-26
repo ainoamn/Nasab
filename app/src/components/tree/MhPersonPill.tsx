@@ -1,5 +1,12 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { Person } from "@db/tables";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   person: Person | null;
@@ -9,6 +16,10 @@ type Props = {
   onClick?: () => void;
   onPlaceholderClick?: () => void;
   className?: string;
+  /** شارة القرابة بالنسبة للمحور */
+  relationLabel?: string | null;
+  onFocus?: () => void;
+  onHowRelated?: () => void;
 };
 
 /** كبسولة أفقية بأسلوب مخطط الأسلاف (MyHeritage pedigree) */
@@ -20,7 +31,12 @@ export function MhPersonPill({
   onClick,
   onPlaceholderClick,
   className,
+  relationLabel,
+  onFocus,
+  onHowRelated,
 }: Props) {
+  const { t } = useTranslation();
+
   if (!person) {
     const Comp = onPlaceholderClick ? "button" : "div";
     return (
@@ -43,10 +59,15 @@ export function MhPersonPill({
   }
 
   const female = person.gender === "female";
-  return (
+  const pill = (
     <button
       type="button"
       onClick={onClick}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onFocus?.();
+      }}
       className={cn(
         "flex h-12 w-[11.5rem] items-center gap-2 rounded-full border px-2 text-start shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
         female
@@ -87,5 +108,79 @@ export function MhPersonPill({
         )}
       </span>
     </button>
+  );
+
+  if (!relationLabel && !onFocus && !onHowRelated) {
+    return pill;
+  }
+
+  return (
+    <HoverCard openDelay={280} closeDelay={80}>
+      <HoverCardTrigger asChild>{pill}</HoverCardTrigger>
+      <HoverCardContent side="top" className="w-56 p-3">
+        <div className="flex items-start gap-2.5">
+          <span
+            className={cn(
+              "flex h-10 w-10 shrink-0 overflow-hidden rounded-full text-white",
+              female ? "bg-pink-500" : "bg-sky-600",
+            )}
+          >
+            {person.photoUrl ? (
+              <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-sm">
+                {person.givenName.slice(0, 1)}
+              </span>
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{person.givenName}</p>
+            {years && (
+              <p className="text-[11px] text-muted-foreground">{years}</p>
+            )}
+            {relationLabel && (
+              <p className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                {relationLabel}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="mt-2.5 grid gap-1.5">
+          {onClick && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-7 w-full text-xs"
+              onClick={onClick}
+            >
+              {t("chart.openProfile")}
+            </Button>
+          )}
+          {onFocus && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 w-full text-xs"
+              onClick={onFocus}
+            >
+              {t("chart.focusHere")}
+            </Button>
+          )}
+          {onHowRelated && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 w-full text-xs"
+              onClick={onHowRelated}
+            >
+              {t("tree.howRelatedTitle")}
+            </Button>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }

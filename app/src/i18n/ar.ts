@@ -875,6 +875,7 @@ export const ar = {
     home: "الذهاب لشخص البيت",
     related: "كيف يرتبطان؟",
     dblFocus: "نقر مزدوج على البطاقة للتركيز",
+    siblings: "التنقّل بين الإخوة (مع لوحة التفاصيل)",
     help: "عرض هذا الدليل",
   },
   members: {
@@ -1075,6 +1076,7 @@ export const ar = {
     viewingFocusedTree: "تُعرض شجرته الآن",
     viewSpouseTree: "عرض شجرته",
     profileAction: "الملف / التركيز",
+    showOnChart: "أظهر على المخطط",
     gapsTitle: "ما ينقص هذا الملف",
     gap: {
       noPhoto: "بدون صورة",

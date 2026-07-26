@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { getParents } from "@/lib/familyGraph";
+import { relationToFocus } from "@/lib/relationshipLabel";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -10,7 +11,9 @@ type Props = {
   focusId: number;
   generations?: number;
   selectedPersonId?: number | null;
+  kinshipFocusId?: number | null;
   onPersonClick?: (person: Person) => void;
+  onFocusPerson?: (person: Person) => void;
   onAddParent?: (childId: number, role: "father" | "mother") => void;
 };
 
@@ -57,12 +60,15 @@ export default function FanChartView({
   focusId,
   generations = 5,
   selectedPersonId,
+  kinshipFocusId = null,
   onPersonClick,
+  onFocusPerson,
   onAddParent,
 }: Props) {
   const { t } = useTranslation();
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const focus = byId.get(focusId);
+  const kinId = kinshipFocusId ?? focusId;
 
   const slots = useMemo(() => {
     const out: Slot[] = [];
@@ -177,7 +183,20 @@ export default function FanChartView({
                     onAddParent(slot.childId, slot.role);
                   }
                 }}
+                onDoubleClick={(e) => {
+                  if (!person || !onFocusPerson) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onFocusPerson(person);
+                }}
               >
+                {person && (
+                  <title>
+                    {`${person.givenName} — ${t(
+                      `tree.rel.${relationToFocus(kinId, person.id, people, rels)}`,
+                    )}${onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""}`}
+                  </title>
+                )}
                 <path
                   d={arcPath(
                     ringInner(slot.ring),
@@ -226,7 +245,18 @@ export default function FanChartView({
           <g
             className="cursor-pointer"
             onClick={() => onPersonClick?.(focus)}
+            onDoubleClick={(e) => {
+              if (!onFocusPerson) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onFocusPerson(focus);
+            }}
           >
+            <title>
+              {`${focus.givenName} — ${t("tree.rel.self")}${
+                onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""
+              }`}
+            </title>
             <circle
               cx={CX}
               cy={CY - 8}

@@ -876,6 +876,7 @@ export const en = {
     home: "Go to home person",
     related: "How are they related?",
     dblFocus: "Double-click a card to focus",
+    siblings: "Move between siblings (while detail is open)",
     help: "Show this guide",
   },
   members: {
@@ -1076,6 +1077,7 @@ export const en = {
     viewingFocusedTree: "Showing their tree",
     viewSpouseTree: "View tree",
     profileAction: "Profile / focus",
+    showOnChart: "Show on chart",
     gapsTitle: "What's missing on this profile",
     gap: {
       noPhoto: "No photo",

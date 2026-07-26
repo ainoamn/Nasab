@@ -192,6 +192,7 @@ export default function TreeWorkspace() {
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
+  const [mainTab, setMainTab] = useState("chart");
   const [centerRequest, setCenterRequest] = useState<{
     personId: number;
     token: number;
@@ -312,6 +313,60 @@ export default function TreeWorkspace() {
 
   const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
   const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
+
+  /** ← → بين الإخوة أثناء فتح لوحة التفاصيل (متوافق مع RTL) */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (!detailPerson) return;
+      const el = e.target as HTMLElement | null;
+      const typing =
+        el?.tagName === "INPUT" ||
+        el?.tagName === "TEXTAREA" ||
+        el?.tagName === "SELECT" ||
+        el?.isContentEditable;
+      if (typing) return;
+      if (howRelatedOpen || shortcutsOpen) return;
+
+      const { fatherId, motherId } = getParents(
+        detailPerson.id,
+        rels,
+        peopleById,
+      );
+      const siblingIds = new Set<number>();
+      siblingIds.add(detailPerson.id);
+      for (const pid of [fatherId, motherId]) {
+        if (pid == null) continue;
+        for (const sid of childrenOf.get(pid) ?? []) siblingIds.add(sid);
+      }
+      const ring = [...siblingIds]
+        .map((id) => peopleById.get(id))
+        .filter((p): p is Person => !!p)
+        .sort((a, b) => a.givenName.localeCompare(b.givenName, "ar"));
+      if (ring.length < 2) return;
+      const idx = ring.findIndex((s) => s.id === detailPerson.id);
+      if (idx < 0) return;
+      const rtl = document.documentElement.dir === "rtl";
+      const goPrev = rtl ? e.key === "ArrowLeft" : e.key === "ArrowRight";
+      const next = goPrev
+        ? ring[(idx - 1 + ring.length) % ring.length]
+        : ring[(idx + 1) % ring.length];
+      e.preventDefault();
+      setDetailPerson(next);
+      setChartFocusId(next.id);
+      requestCenterOn(next.id);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    detailPerson,
+    rels,
+    peopleById,
+    childrenOf,
+    howRelatedOpen,
+    shortcutsOpen,
+  ]);
+
   const chartFocusPerson = chartFocusId
     ? (peopleById.get(chartFocusId) ?? null)
     : null;
@@ -374,6 +429,32 @@ export default function TreeWorkspace() {
     setChartRevision((n) => n + 1);
     setDetailPerson(null);
     requestCenterOn(personId);
+  };
+
+  /** إظهار شخص على المخطط من القائمة/التفاصيل/القفزات */
+  const revealOnChart = (person: Person) => {
+    setMainTab("chart");
+    setDetailPerson(person);
+    if (
+      chartView === "pedigree" ||
+      chartView === "fan" ||
+      chartView === "descendants" ||
+      chartView === "close"
+    ) {
+      setChartFocusId(person.id);
+    }
+    requestCenterOn(person.id);
+  };
+
+  const kinshipFocusForViews =
+    chartFocusId ?? homePersonId ?? detailPerson?.id ?? null;
+
+  const openHowRelatedFrom = (p: Person) => {
+    setHowRelatedPair({
+      from: kinshipFocusForViews,
+      to: p.id,
+    });
+    setHowRelatedOpen(true);
   };
 
   const goBackFocus = () => {
@@ -733,7 +814,7 @@ export default function TreeWorkspace() {
           }}
         />
 
-        <Tabs defaultValue="chart" className="min-w-0">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="min-w-0">
           <TabsList className="mb-4 w-full sm:w-auto h-auto flex flex-wrap justify-start gap-1 p-1">
             <TabsTrigger value="chart" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
               <LayoutGrid className="h-4 w-4" /> {t("tree.chart")}
@@ -1091,10 +1172,16 @@ export default function TreeWorkspace() {
                         focusId={focusId}
                         generations={Math.min(maxGenerations, 8)}
                         selectedPersonId={detailPerson?.id ?? null}
+                        kinshipFocusId={kinshipFocusForViews}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
                           setChartFocusId(p.id);
                         }}
+                        onFocusPerson={(p) => {
+                          focusOnPerson(p.id);
+                          setDetailPerson(p);
+                        }}
+                        onHowRelated={openHowRelatedFrom}
                         onAddParent={
                           canWrite
                             ? (childId, role) => openAddRelative(childId, role)
@@ -1125,9 +1212,14 @@ export default function TreeWorkspace() {
                         focusId={focusId}
                         generations={Math.min(maxGenerations, 7)}
                         selectedPersonId={detailPerson?.id ?? null}
+                        kinshipFocusId={kinshipFocusForViews}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
                           setChartFocusId(p.id);
+                        }}
+                        onFocusPerson={(p) => {
+                          focusOnPerson(p.id);
+                          setDetailPerson(p);
                         }}
                         onAddParent={
                           canWrite
@@ -1159,10 +1251,16 @@ export default function TreeWorkspace() {
                         focusId={focusId}
                         generations={Math.min(maxGenerations, 6)}
                         selectedPersonId={detailPerson?.id ?? null}
+                        kinshipFocusId={kinshipFocusForViews}
                         onPersonClick={(p) => {
                           setDetailPerson(p);
                           setChartFocusId(p.id);
                         }}
+                        onFocusPerson={(p) => {
+                          focusOnPerson(p.id);
+                          setDetailPerson(p);
+                        }}
+                        onHowRelated={openHowRelatedFrom}
                         onAddChild={
                           canWrite
                             ? (parentId) => openAddRelative(parentId, "son")
@@ -1243,7 +1341,7 @@ export default function TreeWorkspace() {
                         <TableHead>{t("tree.cols.gender")}</TableHead>
                         <TableHead>{t("tree.cols.years")}</TableHead>
                         <TableHead>{t("tree.cols.privacy")}</TableHead>
-                        {canWrite && <TableHead>{t("tree.cols.actions")}</TableHead>}
+                        <TableHead>{t("tree.cols.actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1302,21 +1400,31 @@ export default function TreeWorkspace() {
                             <TableCell>
                               <Badge variant="outline">{L.privacy[p.privacy as PersonPrivacy]}</Badge>
                             </TableCell>
-                            {canWrite && (
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-center gap-1">
-                                  <Button size="icon" variant="ghost" title={t("common.edit")} onClick={() => setEditPerson(p)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" title={t("common.link")} onClick={() => setLinkAnchor(p)}>
-                                    <Link2 className="h-4 w-4" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" title={t("common.delete")} className="text-destructive" onClick={() => setDeletePerson(p)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            )}
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  title={t("detail.showOnChart")}
+                                  onClick={() => revealOnChart(p)}
+                                >
+                                  <Network className="h-4 w-4" />
+                                </Button>
+                                {canWrite && (
+                                  <>
+                                    <Button size="icon" variant="ghost" title={t("common.edit")} onClick={() => setEditPerson(p)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" title={t("common.link")} onClick={() => setLinkAnchor(p)}>
+                                      <Link2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" title={t("common.delete")} className="text-destructive" onClick={() => setDeletePerson(p)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -1581,6 +1689,7 @@ export default function TreeWorkspace() {
                           onClick={() => {
                             setDetailPerson(prevSib);
                             setChartFocusId(prevSib.id);
+                            requestCenterOn(prevSib.id);
                           }}
                         >
                           <ChevronRight className="h-4 w-4 rtl:hidden" />
@@ -1597,6 +1706,7 @@ export default function TreeWorkspace() {
                           onClick={() => {
                             setDetailPerson(nextSib);
                             setChartFocusId(nextSib.id);
+                            requestCenterOn(nextSib.id);
                           }}
                         >
                           <ChevronLeft className="h-4 w-4 rtl:hidden" />
@@ -1635,6 +1745,15 @@ export default function TreeWorkspace() {
                 >
                   <Focus className="h-3.5 w-3.5" />
                   {t("detail.profileAction")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => revealOnChart(detailPerson)}
+                >
+                  <Network className="h-3.5 w-3.5" />
+                  {t("detail.showOnChart")}
                 </Button>
                 {canWrite && (
                   <Button
@@ -1703,6 +1822,7 @@ export default function TreeWorkspace() {
                 onSelect={(p) => {
                   setDetailPerson(p);
                   setChartFocusId(p.id);
+                  requestCenterOn(p.id);
                 }}
               />
               <PersonGapsStrip
@@ -1759,6 +1879,7 @@ export default function TreeWorkspace() {
                               if (p) {
                                 setDetailPerson(p);
                                 setChartFocusId(p.id);
+                                requestCenterOn(p.id);
                               }
                             }}
                           >

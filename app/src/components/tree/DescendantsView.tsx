@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { buildChildrenOf } from "@/lib/familyGraph";
 import { useLabels } from "@/lib/labels";
+import { relationToFocus } from "@/lib/relationshipLabel";
 import { MhPersonPill } from "@/components/tree/MhPersonPill";
 import { cn } from "@/lib/utils";
 import { birthSortKey } from "@/lib/birthOrder";
@@ -13,7 +14,10 @@ type Props = {
   focusId: number;
   generations?: number;
   selectedPersonId?: number | null;
+  kinshipFocusId?: number | null;
   onPersonClick?: (person: Person) => void;
+  onFocusPerson?: (person: Person) => void;
+  onHowRelated?: (person: Person) => void;
   onAddChild?: (parentId: number) => void;
 };
 
@@ -33,13 +37,17 @@ export default function DescendantsView({
   focusId,
   generations = 4,
   selectedPersonId,
+  kinshipFocusId = null,
   onPersonClick,
+  onFocusPerson,
+  onHowRelated,
   onAddChild,
 }: Props) {
   const { t } = useTranslation();
   const L = useLabels();
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
+  const kinId = kinshipFocusId ?? focusId;
 
   const columns = useMemo(() => {
     const cols: Cell[][] = [];
@@ -142,9 +150,31 @@ export default function DescendantsView({
                             selectedPersonId === cell.person.id
                           }
                           placeholder={t("chart.addChild")}
+                          relationLabel={
+                            cell.person
+                              ? t(
+                                  `tree.rel.${relationToFocus(
+                                    kinId,
+                                    cell.person.id,
+                                    people,
+                                    rels,
+                                  )}`,
+                                )
+                              : null
+                          }
                           onClick={
                             cell.person
                               ? () => onPersonClick?.(cell.person!)
+                              : undefined
+                          }
+                          onFocus={
+                            cell.person && onFocusPerson
+                              ? () => onFocusPerson(cell.person!)
+                              : undefined
+                          }
+                          onHowRelated={
+                            cell.person && onHowRelated
+                              ? () => onHowRelated(cell.person!)
                               : undefined
                           }
                           onPlaceholderClick={
