@@ -103,6 +103,32 @@ export function augmentSpousesFromCoParents(
   return result;
 }
 
+/**
+ * جذر الفرع الأكبر (بعدد الأفراد) — غالباً الخط الرئيسي للشجرة.
+ * فروع أنساب الأزواج تبقى أصغر ولا تُعرض كشجرة مستقلة في الصفحة الرئيسية.
+ */
+export function findPrimaryBranchRootId(
+  people: { branchId: number | null }[],
+  branches: { id: number; rootPersonId: number }[],
+): number | null {
+  if (branches.length === 0) return null;
+  const counts = new Map<number, number>();
+  for (const p of people) {
+    if (p.branchId == null) continue;
+    counts.set(p.branchId, (counts.get(p.branchId) ?? 0) + 1);
+  }
+  let bestBranchId: number | null = null;
+  let bestCount = -1;
+  for (const [branchId, count] of counts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestBranchId = branchId;
+    }
+  }
+  if (bestBranchId == null) return null;
+  return branches.find((b) => b.id === bestBranchId)?.rootPersonId ?? null;
+}
+
 /** عدد الأحفاد عبر الأبناء فقط (لتفضيل الجذر الأقوى) */
 export function countDescendants(
   rootId: number,
@@ -145,8 +171,9 @@ export function oppositeSpouses(
 }
 
 /**
- * أبناء زوجين. strict=true للزوجة ضمن تعدد الزوجات (يجب تطابق الأم).
- * strict=false للزوجين الوحidين (يقبل ابناً مرتبطاً بالأب فقط).
+ * أبناء زوجين.
+ * strict=true: الأم يجب أن تطابق صراحة (لتعدد الزوجات — لا يُخلط أبناء زوجة بأخرى).
+ * strict=false: يقبل أيضاً ابناً مربوطاً بالأب فقط دون أم مسجّلة.
  */
 export function childrenOfPair(
   fatherId: number | null,
@@ -154,7 +181,7 @@ export function childrenOfPair(
   childrenOf: Map<number, number[]>,
   rels: Relationship[],
   byId: Map<number, Person>,
-  strict = false,
+  strict = true,
 ): number[] {
   if (!fatherId && !motherId) return [];
 
@@ -169,23 +196,17 @@ export function childrenOfPair(
   return Array.from(candidates).filter((childId) => {
     const { fatherId: f, motherId: m } = getParents(childId, rels, byId);
 
-    if (fatherId && f !== fatherId) return false;
-    if (motherId && m && m !== motherId) return false;
+    // لا يظهر ابن أم أخرى تحت هذه الزوجة أبداً
+    if (motherId && m != null && m !== motherId) return false;
+    // لا يظهر ابن أب آخر تحت هذا الأب أبداً
+    if (fatherId && f != null && f !== fatherId) return false;
 
-    if (strict) {
-      // عمود زوجة في تعدد الزوجات: يكفي ربط الأم، أو كلاهما
-      if (motherId && m !== motherId) return false;
-      if (fatherId && f && f !== fatherId) return false;
-      if (motherId && m === motherId) return true;
-      if (fatherId && f === fatherId) return true;
-      return false;
-    }
-
-    // زوجان واحدان: يظهر الابن المرتبط بأحدهما أو كليهما
     if (fatherId && motherId) {
       if (f === fatherId && m === motherId) return true;
-      if (f === fatherId && !m) return true;
-      if (m === motherId && (!f || f === fatherId)) return true;
+      // ابن بلا أم مسجّلة: فقط في غير الصارم (زوجان واحدان)
+      if (!strict && f === fatherId && m == null) return true;
+      // ابن مربوط بالأم فقط (بلا أب): غير الصارم
+      if (!strict && m === motherId && f == null) return true;
       return false;
     }
 

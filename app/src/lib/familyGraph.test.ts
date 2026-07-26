@@ -7,6 +7,7 @@ import {
   augmentSpousesFromCoParents,
   countDescendants,
   buildChildrenOf,
+  findPrimaryBranchRootId,
 } from "@/lib/familyGraph";
 
 function p(
@@ -136,5 +137,20 @@ describe("familyGraph lineage", () => {
     const childrenOf = buildChildrenOf(rels);
     expect(countDescendants(1, childrenOf)).toBe(3);
     expect(countDescendants(2, childrenOf)).toBe(2);
+  });
+
+  it("picks the largest branch root as the primary lineage root", () => {
+    const people = [
+      { ...p(1, "جد"), branchId: 10 },
+      { ...p(2, "ابن"), branchId: 10 },
+      { ...p(3, "حفيد"), branchId: 10 },
+      { ...p(4, "أب الزوجة"), branchId: 20 },
+      { ...p(5, "زوجة", "female"), branchId: 20 },
+    ];
+    const branches = [
+      { id: 10, rootPersonId: 1 },
+      { id: 20, rootPersonId: 4 },
+    ];
+    expect(findPrimaryBranchRootId(people, branches)).toBe(1);
   });
 });

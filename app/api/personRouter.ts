@@ -16,11 +16,9 @@ import { assertCanAddPerson } from "./planLimits";
 import { PERSON_PRIVACY, RELATIONSHIP_TYPES, UNNAMED_MOTHER_LABEL } from "@contracts/constants";
 import {
   ensureBranchFromLineage,
-  linkSiblingsToFather,
   resolveFatherForMotherChild,
   searchSimilarPersons,
 } from "./lineageHelpers";
-import { buildSpousesOf } from "@/lib/familyGraph";
 
 const spouseDateFields = {
   marriageDay: z.number().int().min(1).max(31).nullish(),
@@ -46,7 +44,10 @@ const personFields = {
   deathMonth: z.number().int().min(1).max(12).nullish(),
   deathYear: z.number().int().min(0).max(2100).nullish(),
   deathPlace: z.string().max(255).nullish(),
-  isLiving: z.boolean().default(true),
+  isLiving: z
+    .union([z.boolean(), z.literal(0), z.literal(1)])
+    .transform((v) => v === true || v === 1)
+    .default(true),
   privacy: z.enum(PERSON_PRIVACY).default("family"),
   photoUrl: z.string().max(500_000).nullish(),
   notes: z.string().max(10000).nullish(),
@@ -281,7 +282,8 @@ async function applyKinshipLink(
     }
     await ensureSpouseLink(db, treeId, anchorId, childId);
 
-    // ربط الزوجة/الزوج بسلسلة أبيه من «النسب المتسلسل»
+    // ربط الزوجة/الزوج بسلسلة أبيه من «النسب المتسلسل» — فقط عند التفعيل الصريح،
+    // ودون دمج تلقائي مع عائلات موجودة أو ربط إخوة بالاسم.
     let autoParentId = opts.autoParentId ?? null;
     if (
       opts.createBranchFromLineage &&
@@ -294,6 +296,7 @@ async function applyKinshipLink(
         userId,
         opts.fatherName.trim(),
         opts.clan,
+        { reuseExisting: false },
       );
       autoParentId = branch.directFatherId;
       if (branch.branchId) {
@@ -310,15 +313,6 @@ async function applyKinshipLink(
     }
     if (autoParentId && autoParentId !== childId && autoParentId !== anchorId) {
       await setParentLink(db, treeId, autoParentId, childId);
-      if (opts.fatherName?.trim()) {
-        await linkSiblingsToFather(
-          db,
-          treeId,
-          autoParentId,
-          opts.fatherName.trim(),
-          childId,
-        );
-      }
     }
     return;
   }
@@ -366,7 +360,8 @@ async function applyKinshipLink(
     if (
       opts.createBranchFromLineage &&
       opts.fatherName?.trim() &&
-      !autoParentId
+      !autoParentId &&
+      !resolvedOtherParentId
     ) {
       const branch = await ensureBranchFromLineage(
         db,
@@ -374,6 +369,7 @@ async function applyKinshipLink(
         userId,
         opts.fatherName.trim(),
         opts.clan,
+        { reuseExisting: false },
       );
       autoParentId = branch.directFatherId;
     }
@@ -391,6 +387,7 @@ async function applyKinshipLink(
           anchorId,
           opts.fatherName.trim(),
           opts.clan,
+          { createIfMissing: !!opts.createBranchFromLineage },
         )) ?? undefined;
     }
 
@@ -420,7 +417,9 @@ async function applyKinshipLink(
     ) {
       otherParentIds.add(resolvedOtherParentId);
     }
+    // لا نضيف autoParent كأب ثانٍ إذا اختار المستخدم الأب/الأم الآخر يدوياً
     if (
+      !resolvedOtherParentId &&
       autoParentId &&
       autoParentId !== anchorId &&
       autoParentId !== childId &&
@@ -446,15 +445,7 @@ async function applyKinshipLink(
       await setParentLink(db, treeId, otherId, childId);
     }
 
-    if (autoParentId && opts.fatherName?.trim()) {
-      await linkSiblingsToFather(
-        db,
-        treeId,
-        autoParentId,
-        opts.fatherName.trim(),
-        childId,
-      );
-    }
+    // لا نربط إخوة تلقائياً بالاسم — الربط اليدوي فقط
     return;
   }
 
@@ -488,50 +479,9 @@ async function applyKinshipLink(
   }
 }
 
-async function repairDuplicateParentLinks(db: Db, treeId: number) {
-  const people = (await db
-    .select()
-    .from(persons)
-    .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)))) as Person[];
-  const rels = (await db
-    .select()
-    .from(relationships)
-    .where(eq(relationships.treeId, treeId))) as Relationship[];
-  const byId = new Map(people.map((p) => [p.id, p]));
-  const spousesOf = buildSpousesOf(rels);
-
-  for (const person of people) {
-    const parentRels = rels.filter(
-      (r) => r.type === "parent" && r.toPersonId === person.id,
-    );
-    const fatherRels = parentRels.filter(
-      (r) => byId.get(r.fromPersonId)?.gender === "male",
-    );
-    if (fatherRels.length <= 1) continue;
-
-    const motherRel = parentRels.find(
-      (r) => byId.get(r.fromPersonId)?.gender === "female",
-    );
-    let keep = fatherRels[0];
-    if (motherRel) {
-      const spouseIds = new Set(spousesOf.get(motherRel.fromPersonId) ?? []);
-      const preferred = fatherRels.find((r) =>
-        spouseIds.has(r.fromPersonId),
-      );
-      if (preferred) keep = preferred;
-    }
-
-    for (const rel of fatherRels) {
-      if (rel.id !== keep.id) {
-        await db.delete(relationships).where(eq(relationships.id, rel.id));
-      }
-    }
-  }
-}
-
 async function getTreeData(treeId: number) {
   const db = getDb();
-  await repairDuplicateParentLinks(db, treeId);
+  // لا نعدّل العلاقات عند القراءة — أي إصلاح يجب أن يكون صريحاً من المستخدم/أداة صيانة
   const people = (await db
     .select()
     .from(persons)
@@ -700,6 +650,7 @@ export const personRouter = createRouter({
             ctx.user.id,
             fields.fatherName.trim(),
             fields.clan,
+            { reuseExisting: false },
           );
           autoParentId = branch.directFatherId;
         }
@@ -733,6 +684,7 @@ export const personRouter = createRouter({
           ctx.user.id,
           fields.fatherName.trim(),
           fields.clan,
+          { reuseExisting: false },
         );
         if (branch.branchId) branchId = branch.branchId;
         autoParentId = branch.directFatherId;
@@ -761,15 +713,6 @@ export const personRouter = createRouter({
               toPersonId: id,
               type: "parent",
             });
-            if (fields.fatherName?.trim()) {
-              await linkSiblingsToFather(
-                db,
-                treeId,
-                autoParentId,
-                fields.fatherName.trim(),
-                id,
-              );
-            }
           }
         }
 
@@ -1465,7 +1408,7 @@ export const personRouter = createRouter({
       );
     }),
 
-  /** إنشاء/ربط سلسلة النسب من حقل الأب إن لم تكن مربوطة بعلاقات */
+  /** لا ينشئ روابط تلقائياً — الربط يتم يدوياً عند الإضافة/التعديل فقط */
   ensurePersonLineage: authedQuery
     .input(
       z.object({
@@ -1474,9 +1417,8 @@ export const personRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
       await requireTreeRole(ctx.user.id, input.treeId, "editor");
-
+      const db = getDb();
       const person = await db.query.persons.findFirst({
         where: and(
           eq(persons.id, input.personId),
@@ -1487,77 +1429,10 @@ export const personRouter = createRouter({
       if (!person) {
         throw new TRPCError({ code: "NOT_FOUND", message: "الشخص غير موجود" });
       }
-
-      const fatherName = person.fatherName?.trim();
-      if (!fatherName) {
-        return { ok: true as const, linked: false, reason: "no_father_name" as const };
-      }
-
-      const parentRels = await db
-        .select()
-        .from(relationships)
-        .where(
-          and(
-            eq(relationships.treeId, input.treeId),
-            eq(relationships.toPersonId, input.personId),
-            eq(relationships.type, "parent"),
-          ),
-        );
-
-      let hasMaleParent = false;
-      for (const r of parentRels) {
-        const p = await db.query.persons.findFirst({
-          where: eq(persons.id, r.fromPersonId),
-        });
-        if (p?.gender === "male") {
-          hasMaleParent = true;
-          break;
-        }
-      }
-      if (hasMaleParent) {
-        return { ok: true as const, linked: false, reason: "already_linked" as const };
-      }
-
-      const branch = await ensureBranchFromLineage(
-        db,
-        input.treeId,
-        ctx.user.id,
-        fatherName,
-        person.clan,
-      );
-      if (!branch.directFatherId) {
-        return { ok: true as const, linked: false, reason: "empty_lineage" as const };
-      }
-
-      await setParentLink(db, input.treeId, branch.directFatherId, input.personId);
-      await linkSiblingsToFather(
-        db,
-        input.treeId,
-        branch.directFatherId,
-        fatherName,
-        input.personId,
-      );
-
-      if (branch.branchId && !person.branchId) {
-        await db
-          .update(persons)
-          .set({ branchId: branch.branchId })
-          .where(eq(persons.id, input.personId));
-      }
-
-      await logChange({
-        treeId: input.treeId,
-        userId: ctx.user.id,
-        personId: input.personId,
-        action: "ensure_lineage",
-        details: `ربط نسب ${person.givenName} ← ${fatherName}`,
-      });
-
       return {
         ok: true as const,
-        linked: true,
-        fatherId: branch.directFatherId,
-        branchId: branch.branchId,
+        linked: false,
+        reason: "manual_only" as const,
       };
     }),
 

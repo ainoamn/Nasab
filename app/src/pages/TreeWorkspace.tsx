@@ -86,8 +86,10 @@ import {
   ShieldCheck,
   Eye,
   Focus,
+  Unlink,
 } from "lucide-react";
 import { toast } from "sonner";
+import { findSpouseRel } from "@/lib/spouseMeta";
 
 export default function TreeWorkspace() {
   const { id } = useParams<{ id: string }>();
@@ -110,9 +112,9 @@ export default function TreeWorkspace() {
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
 
+  /** بعد إضافة/تعديل: اخرج من وضع التركيز دون إعادة تركيب المخطط (يحافظ على السحب والتكبير) */
   const refreshChart = () => {
     setChartFocusId(null);
-    setChartRevision((n) => n + 1);
   };
 
   const treeQuery = trpc.tree.get.useQuery({ id: treeId }, { enabled: isAuthenticated && treeId > 0 });
@@ -191,6 +193,33 @@ export default function TreeWorkspace() {
     },
     onError: (e) => toast.error(e.message),
   });
+
+  const unlinkMut = trpc.person.removeRelationship.useMutation({
+    onSuccess: async () => {
+      toast.success(t("detail.unlinked"));
+      await utils.person.list.invalidate({ treeId });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const unlinkParent = (parentId: number, childId: number, name: string) => {
+    const rel = rels.find(
+      (r) =>
+        r.type === "parent" &&
+        r.fromPersonId === parentId &&
+        r.toPersonId === childId,
+    );
+    if (!rel) return;
+    if (!window.confirm(t("detail.unlinkConfirm", { name }))) return;
+    unlinkMut.mutate({ id: rel.id, treeId });
+  };
+
+  const unlinkSpouse = (aId: number, bId: number, name: string) => {
+    const rel = findSpouseRel(rels, aId, bId);
+    if (!rel) return;
+    if (!window.confirm(t("detail.unlinkConfirm", { name }))) return;
+    unlinkMut.mutate({ id: rel.id, treeId });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim();
@@ -607,24 +636,66 @@ export default function TreeWorkspace() {
                   <p className="font-semibold">{t("personForm.parentsTitle")}</p>
                   <div className="flex flex-wrap gap-2">
                     {father && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void openPersonTree(father.id)}
-                      >
-                        {t("detail.father")}: {father.givenName}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void openPersonTree(father.id)}
+                        >
+                          {t("detail.father")}: {father.givenName}
+                        </Button>
+                        {canWrite && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive"
+                            title={t("detail.unlink")}
+                            disabled={unlinkMut.isPending}
+                            onClick={() =>
+                              unlinkParent(
+                                father.id,
+                                detailPerson.id,
+                                father.givenName,
+                              )
+                            }
+                          >
+                            <Unlink className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     )}
                     {mother && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void openPersonTree(mother.id)}
-                      >
-                        {t("detail.mother")}: {mother.givenName}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void openPersonTree(mother.id)}
+                        >
+                          {t("detail.mother")}: {mother.givenName}
+                        </Button>
+                        {canWrite && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive"
+                            title={t("detail.unlink")}
+                            disabled={unlinkMut.isPending}
+                            onClick={() =>
+                              unlinkParent(
+                                mother.id,
+                                detailPerson.id,
+                                mother.givenName,
+                              )
+                            }
+                          >
+                            <Unlink className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -634,16 +705,38 @@ export default function TreeWorkspace() {
                   <p className="font-semibold">{t("detail.spouses")}</p>
                   <div className="flex flex-wrap gap-2">
                     {spouses.map((sp) => (
-                      <Button
-                        key={sp.id}
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => void openPersonTree(sp.id)}
-                      >
-                        {sp.givenName}
-                        <span className="ms-1 opacity-70">→ {t("detail.viewSpouseTree")}</span>
-                      </Button>
+                      <div key={sp.id} className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void openPersonTree(sp.id)}
+                        >
+                          {sp.givenName}
+                          <span className="ms-1 opacity-70">
+                            → {t("detail.viewSpouseTree")}
+                          </span>
+                        </Button>
+                        {canWrite && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive"
+                            title={t("detail.unlink")}
+                            disabled={unlinkMut.isPending}
+                            onClick={() =>
+                              unlinkSpouse(
+                                detailPerson.id,
+                                sp.id,
+                                sp.givenName,
+                              )
+                            }
+                          >
+                            <Unlink className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>

@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 import { Children, isValidElement } from "react";
 import { Heart } from "lucide-react";
 
-/** خط عمودي */
+const LINE = "bg-slate-500 print:bg-slate-700";
+
+/** خط عمودي متصل */
 export function VLine({
   className,
   h = 28,
@@ -13,13 +15,13 @@ export function VLine({
 }) {
   return (
     <div
-      className={cn("w-px shrink-0 bg-slate-400 print:bg-slate-600", className)}
+      className={cn("w-0.5 shrink-0", LINE, className)}
       style={{ height: h }}
     />
   );
 }
 
-/** أيقونة زواج + تواريخ */
+/** أيقونة زواج فوق خط متصل */
 export function SpouseHeart({
   marriageLabel,
   divorceLabel,
@@ -30,7 +32,12 @@ export function SpouseHeart({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center gap-0.5 py-0.5", className)}>
+    <div
+      className={cn(
+        "relative z-10 flex flex-col items-center gap-0.5 py-0.5",
+        className,
+      )}
+    >
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-600 border border-pink-200 shadow-sm print:shadow-none">
         <Heart className="h-3 w-3 fill-pink-500" />
       </span>
@@ -49,8 +56,7 @@ export function SpouseHeart({
 }
 
 /**
- * صف أبناء/فروع بعرض طبيعي لكل عمود (ليس 1fr متساوٍ) —
- * حتى لا تنفصل الزوجات عن الأزواج بسبب تمدد الأعمدة الفارغة.
+ * صف أبناء/فروع — خط رأسي من الأعلى يتصل بشريط أفقي متصل ثم فروع للأبناء.
  */
 export function BranchRow({
   children,
@@ -58,7 +64,6 @@ export function BranchRow({
 }: {
   children: ReactNode;
   className?: string;
-  /** مهمل — أُبقي للتوافق */
   busDrop?: number;
 }) {
   const items = Children.toArray(children).filter(isValidElement);
@@ -68,7 +73,7 @@ export function BranchRow({
   if (count === 1) {
     return (
       <div className={cn("flex flex-col items-center w-max", className)}>
-        <VLine h={14} />
+        <VLine h={20} />
         {items}
       </div>
     );
@@ -76,23 +81,27 @@ export function BranchRow({
 
   return (
     <div className={cn("flex flex-col items-center w-max max-w-none", className)}>
-      <VLine h={10} />
+      <VLine h={16} />
       <div className="flex flex-nowrap items-start justify-center" dir="rtl">
         {items.map((child, i) => (
           <div
             key={child.key ?? i}
             className="relative flex flex-col items-center w-max px-2 sm:px-3"
           >
-            <div className="relative h-4 w-full shrink-0">
-              {/* خط أفقي يمر عبر العمود ويتصل بالجوار */}
+            <div className="relative h-5 w-full shrink-0">
               <div
-                className="absolute top-0 h-px bg-slate-400 print:bg-slate-600"
+                className={cn("absolute top-0 h-0.5", LINE)}
                 style={{
                   left: i === count - 1 ? "50%" : 0,
                   right: i === 0 ? "50%" : 0,
                 }}
               />
-              <div className="absolute left-1/2 top-0 h-4 w-px -translate-x-1/2 bg-slate-400 print:bg-slate-600" />
+              <div
+                className={cn(
+                  "absolute left-1/2 top-0 h-5 w-0.5 -translate-x-1/2",
+                  LINE,
+                )}
+              />
             </div>
             {child}
           </div>
@@ -130,31 +139,36 @@ export function PolygamyLayout({
   return <BranchRow className={className}>{children}</BranchRow>;
 }
 
-/** خط أفقي بين الزوجين */
+/** قطعة خط أفقي متصل بين الزوج والزوجة (بدون فجوة) */
 export function CoupleBridge({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center shrink-0 self-start mt-7", className)}>
-      <div className="w-3 sm:w-5 h-px bg-slate-400 print:bg-slate-600" />
+    <div
+      className={cn(
+        "flex items-center shrink-0 self-start mt-[1.875rem]",
+        className,
+      )}
+    >
+      <div className={cn("w-4 sm:w-7 h-0.5", LINE)} />
     </div>
   );
 }
 
-/** خط من الزوجين للأبناء */
+/** خط متصل من صف الزوجين إلى الأبناء */
 export function CoupleToChildrenConnector({
   className,
-  h = 24,
+  h = 28,
 }: {
   className?: string;
   h?: number;
 }) {
   return (
-    <div className={cn("flex flex-col items-center", className)}>
+    <div className={cn("flex flex-col items-center -mb-px", className)}>
       <VLine h={h} />
     </div>
   );
 }
 
-/** شريط إخوة */
+/** شريط إخوة متصل */
 export function SiblingFork({
   childCount,
   children,
@@ -166,12 +180,12 @@ export function SiblingFork({
 }) {
   if (childCount <= 1) {
     return (
-      <div className={cn("flex flex-col items-center w-max", className)}>
-        <VLine h={18} />
+      <div className={cn("flex flex-col items-center w-max -mt-px", className)}>
+        <VLine h={20} />
         {children}
       </div>
     );
   }
 
-  return <BranchRow className={className}>{children}</BranchRow>;
+  return <BranchRow className={cn("-mt-px", className)}>{children}</BranchRow>;
 }

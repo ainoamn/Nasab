@@ -183,7 +183,7 @@ export default function PersonFormDialog({
   const [editFatherId, setEditFatherId] = useState<string>("");
   const [lineageTouched, setLineageTouched] = useState(false);
   const [linkExistingId, setLinkExistingId] = useState<number | null>(null);
-  const [createBranchFromLineage, setCreateBranchFromLineage] = useState(true);
+  const [createBranchFromLineage, setCreateBranchFromLineage] = useState(false);
 
   const byId = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
@@ -304,14 +304,18 @@ export default function PersonFormDialog({
     setDeathMonth(person?.deathMonth?.toString() ?? "");
     setDeathYear(person?.deathYear?.toString() ?? "");
     setDeathPlace(person?.deathPlace ?? "");
-    setIsLiving(person?.isLiving ?? true);
+    setIsLiving(
+      person
+        ? person.isLiving === true || (person.isLiving as unknown) === 1
+        : true,
+    );
     setPrivacy((person?.privacy as PersonPrivacy) ?? "family");
     setNotes(person?.notes ?? "");
     setPhotoUrl(person?.photoUrl ?? null);
     setLineageTouched(false);
     setOtherParentId("");
     setLinkExistingId(null);
-    setCreateBranchFromLineage(true);
+    setCreateBranchFromLineage(false);
 
     if (isEdit && person) {
       const { fatherId, motherId } = getParents(person.id, rels, byId);
@@ -412,7 +416,7 @@ export default function PersonFormDialog({
     }
   }, [anchor, kinship, isEdit, lineageTouched, addingViaMother, otherParentId, selectedOtherParent, otherParentOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onSuccess = async (msg: string) => {
+  const onSuccess = (msg: string) => {
     toast.success(msg);
     if (linkPersonId) {
       try {
@@ -421,11 +425,10 @@ export default function PersonFormDialog({
         /* ignore */
       }
     }
-    await utils.person.list.invalidate({ treeId });
-    await utils.person.list.refetch({ treeId });
-    await utils.tree.listMine.invalidate();
-    onAdded?.();
     onOpenChange(false);
+    onAdded?.();
+    void utils.person.list.invalidate({ treeId });
+    void utils.tree.listMine.invalidate();
   };
 
   const createMut = trpc.person.create.useMutation({
@@ -472,7 +475,7 @@ export default function PersonFormDialog({
       deathMonth: isLiving ? null : parseOptInt(deathMonth),
       deathYear: isLiving ? null : parseOptInt(deathYear),
       deathPlace: isLiving ? null : deathPlace.trim() || null,
-      isLiving,
+      isLiving: Boolean(isLiving),
       privacy,
       photoUrl,
       notes: notes.trim() || null,
@@ -482,12 +485,20 @@ export default function PersonFormDialog({
       return;
     }
     if (isEdit && person) {
+      const motherIdNum = editMotherId ? parseInt(editMotherId, 10) : null;
+      const fatherIdNum = editFatherId ? parseInt(editFatherId, 10) : null;
       updateMut.mutate({
         id: person.id,
         treeId,
         ...base,
-        motherId: editMotherId ? parseInt(editMotherId, 10) : null,
-        fatherId: editFatherId ? parseInt(editFatherId, 10) : null,
+        motherId:
+          motherIdNum != null && Number.isFinite(motherIdNum)
+            ? motherIdNum
+            : null,
+        fatherId:
+          fatherIdNum != null && Number.isFinite(fatherIdNum)
+            ? fatherIdNum
+            : null,
       });
       return;
     }

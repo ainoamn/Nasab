@@ -206,6 +206,8 @@ export const en = {
     divorcedOn: "Separated: {{date}}",
     spouseMirror: "Marriage shown from the other family side",
     unlinkedPeople: "{{count}} person(s) not shown in the chart — check relationships or tap «Full tree»",
+    marriedBorder: "Married",
+    deceasedBorder: "Deceased",
   },
   login: {
     title: "Welcome to Nasab",
@@ -680,7 +682,8 @@ export const en = {
     siblingMatch: "sibling with same lineage",
     siblingMatchHint:
       "Siblings with the same father chain were found — the existing lineage root will be reused and they will be linked to the same father",
-    createBranchFromLineage: "Auto-create a lineage branch from the father chain (can hide later)",
+    createBranchFromLineage:
+      "Create new ancestors from the lineage text (does not merge into existing families — prefer picking the father manually)",
   },
   relation: {
     title: "Link \"{{name}}\" to someone",
@@ -914,6 +917,9 @@ export const en = {
     father: "Father",
     mother: "Mother",
     spouses: "Spouses",
+    unlink: "Unlink",
+    unlinkConfirm: "Unlink from {{name}} without deleting anyone?",
+    unlinked: "Link removed — the person stays in the tree",
     viewPersonTree: "View their tree",
     viewFullTree: "Full tree",
     viewingFocusedTree: "Showing their tree",

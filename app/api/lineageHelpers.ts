@@ -156,14 +156,19 @@ function findExistingAncestor(
   return null;
 }
 
-/** إنشاء سلسلة آباء + فرع — يعيد استخدام الموجود بدل التكرار */
+/** إنشاء سلسلة آباء + فرع.
+ * reuseExisting=false (الافتراضي): لا يدمج مع أشخاص موجودين بالاسم — يُنشئ سلسلة جديدة.
+ * reuseExisting=true: يعيد استخدام سلف مطابق عند التأكيد اليدوي فقط.
+ */
 export async function ensureBranchFromLineage(
   db: Db,
   treeId: number,
   userId: number,
   fatherNameLine: string,
   clan?: string | null,
+  opts: { reuseExisting?: boolean } = {},
 ): Promise<{ branchId: number; directFatherId: number | null }> {
+  const reuseExisting = opts.reuseExisting === true;
   const ancestors = lineageAncestorsToCreate(fatherNameLine, "male");
   if (ancestors.length === 0) {
     return { branchId: 0, directFatherId: null };
@@ -175,7 +180,7 @@ export async function ensureBranchFromLineage(
 
   for (let i = 0; i < ancestors.length; i++) {
     const anc = ancestors[i];
-    let found = findExistingAncestor(anc, existing);
+    let found = reuseExisting ? findExistingAncestor(anc, existing) : null;
 
     if (found) {
       resolvedIds.push(found.id);
@@ -355,7 +360,10 @@ export async function linkSiblingsToFather(
   return linked;
 }
 
-/** عند إضافة ابن/بنت من الأم: يستخرج الأب من النسب أو يُنشئه ويربطه كزوج */
+/** عند إضافة ابن/بنت من الأم:
+ * - إن وُجد زوج ذكر مطابق لاسم الأب في النسب → نستخدمه (رابط زوجية موجود مسبقاً).
+ * - وإلا لا ننشئ/ندمج عائلة إلا إذا createIfMissing=true (بعد موافقة المستخدم).
+ */
 export async function resolveFatherForMotherChild(
   db: Db,
   treeId: number,
@@ -363,6 +371,7 @@ export async function resolveFatherForMotherChild(
   motherId: number,
   childLineage: string,
   clan?: string | null,
+  opts: { createIfMissing?: boolean } = {},
 ): Promise<number | null> {
   const parsed = parseLineageChain(childLineage.trim());
   const directFatherGiven = parsed.segments[0]?.givenName;
@@ -397,12 +406,15 @@ export async function resolveFatherForMotherChild(
     }
   }
 
+  if (!opts.createIfMissing) return null;
+
   const branch = await ensureBranchFromLineage(
     db,
     treeId,
     userId,
     childLineage.trim(),
     clan,
+    { reuseExisting: false },
   );
   const fatherId = branch.directFatherId;
   if (!fatherId) return null;
@@ -419,6 +431,5 @@ export async function resolveFatherForMotherChild(
     });
   }
 
-  // الفرع يبقى مخفياً من العرض المكدّس؛ الأشخاص المرتبطون بالشجرة الرئيسية يظهرون عبر صلة الزوجية
   return fatherId;
 }

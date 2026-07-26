@@ -206,6 +206,8 @@ export const ar = {
     divorcedOn: "انفصال: {{date}}",
     spouseMirror: "زواج من جهة العائلة الأخرى",
     unlinkedPeople: "{{count}} شخص غير ظاهر في المخطط — تحقق من صلة القرابة أو اضغط «الشجرة الكاملة»",
+    marriedBorder: "متزوج",
+    deceasedBorder: "متوفى",
   },
   login: {
     title: "أهلاً بك في نَسَب",
@@ -680,7 +682,7 @@ export const ar = {
     siblingMatch: "أخ/أخت بنفس النسب",
     siblingMatchHint:
       "وُجد إخوة بنفس سلسلة الأب — سيُعاد استخدام جذر النسب الموجود ويُربطون بنفس الأب تلقائياً",
-    createBranchFromLineage: "إنشاء فرع نسب تلقائياً من سلسلة الأب (يمكن إخفاؤه لاحقاً)",
+    createBranchFromLineage: "إنشاء آباء جدد من نص النسب (بدون دمج مع عائلات موجودة — يُفضّل اختيار الأب يدوياً)",
   },
   relation: {
     title: "ربط «{{name}}» بشخص",
@@ -914,6 +916,9 @@ export const ar = {
     father: "الأب",
     mother: "الأم",
     spouses: "الأزواج / الزوجات",
+    unlink: "فصل الربط",
+    unlinkConfirm: "فصل الربط مع {{name}} دون حذف أي شخص؟",
+    unlinked: "تم فصل الربط — الشخص ما زال في الشجرة",
     viewPersonTree: "عرض شجرته",
     viewFullTree: "الشجرة الكاملة",
     viewingFocusedTree: "تُعرض شجرته الآن",
