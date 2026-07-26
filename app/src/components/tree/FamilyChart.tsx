@@ -1039,7 +1039,11 @@ function ChildrenRow({
   );
 }
 
-/** بطاقة الشخص المحوري فقط تحدّد العرض — الأزواج يخرجون يميناً/يساراً بلا إزاحة خط الإخوة */
+/**
+ * صف الزوجية متمركز على الشخص المحوري:
+ * عمودان جانبيان بعرض متساوٍ (1fr) حتى يبقى المحور في منتصف العمود لخط الإخوة،
+ * مع حجز مساحة حقيقية للزوجات حتى لا تتداخل الأعمدة.
+ */
 function SiblingHub({
   hub,
   startSide,
@@ -1052,35 +1056,20 @@ function SiblingHub({
   endSide?: ReactNode;
 }) {
   return (
-    <div className="relative w-fit max-w-none mx-auto">
-      {endSide ? (
-        <div
-          className="absolute top-0 end-full z-0 flex h-full items-center"
-          dir="rtl"
-        >
-          {endSide}
-        </div>
-      ) : null}
-      <div className="relative z-[1]">{hub}</div>
-      {startSide ? (
-        <div
-          className="absolute top-0 start-full z-0 flex h-full items-center"
-          dir="rtl"
-        >
-          {startSide}
-        </div>
-      ) : null}
+    <div
+      className="mx-auto grid w-max max-w-none grid-cols-[1fr_auto_1fr] items-center"
+      dir="rtl"
+    >
+      <div className="flex items-center justify-end">{startSide}</div>
+      <div className="relative z-[1] shrink-0">{hub}</div>
+      <div className="flex items-center justify-start">{endSide}</div>
     </div>
   );
 }
 
-/** الأحفاد قد يكونون أعرض من البطاقة — لا يوسّعون عمود الإخوة */
+/** غلاف الأبناء — عرض طبيعي حتى لا تتداخل الفروع */
 function DescendantsOverflow({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex w-0 min-w-full justify-center overflow-visible">
-      <div className="w-max max-w-none">{children}</div>
-    </div>
-  );
+  return <div className="flex w-max max-w-none justify-center">{children}</div>;
 }
 
 /** بطاقات الزوج/الزوجة متمركزة على الشخص المحوري (focus) */
