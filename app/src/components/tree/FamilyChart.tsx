@@ -1250,6 +1250,7 @@ function FocusCoupleStrip({
   externalSpouses,
   L,
   t,
+  activeSpouseId = null,
 }: {
   focus: Person;
   spouses: Person[];
@@ -1261,6 +1262,8 @@ function FocusCoupleStrip({
   externalSpouses: RemotePerson[];
   L: Labels;
   t: (k: string, o?: Record<string, unknown>) => string;
+  /** عند التصفية: إبراز زوج/ة واحدة وتعتيم الباقي */
+  activeSpouseId?: number | null;
 }) {
   const ordered = sortSpouses(spouses, rels, focus.id);
   const startSpouses = ordered.filter((_, i) => i % 2 === 0);
@@ -1268,9 +1271,11 @@ function FocusCoupleStrip({
 
   const renderSpouseChain = (list: Person[], towardStart: boolean) => {
     const nodes: ReactNode[] = [];
-    list.forEach((sp, idx) => {
+    list.forEach((sp) => {
       const spouseRel = findSpouseRel(rels, focus.id, sp.id);
       const dates = formatSpouseDates(spouseRel, t);
+      const dimmed =
+        activeSpouseId != null && activeSpouseId !== sp.id;
       const link = (
         <CoupleLink
           key={`l-${sp.id}`}
@@ -1280,18 +1285,21 @@ function FocusCoupleStrip({
         />
       );
       const card = (
-        <PersonCard
+        <div
           key={`c-${sp.id}`}
-          person={sp}
-          depth={depth}
-          compact={compact}
-          ranks={ranks.get(sp.id)}
-          onPersonClick={onPersonClick}
-          L={L}
-          t={t}
-        />
+          className={cn(dimmed && "opacity-35 grayscale-[30%]")}
+        >
+          <PersonCard
+            person={sp}
+            depth={depth}
+            compact={compact}
+            ranks={ranks.get(sp.id)}
+            onPersonClick={onPersonClick}
+            L={L}
+            t={t}
+          />
+        </div>
       );
-      // towardStart: الرابط أقرب للمحور ثم البطاقة
       if (towardStart) {
         nodes.push(card, link);
       } else {
@@ -1446,6 +1454,160 @@ function CoupleCardsRow({
   );
 }
 
+/** عائلة متعددة الزيجات مع فلتر «كل الزيجات / زوجة محددة» */
+function MultiSpouseBranch({
+  focus,
+  spouses,
+  spouseKids,
+  orphanKids,
+  depth,
+  byId,
+  childrenOf,
+  spousesOf,
+  rels,
+  ranks,
+  onPersonClick,
+  compact,
+  visited,
+  remoteByLocal,
+  externalSpouses,
+  L,
+  t,
+}: {
+  focus: Person;
+  spouses: Person[];
+  spouseKids: Array<{ spouse: Person; kids: number[] }>;
+  orphanKids: number[];
+  depth: number;
+  byId: Map<number, Person>;
+  childrenOf: Map<number, number[]>;
+  spousesOf: Map<number, number[]>;
+  rels: Relationship[];
+  ranks: Map<number, ReturnType<typeof computePersonRanks>>;
+  onPersonClick?: (person: Person) => void;
+  compact?: boolean;
+  visited: Set<number>;
+  remoteByLocal: Map<number, RemotePerson[]>;
+  externalSpouses: RemotePerson[];
+  L: Labels;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  const [activeSpouseId, setActiveSpouseId] = useState<number | "all">("all");
+  const visible =
+    activeSpouseId === "all"
+      ? spouseKids
+      : spouseKids.filter((s) => s.spouse.id === activeSpouseId);
+  const showOrphans = activeSpouseId === "all" && orphanKids.length > 0;
+
+  return (
+    <div className="flex flex-col items-center shrink-0">
+      <FocusCoupleStrip
+        focus={focus}
+        spouses={spouses}
+        depth={depth}
+        ranks={ranks}
+        onPersonClick={onPersonClick}
+        compact={compact}
+        rels={rels}
+        externalSpouses={externalSpouses}
+        L={L}
+        t={t}
+        activeSpouseId={activeSpouseId === "all" ? null : activeSpouseId}
+      />
+      <div
+        className="mt-1.5 mb-0.5 flex flex-wrap items-center justify-center gap-1"
+        data-no-pan
+      >
+        <button
+          type="button"
+          data-no-pan
+          onClick={() => setActiveSpouseId("all")}
+          className={cn(
+            "rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition",
+            activeSpouseId === "all"
+              ? "border-sky-500 bg-sky-50 text-sky-800"
+              : "border-stone-300 bg-white text-stone-600 hover:border-sky-300",
+          )}
+        >
+          {t("chart.allMarriages")}
+        </button>
+        {spouses.map((sp) => (
+          <button
+            key={sp.id}
+            type="button"
+            data-no-pan
+            onClick={() => setActiveSpouseId(sp.id)}
+            className={cn(
+              "max-w-[6.5rem] truncate rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition",
+              activeSpouseId === sp.id
+                ? "border-amber-500 bg-amber-50 text-amber-900"
+                : "border-stone-300 bg-white text-stone-600 hover:border-amber-300",
+            )}
+            title={sp.givenName}
+          >
+            {sp.givenName}
+          </button>
+        ))}
+      </div>
+      <DescendantsOverflow>
+        <div
+          className="flex flex-nowrap items-start justify-center gap-4 pt-1"
+          dir="rtl"
+        >
+          {visible.map(({ spouse, kids }) =>
+            kids.length > 0 ? (
+              <div key={spouse.id} className="flex flex-col items-center">
+                {activeSpouseId === "all" && (
+                  <p className="mb-0.5 max-w-[7rem] truncate text-center text-[9px] text-stone-500">
+                    {spouse.givenName}
+                  </p>
+                )}
+                <ChildrenRow
+                  kidIds={kids}
+                  depth={depth}
+                  byId={byId}
+                  childrenOf={childrenOf}
+                  spousesOf={spousesOf}
+                  rels={rels}
+                  ranks={ranks}
+                  onPersonClick={onPersonClick}
+                  compact={compact}
+                  visited={visited}
+                  remoteByLocal={remoteByLocal}
+                  L={L}
+                  t={t}
+                />
+              </div>
+            ) : null,
+          )}
+          {showOrphans && (
+            <div className="flex flex-col items-center">
+              <p className="mb-0.5 px-1 text-center text-[9px] text-muted-foreground">
+                {t("chart.noMotherListed")}
+              </p>
+              <ChildrenRow
+                kidIds={orphanKids}
+                depth={depth}
+                byId={byId}
+                childrenOf={childrenOf}
+                spousesOf={spousesOf}
+                rels={rels}
+                ranks={ranks}
+                onPersonClick={onPersonClick}
+                compact={compact}
+                visited={visited}
+                remoteByLocal={remoteByLocal}
+                L={L}
+                t={t}
+              />
+            </div>
+          )}
+        </div>
+      </DescendantsOverflow>
+    </div>
+  );
+}
+
 function CoupleNode({
   focusId,
   depth,
@@ -1544,67 +1706,28 @@ function CoupleNode({
     }));
 
     return (
-      <div className="flex flex-col items-center shrink-0">
-        <FocusCoupleStrip
-          focus={focus}
-          spouses={orderedWives}
-          depth={depth}
-          ranks={ranks}
-          onPersonClick={onPersonClick}
-          compact={compact}
-          rels={rels}
-          externalSpouses={externalSpouses}
-          L={L}
-          t={t}
-        />
-        <DescendantsOverflow>
-          <div className="flex flex-nowrap items-start justify-center gap-4 pt-1" dir="rtl">
-            {wifeKids.map(({ wife, kids }) =>
-              kids.length > 0 ? (
-                <div key={wife.id} className="flex flex-col items-center">
-                  <ChildrenRow
-                    kidIds={kids}
-                    depth={depth}
-                    byId={byId}
-                    childrenOf={childrenOf}
-                    spousesOf={spousesOf}
-                    rels={rels}
-                    ranks={ranks}
-                    onPersonClick={onPersonClick}
-                    compact={compact}
-                    visited={nextVisited}
-                    remoteByLocal={remoteByLocal}
-                    L={L}
-                    t={t}
-                  />
-                </div>
-              ) : null,
-            )}
-            {orphanKids.length > 0 && (
-              <div className="flex flex-col items-center">
-                <p className="text-[9px] text-muted-foreground mb-0.5 text-center px-1">
-                  {t("chart.noMotherListed")}
-                </p>
-                <ChildrenRow
-                  kidIds={orphanKids}
-                  depth={depth}
-                  byId={byId}
-                  childrenOf={childrenOf}
-                  spousesOf={spousesOf}
-                  rels={rels}
-                  ranks={ranks}
-                  onPersonClick={onPersonClick}
-                  compact={compact}
-                  visited={nextVisited}
-                  remoteByLocal={remoteByLocal}
-                  L={L}
-                  t={t}
-                />
-              </div>
-            )}
-          </div>
-        </DescendantsOverflow>
-      </div>
+      <MultiSpouseBranch
+        focus={focus}
+        spouses={orderedWives}
+        spouseKids={wifeKids.map(({ wife, kids }) => ({
+          spouse: wife,
+          kids,
+        }))}
+        orphanKids={orphanKids}
+        depth={depth}
+        byId={byId}
+        childrenOf={childrenOf}
+        spousesOf={spousesOf}
+        rels={rels}
+        ranks={ranks}
+        onPersonClick={onPersonClick}
+        compact={compact}
+        visited={nextVisited}
+        remoteByLocal={remoteByLocal}
+        externalSpouses={externalSpouses}
+        L={L}
+        t={t}
+      />
     );
   }
 
@@ -1617,45 +1740,28 @@ function CoupleNode({
     }));
 
     return (
-      <div className="flex flex-col items-center shrink-0">
-        <FocusCoupleStrip
-          focus={focus}
-          spouses={orderedHusbands}
-          depth={depth}
-          ranks={ranks}
-          onPersonClick={onPersonClick}
-          compact={compact}
-          rels={rels}
-          externalSpouses={externalSpouses}
-          L={L}
-          t={t}
-        />
-        <DescendantsOverflow>
-          <div className="flex flex-nowrap items-start justify-center gap-4 pt-1" dir="rtl">
-            {husbandKids.map(({ husband, kids }) =>
-              kids.length > 0 ? (
-                <div key={husband.id} className="flex flex-col items-center">
-                  <ChildrenRow
-                    kidIds={kids}
-                    depth={depth}
-                    byId={byId}
-                    childrenOf={childrenOf}
-                    spousesOf={spousesOf}
-                    rels={rels}
-                    ranks={ranks}
-                    onPersonClick={onPersonClick}
-                    compact={compact}
-                    visited={nextVisited}
-                    remoteByLocal={remoteByLocal}
-                    L={L}
-                    t={t}
-                  />
-                </div>
-              ) : null,
-            )}
-          </div>
-        </DescendantsOverflow>
-      </div>
+      <MultiSpouseBranch
+        focus={focus}
+        spouses={orderedHusbands}
+        spouseKids={husbandKids.map(({ husband, kids }) => ({
+          spouse: husband,
+          kids,
+        }))}
+        orphanKids={[]}
+        depth={depth}
+        byId={byId}
+        childrenOf={childrenOf}
+        spousesOf={spousesOf}
+        rels={rels}
+        ranks={ranks}
+        onPersonClick={onPersonClick}
+        compact={compact}
+        visited={nextVisited}
+        remoteByLocal={remoteByLocal}
+        externalSpouses={externalSpouses}
+        L={L}
+        t={t}
+      />
     );
   }
 

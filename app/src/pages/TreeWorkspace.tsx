@@ -34,6 +34,7 @@ import { collectCloseFamily } from "@/lib/closeFamily";
 import { limitPeopleByGenerations } from "@/lib/generationLimit";
 import { buildGedcom, downloadGedcom } from "@/lib/gedcomExport";
 import { getHomePersonId, setHomePersonId } from "@/lib/homePerson";
+import { computeTreeCompleteness } from "@/lib/treeCompleteness";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -148,6 +149,9 @@ export default function TreeWorkspace() {
   const [importOpen, setImportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [listGender, setListGender] = useState<"all" | "male" | "female">("all");
+  const [listLiving, setListLiving] = useState<"all" | "living" | "deceased">("all");
+  const [listUnlinkedOnly, setListUnlinkedOnly] = useState(false);
   const [chartFocusId, setChartFocusId] = useState<number | null>(null);
   const [chartRevision, setChartRevision] = useState(0);
   const [chartView, setChartView] = useState<
@@ -372,13 +376,22 @@ export default function TreeWorkspace() {
 
   const filtered = useMemo(() => {
     const q = search.trim();
-    if (!q) return people;
-    return people.filter((p) =>
-      [p.givenName, p.fatherName, p.kunya, p.laqab, p.clan]
+    return people.filter((p) => {
+      if (listGender !== "all" && p.gender !== listGender) return false;
+      if (listLiving === "living" && !p.isLiving) return false;
+      if (listLiving === "deceased" && p.isLiving) return false;
+      if (listUnlinkedOnly && !unlinkedIds.has(p.id)) return false;
+      if (!q) return true;
+      return [p.givenName, p.fatherName, p.kunya, p.laqab, p.clan]
         .filter(Boolean)
-        .some((f) => f!.includes(q)),
-    );
-  }, [people, search]);
+        .some((f) => f!.includes(q));
+    });
+  }, [people, search, listGender, listLiving, listUnlinkedOnly, unlinkedIds]);
+
+  const completeness = useMemo(
+    () => computeTreeCompleteness(people, rels),
+    [people, rels],
+  );
 
   if (treeQuery.isLoading || dataQuery.isLoading) {
     return (
@@ -540,6 +553,7 @@ export default function TreeWorkspace() {
           spouseLinkCount={rels.filter((r) => r.type === "spouse").length}
           livingCount={people.filter((p) => p.isLiving).length}
           ownerName={myRole === "owner" ? (user?.name ?? null) : null}
+          completenessScore={completeness.score}
         />
 
         <EventsStrip
@@ -960,14 +974,57 @@ export default function TreeWorkspace() {
           <TabsContent value="list">
             <Card>
               <CardContent className="p-4">
-                <div className="relative mb-4 max-w-sm">
-                  <Search className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("tree.searchPh")}
-                    className="pe-9"
-                  />
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <div className="relative max-w-sm flex-1">
+                    <Search className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={t("tree.searchPh")}
+                      className="pe-9"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <select
+                      className="h-9 rounded-md border bg-background px-2 text-xs"
+                      value={listGender}
+                      onChange={(e) =>
+                        setListGender(e.target.value as "all" | "male" | "female")
+                      }
+                      aria-label={t("tree.filterGender")}
+                    >
+                      <option value="all">{t("tree.filterAllGenders")}</option>
+                      <option value="male">{t("common.male")}</option>
+                      <option value="female">{t("common.female")}</option>
+                    </select>
+                    <select
+                      className="h-9 rounded-md border bg-background px-2 text-xs"
+                      value={listLiving}
+                      onChange={(e) =>
+                        setListLiving(
+                          e.target.value as "all" | "living" | "deceased",
+                        )
+                      }
+                      aria-label={t("tree.filterLiving")}
+                    >
+                      <option value="all">{t("tree.filterAllLiving")}</option>
+                      <option value="living">{t("detail.alive")}</option>
+                      <option value="deceased">{t("detail.dead")}</option>
+                    </select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={listUnlinkedOnly ? "secondary" : "outline"}
+                      className="h-9 text-xs"
+                      onClick={() => setListUnlinkedOnly((v) => !v)}
+                    >
+                      {t("tree.filterUnlinked")}
+                      {unlinkedIds.size > 0 ? ` (${unlinkedIds.size})` : ""}
+                    </Button>
+                    <span className="text-xs text-muted-foreground ps-1">
+                      {t("tree.filterShowing", { count: filtered.length })}
+                    </span>
+                  </div>
                 </div>
                 <div className="rounded-lg border overflow-x-auto">
                   <Table>
