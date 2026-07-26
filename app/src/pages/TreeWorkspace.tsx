@@ -15,6 +15,8 @@ import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
+import PlacesBrowser from "@/components/tree/PlacesBrowser";
+import OccasionsPanel from "@/components/tree/OccasionsPanel";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
 import RelationPathDialog from "@/components/tree/RelationPathDialog";
@@ -43,7 +45,10 @@ import { limitPeopleByGenerations } from "@/lib/generationLimit";
 import { buildGedcom, downloadGedcom } from "@/lib/gedcomExport";
 import { getHomePersonId, setHomePersonId } from "@/lib/homePerson";
 import { computeTreeCompleteness } from "@/lib/treeCompleteness";
-import { findRelationPath } from "@/lib/relationPath";
+import {
+  classifyRelationPath,
+  findRelationPath,
+} from "@/lib/relationPath";
 import {
   getRecentPersonIds,
   pushRecentPersonId,
@@ -60,6 +65,7 @@ import {
 import {
   absoluteUrl,
   buildPrintRootPath,
+  buildPrintTemplatePath,
   buildSharePersonPath,
   buildTreePersonPath,
   parseChartViewParam,
@@ -163,6 +169,8 @@ import {
   ChevronRight,
   Star,
   Link as LinkIcon,
+  MapPin,
+  Gift,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -888,6 +896,7 @@ export default function TreeWorkspace() {
           people={people}
           rels={rels}
           onPersonClick={(p) => revealOnChart(p)}
+          onSeeAll={() => setMainTab("occasions")}
         />
 
         <DiscoveriesPanel
@@ -937,6 +946,12 @@ export default function TreeWorkspace() {
             </TabsTrigger>
             <TabsTrigger value="list" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
               <List className="h-4 w-4" /> {t("tree.list")}
+            </TabsTrigger>
+            <TabsTrigger value="places" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+              <MapPin className="h-4 w-4" /> {t("tree.places")}
+            </TabsTrigger>
+            <TabsTrigger value="occasions" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+              <Gift className="h-4 w-4" /> {t("tree.occasions")}
             </TabsTrigger>
             <TabsTrigger value="photos" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
               <ImageIcon className="h-4 w-4" /> {t("tree.photos")}
@@ -1556,10 +1571,38 @@ export default function TreeWorkspace() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="places">
+            <PlacesBrowser
+              people={people}
+              rels={rels}
+              kinshipFocusId={listFocusId}
+              onPersonClick={(p) => revealOnChart(p)}
+              onPrintMap={() => navigate(buildPrintTemplatePath(treeId, "map"))}
+            />
+          </TabsContent>
+
+          <TabsContent value="occasions">
+            <OccasionsPanel
+              people={people}
+              rels={rels}
+              onPersonClick={(p) => revealOnChart(p)}
+              onPrintOccasion={(p) =>
+                navigate(
+                  buildPrintRootPath(treeId, p.id, { template: "occasions" }),
+                )
+              }
+            />
+          </TabsContent>
+
           <TabsContent value="photos">
             <PhotosGallery
               people={people}
-              onPersonClick={(p) => setDetailPerson(p)}
+              rels={rels}
+              homePersonId={homePersonId}
+              favoriteIds={favoriteIds}
+              recentIds={recentIds}
+              kinshipFocusId={listFocusId}
+              onPersonClick={(p) => revealOnChart(p)}
             />
           </TabsContent>
 
@@ -1854,6 +1897,53 @@ export default function TreeWorkspace() {
                     <SheetDescription className="font-display text-sm sm:text-base break-words">
                       {detailPerson.fatherName ?? ""}
                     </SheetDescription>
+                    {homePersonId != null &&
+                      homePersonId !== detailPerson.id &&
+                      peopleById.has(homePersonId) &&
+                      (() => {
+                        const path = findRelationPath(
+                          homePersonId,
+                          detailPerson.id,
+                          people,
+                          rels,
+                        );
+                        const key = classifyRelationPath(
+                          homePersonId,
+                          detailPerson.id,
+                          people,
+                          rels,
+                          path,
+                        );
+                        const home = peopleById.get(homePersonId)!;
+                        return (
+                          <button
+                            type="button"
+                            className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-start text-[11px] font-medium text-sky-900 transition hover:bg-sky-100"
+                            title={t("detail.kinshipHeroHint")}
+                            onClick={() => {
+                              if (!path) return;
+                              setHighlightPathIds(path.map((h) => h.personId));
+                              setChartView("family");
+                              setMainTab("chart");
+                              requestCenterOn(detailPerson.id);
+                              toast.success(
+                                t("tree.pathHighlightActive", {
+                                  count: path.length,
+                                }),
+                              );
+                            }}
+                          >
+                            <House className="h-3 w-3 shrink-0 text-emerald-700" />
+                            <span className="truncate">
+                              {t("detail.kinshipHero", {
+                                rel: t(`tree.rel.${key}`),
+                                home: home.givenName,
+                              })}
+                            </span>
+                            <Eye className="h-3 w-3 shrink-0 opacity-70" />
+                          </button>
+                        );
+                      })()}
                   </div>
                 </div>
               </SheetHeader>

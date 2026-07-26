@@ -3,80 +3,31 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { Cake, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildTreeOccasions } from "@/lib/treeOccasions";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   people: Person[];
   rels: Relationship[];
   onPersonClick?: (person: Person) => void;
+  onSeeAll?: () => void;
   className?: string;
 };
-
-type EventItem = {
-  key: string;
-  kind: "birthday" | "anniversary";
-  month: number;
-  day: number;
-  label: string;
-  person?: Person;
-  sortKey: number;
-};
-
-function daysFromToday(month: number, day: number): number {
-  const now = new Date();
-  const y = now.getFullYear();
-  let next = new Date(y, month - 1, day);
-  const today = new Date(y, now.getMonth(), now.getDate());
-  if (next < today) next = new Date(y + 1, month - 1, day);
-  return Math.round((next.getTime() - today.getTime()) / 86400000);
-}
 
 /** شريط مناسبات قريبة: أعياد ميلاد وذكريات زواج */
 export default function EventsStrip({
   people,
   rels,
   onPersonClick,
+  onSeeAll,
   className,
 }: Props) {
   const { t } = useTranslation();
-  const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
-  const events = useMemo(() => {
-    const list: EventItem[] = [];
-    for (const p of people) {
-      if (p.birthMonth && p.birthDay) {
-        const delta = daysFromToday(p.birthMonth, p.birthDay);
-        list.push({
-          key: `b-${p.id}`,
-          kind: "birthday",
-          month: p.birthMonth,
-          day: p.birthDay,
-          label: p.givenName,
-          person: p,
-          sortKey: delta,
-        });
-      }
-    }
-    for (const r of rels) {
-      if (r.type !== "spouse") continue;
-      const mm = r.marriageMonth;
-      const md = r.marriageDay;
-      if (!mm || !md) continue;
-      const a = byId.get(r.fromPersonId);
-      const b = byId.get(r.toPersonId);
-      if (!a || !b) continue;
-      const delta = daysFromToday(mm, md);
-      list.push({
-        key: `m-${r.id}`,
-        kind: "anniversary",
-        month: mm,
-        day: md,
-        label: `${a.givenName} × ${b.givenName}`,
-        person: a,
-        sortKey: delta,
-      });
-    }
-    return list.sort((x, y) => x.sortKey - y.sortKey).slice(0, 8);
-  }, [people, rels, byId]);
+  const events = useMemo(
+    () => buildTreeOccasions(people, rels, { limit: 8 }),
+    [people, rels],
+  );
 
   if (events.length === 0) {
     return (
@@ -95,7 +46,20 @@ export default function EventsStrip({
     <div className={cn("mb-4", className)}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-sm font-semibold">{t("tree.eventsTitle")}</p>
-        <p className="text-[11px] text-muted-foreground">{t("tree.eventsHint")}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] text-muted-foreground">{t("tree.eventsHint")}</p>
+          {onSeeAll && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={onSeeAll}
+            >
+              {t("tree.eventsSeeAll")}
+            </Button>
+          )}
+        </div>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {events.map((ev) => (
@@ -131,9 +95,9 @@ export default function EventsStrip({
                   ? t("tree.eventBirthday")
                   : t("tree.eventAnniversary")}
                 {" · "}
-                {ev.sortKey === 0
+                {ev.daysUntil === 0
                   ? t("tree.eventToday")
-                  : t("tree.eventInDays", { n: ev.sortKey })}
+                  : t("tree.eventInDays", { n: ev.daysUntil })}
               </span>
             </span>
           </button>

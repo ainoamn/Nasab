@@ -70,6 +70,7 @@ export default function TreePrint() {
   const [step, setStep] = useState<"pick" | "preview">("pick");
   const [scope, setScope] = useState<PrintScope>(DEFAULT_PRINT_SCOPE);
   const [rootBootstrapped, setRootBootstrapped] = useState(false);
+  const [templateBootstrapped, setTemplateBootstrapped] = useState(false);
 
   const treeQuery = trpc.tree.get.useQuery(
     { id: treeId },
@@ -86,6 +87,18 @@ export default function TreePrint() {
   );
   const allRels = (dataQuery.data?.rels ?? []) as Relationship[];
   const branches = (dataQuery.data?.branches ?? []) as TreeBranch[];
+
+  useEffect(() => {
+    if (templateBootstrapped) return;
+    const raw = searchParams.get("template");
+    if (
+      raw &&
+      PRINT_TEMPLATES.some((x) => x.id === raw)
+    ) {
+      setTemplate(raw as PrintTemplateId);
+    }
+    setTemplateBootstrapped(true);
+  }, [searchParams, templateBootstrapped]);
 
   useEffect(() => {
     if (rootBootstrapped || dataQuery.isLoading || allPeople.length === 0) return;

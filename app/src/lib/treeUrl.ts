@@ -15,7 +15,14 @@ const CHART_VIEWS = new Set<string>([
   "descendants",
 ]);
 
-const MAIN_TABS = new Set(["chart", "list", "photos", "log"]);
+const MAIN_TABS = new Set([
+  "chart",
+  "list",
+  "places",
+  "occasions",
+  "photos",
+  "log",
+]);
 
 export function parsePersonIdParam(raw: string | null): number | null {
   if (raw == null || raw === "") return null;
@@ -49,8 +56,22 @@ export function buildSharePersonPath(shareToken: string, personId: number): stri
   return `/share/${shareToken}?person=${personId}`;
 }
 
-export function buildPrintRootPath(treeId: number, rootPersonId: number): string {
-  return `/trees/${treeId}/print?root=${rootPersonId}`;
+export function buildPrintRootPath(
+  treeId: number,
+  rootPersonId: number,
+  opts?: { template?: string },
+): string {
+  const q = new URLSearchParams();
+  q.set("root", String(rootPersonId));
+  if (opts?.template) q.set("template", opts.template);
+  return `/trees/${treeId}/print?${q.toString()}`;
+}
+
+export function buildPrintTemplatePath(
+  treeId: number,
+  template: string,
+): string {
+  return `/trees/${treeId}/print?template=${encodeURIComponent(template)}`;
 }
 
 export function absoluteUrl(path: string): string {
