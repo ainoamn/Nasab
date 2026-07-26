@@ -12,6 +12,7 @@ import ChartPersonSearch from "@/components/tree/ChartPersonSearch";
 import PhotosGallery from "@/components/tree/PhotosGallery";
 import EventsStrip from "@/components/tree/EventsStrip";
 import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
+import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
@@ -38,6 +39,7 @@ import { limitPeopleByGenerations } from "@/lib/generationLimit";
 import { buildGedcom, downloadGedcom } from "@/lib/gedcomExport";
 import { getHomePersonId, setHomePersonId } from "@/lib/homePerson";
 import { computeTreeCompleteness } from "@/lib/treeCompleteness";
+import { findRelationPath } from "@/lib/relationPath";
 import {
   getRecentPersonIds,
   pushRecentPersonId,
@@ -133,6 +135,8 @@ import {
   House,
   Keyboard,
   FileDown,
+  Rows3,
+  Rows2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -172,6 +176,11 @@ export default function TreeWorkspace() {
   const [chartFullscreen, setChartFullscreen] = useState(false);
   const [maxGenerations, setMaxGenerations] = useState(8);
   const [howRelatedOpen, setHowRelatedOpen] = useState(false);
+  const [howRelatedPair, setHowRelatedPair] = useState<{
+    from: number | null;
+    to: number | null;
+  }>({ from: null, to: null });
+  const [chartCompact, setChartCompact] = useState(false);
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
@@ -692,9 +701,28 @@ export default function TreeWorkspace() {
             if (p) {
               setDetailPerson(p);
               setChartFocusId(id);
+              requestCenterOn(id);
             }
           }}
           onAddParent={(personId, role) => openAddRelative(personId, role)}
+          onComparePair={(aId, bId) => {
+            setHowRelatedPair({ from: aId, to: bId });
+            setHowRelatedOpen(true);
+          }}
+          onHighlightPair={(aId, bId) => {
+            const path = findRelationPath(aId, bId, people, rels);
+            if (!path) {
+              toast.message(t("tree.howRelatedNone"));
+              return;
+            }
+            setHighlightPathIds(path.map((h) => h.personId));
+            setChartView("family");
+            setChartFocusId(null);
+            requestCenterOn(aId);
+            toast.success(
+              t("tree.pathHighlightActive", { count: path.length }),
+            );
+          }}
         />
 
         <Tabs defaultValue="chart" className="min-w-0">
@@ -858,13 +886,39 @@ export default function TreeWorkspace() {
                     </select>
                   </div>
                 ) : null}
+                {(chartView === "family" || chartView === "close") && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    title={
+                      chartCompact
+                        ? t("chart.densityComfortable")
+                        : t("chart.densityCompact")
+                    }
+                    onClick={() => setChartCompact((v) => !v)}
+                  >
+                    {chartCompact ? (
+                      <Rows2 className="h-4 w-4" />
+                    ) : (
+                      <Rows3 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   size="icon"
                   variant="outline"
                   className="h-8 w-8"
                   title={t("tree.howRelatedTitle")}
-                  onClick={() => setHowRelatedOpen(true)}
+                  onClick={() => {
+                    setHowRelatedPair({
+                      from: detailPerson?.id ?? chartFocusId ?? homePersonId,
+                      to: null,
+                    });
+                    setHowRelatedOpen(true);
+                  }}
                 >
                   <GitCompareArrows className="h-4 w-4" />
                 </Button>
@@ -959,15 +1013,19 @@ export default function TreeWorkspace() {
                     </p>
                   ) : (
                   <FamilyChart
-                    key={`${chartRevision}-${chartView}-${closeFocusId ?? "all"}-${maxGenerations}`}
+                    key={`${chartRevision}-${chartView}-${closeFocusId ?? "all"}-${maxGenerations}-${chartCompact ? "c" : "n"}`}
                     people={familyViewData.people}
                     rels={familyViewData.rels}
                     branches={branches}
                     remotePeople={remotePeople}
+                    compact={chartCompact}
                     focusMode={chartFocusId != null || chartView === "close"}
                     selectedPersonId={detailPerson?.id ?? null}
                     centerRequest={centerRequest}
                     highlightPathIds={highlightPathIds}
+                    kinshipFocusId={
+                      chartFocusId ?? homePersonId ?? detailPerson?.id ?? null
+                    }
                     onPersonClick={(p) => setDetailPerson(p)}
                     onOpenSideTree={(p) => void openPersonTree(p.id)}
                     onQuickAdd={
@@ -1323,10 +1381,19 @@ export default function TreeWorkspace() {
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <RelationPathDialog
         open={howRelatedOpen}
-        onOpenChange={setHowRelatedOpen}
+        onOpenChange={(o) => {
+          setHowRelatedOpen(o);
+          if (!o) setHowRelatedPair({ from: null, to: null });
+        }}
         people={people}
         rels={rels}
-        defaultFromId={detailPerson?.id ?? chartFocusId ?? homePersonId}
+        defaultFromId={
+          howRelatedPair.from ??
+          detailPerson?.id ??
+          chartFocusId ??
+          homePersonId
+        }
+        defaultToId={howRelatedPair.to}
         onOpenPerson={(p) => {
           setDetailPerson(p);
           setChartFocusId(p.id);
@@ -1513,7 +1580,13 @@ export default function TreeWorkspace() {
                   size="sm"
                   variant="outline"
                   className="gap-1.5"
-                  onClick={() => setHowRelatedOpen(true)}
+                  onClick={() => {
+                    setHowRelatedPair({
+                      from: detailPerson.id,
+                      to: null,
+                    });
+                    setHowRelatedOpen(true);
+                  }}
                 >
                   <GitCompareArrows className="h-3.5 w-3.5" />
                   {t("tree.howRelatedTitle")}
@@ -1525,6 +1598,22 @@ export default function TreeWorkspace() {
                   setDetailPerson(p);
                   setChartFocusId(p.id);
                 }}
+              />
+              <PersonGapsStrip
+                person={detailPerson}
+                people={people}
+                rels={rels}
+                canWrite={canWrite}
+                onEdit={() => {
+                  setEditPerson(detailPerson);
+                  setDetailPerson(null);
+                }}
+                onAddParent={(role) =>
+                  openAddRelative(detailPerson.id, role)
+                }
+                onAddSpouse={() =>
+                  openAddRelative(detailPerson.id, "spouse")
+                }
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {detailPerson.kunya && <InfoRow label={t("detail.kunya")} value={detailPerson.kunya} />}

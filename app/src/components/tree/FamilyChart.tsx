@@ -44,6 +44,12 @@ import { parseLineageChain } from "@/lib/lineageParser";
 import QuickAddMenu, {
   type QuickKinship,
 } from "@/components/tree/QuickAddMenu";
+import { relationToFocus } from "@/lib/relationshipLabel";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 type Labels = ReturnType<typeof useLabels>;
 
@@ -66,6 +72,11 @@ const SideTreeContext = createContext<{
 const MarriedIdsContext = createContext<Set<number>>(new Set());
 const SelectedPersonContext = createContext<number | null>(null);
 const PathHighlightContext = createContext<Set<number> | null>(null);
+const KinshipFocusContext = createContext<{
+  focusId: number | null;
+  people: Person[];
+  rels: Relationship[];
+} | null>(null);
 const QuickAddContext = createContext<
   ((person: Person, kinship: QuickKinship) => void) | null
 >(null);
@@ -89,6 +100,8 @@ type Props = {
   centerRequest?: { personId: number; token: number } | null;
   /** إبراز مسار قرابة على المخطط (كيف يرتبطان) */
   highlightPathIds?: number[] | null;
+  /** محور القرابة لمعاينة التحويم */
+  kinshipFocusId?: number | null;
   /** إضافة قريب سريعة من البطاقة (+) مع اختيار الصلة */
   onQuickAdd?: (person: Person, kinship: QuickKinship) => void;
   /** وضع التركيز: أظهر الشجرة من أعلى جد في النطاق (بما فيها جذور الفروع) */
@@ -161,6 +174,7 @@ export default function FamilyChart({
   selectedPersonId = null,
   centerRequest = null,
   highlightPathIds = null,
+  kinshipFocusId = null,
   onQuickAdd,
   focusMode,
   rootPersonId,
@@ -180,6 +194,14 @@ export default function FamilyChart({
         ? new Set(highlightPathIds)
         : null,
     [highlightPathIds],
+  );
+  const kinshipFocus = useMemo(
+    () => ({
+      focusId: kinshipFocusId,
+      people,
+      rels,
+    }),
+    [kinshipFocusId, people, rels],
   );
 
   const graph = useMemo(() => {
@@ -656,6 +678,7 @@ export default function FamilyChart({
     <MarriedIdsContext.Provider value={marriedIds}>
     <SelectedPersonContext.Provider value={selectedPersonId ?? null}>
     <PathHighlightContext.Provider value={pathHighlightSet}>
+    <KinshipFocusContext.Provider value={kinshipFocus}>
     <QuickAddContext.Provider value={onQuickAdd ?? null}>
     <div className="relative w-full min-w-0 max-w-full">
       {/* شريط الأدوات داخل المخطط */}
@@ -852,6 +875,7 @@ export default function FamilyChart({
       </div>
     </div>
     </QuickAddContext.Provider>
+    </KinshipFocusContext.Provider>
     </PathHighlightContext.Provider>
     </SelectedPersonContext.Provider>
     </MarriedIdsContext.Provider>
@@ -981,12 +1005,22 @@ function PersonCard({
   const marriedIds = useContext(MarriedIdsContext);
   const selectedId = useContext(SelectedPersonContext);
   const pathHighlight = useContext(PathHighlightContext);
+  const kinshipCtx = useContext(KinshipFocusContext);
   const onQuickAdd = useContext(QuickAddContext);
   const isMarried = marriedIds.has(person.id);
   const isSelected = selectedId === person.id;
   const female = isFemale(person.gender);
   const onPath = pathHighlight?.has(person.id) ?? false;
   const dimmed = pathHighlight != null && !onPath;
+  const relationKey =
+    kinshipCtx?.focusId != null
+      ? relationToFocus(
+          kinshipCtx.focusId,
+          person.id,
+          kinshipCtx.people,
+          kinshipCtx.rels,
+        )
+      : null;
 
   return (
     <div
@@ -1014,124 +1048,182 @@ function PersonCard({
           <span className="h-2.5 w-px bg-violet-400" />
         </button>
       )}
-      <button
-        type="button"
-        data-no-pan
-        title={
-          !living
-            ? t("chart.deceasedBorder")
-            : isMarried
-              ? t("chart.marriedBorder")
-              : undefined
-        }
-        onClick={(e) => {
-          e.stopPropagation();
-          onPersonClick?.(person);
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-        className={cn(
-          "relative z-[1] flex shrink-0 cursor-pointer flex-col items-center text-center transition",
-          "rounded-2xl border shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md hover:-translate-y-0.5",
-          theme.bg,
-          !living
-            ? "border-stone-800 border-[2px]"
-            : isMarried
-              ? "border-amber-400 border-[2px]"
-              : cn("border", theme.border),
-          isSelected && "ring-2 ring-sky-500 ring-offset-2 ring-offset-[#ececec]",
-          onPath &&
-            !isSelected &&
-            "ring-2 ring-violet-500 ring-offset-2 ring-offset-[#ececec] shadow-[0_0_0_3px_rgba(139,92,246,0.25)]",
-          compact ? "w-[6.75rem] px-2 pb-2.5 pt-2" : "w-[7.75rem] sm:w-[8.25rem] px-2.5 pb-3 pt-2.5",
-        )}
-      >
-        <span
-          className={cn(
-            "relative mb-1.5 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm",
-            female ? "ring-2 ring-pink-300" : "ring-2 ring-sky-300",
-            compact ? "h-11 w-11" : "h-14 w-14 sm:h-[3.75rem] sm:w-[3.75rem]",
-          )}
-        >
-          {person.photoUrl ? (
-            <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
+      <HoverCard openDelay={280} closeDelay={80}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            data-no-pan
+            title={
+              !living
+                ? t("chart.deceasedBorder")
+                : isMarried
+                  ? t("chart.marriedBorder")
+                  : undefined
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              onPersonClick?.(person);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={cn(
+              "relative z-[1] flex shrink-0 cursor-pointer flex-col items-center text-center transition",
+              "rounded-2xl border shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md hover:-translate-y-0.5",
+              theme.bg,
+              !living
+                ? "border-stone-800 border-[2px]"
+                : isMarried
+                  ? "border-amber-400 border-[2px]"
+                  : cn("border", theme.border),
+              isSelected && "ring-2 ring-sky-500 ring-offset-2 ring-offset-[#ececec]",
+              onPath &&
+                !isSelected &&
+                "ring-2 ring-violet-500 ring-offset-2 ring-offset-[#ececec] shadow-[0_0_0_3px_rgba(139,92,246,0.25)]",
+              compact
+                ? "w-[6.75rem] px-2 pb-2.5 pt-2"
+                : "w-[7.75rem] sm:w-[8.25rem] px-2.5 pb-3 pt-2.5",
+            )}
+          >
             <span
-              className="flex h-full w-full items-center justify-center text-white"
-              style={{ backgroundColor: theme.avatar }}
+              className={cn(
+                "relative mb-1.5 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm",
+                female ? "ring-2 ring-pink-300" : "ring-2 ring-sky-300",
+                compact ? "h-11 w-11" : "h-14 w-14 sm:h-[3.75rem] sm:w-[3.75rem]",
+              )}
             >
-              <svg
-                viewBox="0 0 24 24"
-                className={cn(compact ? "h-6 w-6" : "h-8 w-8", "opacity-90")}
-                fill="currentColor"
-                aria-hidden
+              {person.photoUrl ? (
+                <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span
+                  className="flex h-full w-full items-center justify-center text-white"
+                  style={{ backgroundColor: theme.avatar }}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className={cn(compact ? "h-6 w-6" : "h-8 w-8", "opacity-90")}
+                    fill="currentColor"
+                    aria-hidden
+                  >
+                    <circle cx="12" cy="8" r="3.5" />
+                    <path d="M5 19.5c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5" />
+                  </svg>
+                </span>
+              )}
+              {!living && (
+                <span className="absolute -bottom-0.5 inset-x-0 mx-auto w-fit rounded bg-stone-900 px-1 text-[7px] font-bold leading-tight text-white">
+                  {t("common.deceased")}
+                </span>
+              )}
+            </span>
+
+            <p
+              className={cn(
+                "w-full font-semibold leading-snug text-stone-900",
+                compact ? "text-[11px]" : "text-xs sm:text-[13px]",
+                !living && "text-stone-600",
+              )}
+            >
+              <span
+                className={cn(
+                  "line-clamp-2",
+                  !living && "line-through decoration-stone-500",
+                )}
               >
-                <circle cx="12" cy="8" r="3.5" />
-                <path d="M5 19.5c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5" />
-              </svg>
-            </span>
-          )}
-          {!living && (
-            <span className="absolute -bottom-0.5 inset-x-0 mx-auto w-fit rounded bg-stone-900 px-1 text-[7px] font-bold leading-tight text-white">
-              {t("common.deceased")}
-            </span>
-          )}
-        </span>
+                {person.givenName}
+              </span>
+            </p>
 
-        <p
-          className={cn(
-            "w-full font-semibold leading-snug text-stone-900",
-            compact ? "text-[11px]" : "text-xs sm:text-[13px]",
-            !living && "text-stone-600",
-          )}
+            {!compact && person.fatherName && (
+              <p className="mt-0.5 w-full truncate text-[9px] leading-tight text-stone-500 font-display">
+                {person.fatherName.split(/\s+/).slice(0, 3).join(" ")}
+              </p>
+            )}
+
+            {years && (
+              <p className="mt-1 w-full truncate text-[9px] leading-none text-stone-500">
+                {years}
+              </p>
+            )}
+
+            {!compact && !chartMode && (
+              <div className="mt-1 w-full">
+                <PersonRankLines ranks={ranks} gender={person.gender} t={t} dense />
+              </div>
+            )}
+
+            <p className="mt-1 text-[8px] text-stone-400 leading-none">
+              {printLevel != null
+                ? printLevel < 0
+                  ? t("printPage.ancestorLabel", { n: Math.abs(printLevel) })
+                  : printLevel === 0
+                    ? t("chart.generationRoot")
+                    : t("chart.generationN", {
+                        n: displayGenerationNumber(printLevel),
+                      })
+                : depth === 0
+                  ? t("chart.generationRoot")
+                  : t("chart.generationN", { n: depth + 1 })}
+            </p>
+
+            <span
+              className={cn(
+                "pointer-events-none absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-e",
+                theme.bg,
+                !living
+                  ? "border-stone-800"
+                  : isMarried
+                    ? "border-amber-400"
+                    : female
+                      ? "border-pink-200"
+                      : "border-blue-200",
+              )}
+              aria-hidden
+            />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent
+          side="top"
+          className="w-56 p-3"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          <span className={cn("line-clamp-2", !living && "line-through decoration-stone-500")}>
-            {person.givenName}
-          </span>
-        </p>
-
-        {!compact && person.fatherName && (
-          <p className="mt-0.5 w-full truncate text-[9px] leading-tight text-stone-500 font-display">
-            {person.fatherName.split(/\s+/).slice(0, 3).join(" ")}
-          </p>
-        )}
-
-        {years && (
-          <p className="mt-1 w-full truncate text-[9px] leading-none text-stone-500">{years}</p>
-        )}
-
-        {!compact && !chartMode && (
-          <div className="mt-1 w-full">
-            <PersonRankLines ranks={ranks} gender={person.gender} t={t} dense />
+          <div className="flex items-start gap-2.5">
+            <span
+              className={cn(
+                "flex h-10 w-10 shrink-0 overflow-hidden rounded-full text-white",
+                female ? "bg-pink-500" : "bg-sky-600",
+              )}
+            >
+              {person.photoUrl ? (
+                <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-sm">
+                  {person.givenName.slice(0, 1)}
+                </span>
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{person.givenName}</p>
+              {years && (
+                <p className="text-[11px] text-muted-foreground">{years}</p>
+              )}
+              {relationKey && (
+                <p className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                  {t(`tree.rel.${relationKey}`)}
+                </p>
+              )}
+            </div>
           </div>
-        )}
-
-        <p className="mt-1 text-[8px] text-stone-400 leading-none">
-          {printLevel != null
-            ? printLevel < 0
-              ? t("printPage.ancestorLabel", { n: Math.abs(printLevel) })
-              : printLevel === 0
-                ? t("chart.generationRoot")
-                : t("chart.generationN", { n: displayGenerationNumber(printLevel) })
-            : depth === 0
-              ? t("chart.generationRoot")
-              : t("chart.generationN", { n: depth + 1 })}
-        </p>
-
-        <span
-          className={cn(
-            "pointer-events-none absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-e",
-            theme.bg,
-            !living
-              ? "border-stone-800"
-              : isMarried
-                ? "border-amber-400"
-                : female
-                  ? "border-pink-200"
-                  : "border-blue-200",
-          )}
-          aria-hidden
-        />
-      </button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="mt-2.5 h-7 w-full text-xs"
+            onClick={() => onPersonClick?.(person)}
+          >
+            {t("chart.openProfile")}
+          </Button>
+        </HoverCardContent>
+      </HoverCard>
       {onQuickAdd && !compact && (
         <QuickAddMenu
           compact

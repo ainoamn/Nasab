@@ -2,7 +2,13 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { findDiscoveries, type Discovery } from "@/lib/discoveries";
-import { AlertTriangle, UserRoundPlus, Camera } from "lucide-react";
+import {
+  AlertTriangle,
+  UserRoundPlus,
+  Camera,
+  GitCompareArrows,
+  Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +18,10 @@ type Props = {
   canWrite?: boolean;
   onOpenPerson: (personId: number) => void;
   onAddParent?: (personId: number, role: "father" | "mother") => void;
+  /** مراجعة مكرر: فتح أداة القرابة */
+  onComparePair?: (aId: number, bId: number) => void;
+  /** إبراز المسار بين المكررين على المخطط */
+  onHighlightPair?: (aId: number, bId: number) => void;
   className?: string;
 };
 
@@ -30,6 +40,8 @@ export default function DiscoveriesPanel({
   canWrite,
   onOpenPerson,
   onAddParent,
+  onComparePair,
+  onHighlightPair,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -61,7 +73,7 @@ export default function DiscoveriesPanel({
           const Icon = iconFor(d.kind);
           return (
             <li
-              key={`${d.kind}-${d.personId}`}
+              key={`${d.kind}-${d.personId}-${d.otherPersonId ?? 0}`}
               className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-white/80 px-3 py-2"
             >
               <Icon className="h-3.5 w-3.5 shrink-0 text-amber-700" />
@@ -76,6 +88,40 @@ export default function DiscoveriesPanel({
                   {d.otherPersonName ? ` (${d.otherPersonName})` : ""}
                 </span>
               </button>
+              {d.kind === "possibleDuplicate" && d.otherPersonId != null && (
+                <>
+                  {onComparePair && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => onComparePair(d.personId, d.otherPersonId!)}
+                    >
+                      <GitCompareArrows className="h-3 w-3" />
+                      {t("tree.discoveryCompare")}
+                    </Button>
+                  )}
+                  {onHighlightPair && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => onHighlightPair(d.personId, d.otherPersonId!)}
+                    >
+                      <Eye className="h-3 w-3" />
+                      {t("tree.discoveryShowPath")}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    onClick={() => onOpenPerson(d.otherPersonId!)}
+                  >
+                    {t("tree.discoveryOpenOther")}
+                  </Button>
+                </>
+              )}
               {canWrite && d.kind === "missingFather" && onAddParent && (
                 <Button
                   size="sm"

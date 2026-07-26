@@ -25,6 +25,7 @@ type Props = {
   people: Person[];
   rels: Relationship[];
   defaultFromId?: number | null;
+  defaultToId?: number | null;
   onOpenPerson?: (person: Person) => void;
   /** عرض المسار على مخطط العائلة */
   onShowOnChart?: (pathIds: number[]) => void;
@@ -51,6 +52,7 @@ export default function RelationPathDialog({
   people,
   rels,
   defaultFromId,
+  defaultToId,
   onOpenPerson,
   onShowOnChart,
 }: Props) {
@@ -61,7 +63,8 @@ export default function RelationPathDialog({
   useEffect(() => {
     if (!open) return;
     if (defaultFromId != null) setFromId(String(defaultFromId));
-  }, [open, defaultFromId]);
+    if (defaultToId != null) setToId(String(defaultToId));
+  }, [open, defaultFromId, defaultToId]);
 
   const fromNum = fromId ? Number(fromId) : null;
   const toNum = toId ? Number(toId) : null;
