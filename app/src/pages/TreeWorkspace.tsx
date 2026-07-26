@@ -15,6 +15,7 @@ import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import DescendantsView from "@/components/tree/DescendantsView";
 import QuickAddMenu from "@/components/tree/QuickAddMenu";
+import RelationPathDialog from "@/components/tree/RelationPathDialog";
 import PersonFormDialog from "@/components/tree/PersonFormDialog";
 import RelationDialog from "@/components/tree/RelationDialog";
 import CsvImportDialog from "@/components/tree/CsvImportDialog";
@@ -32,6 +33,7 @@ import { relationToFocus } from "@/lib/relationshipLabel";
 import { collectCloseFamily } from "@/lib/closeFamily";
 import { limitPeopleByGenerations } from "@/lib/generationLimit";
 import { buildGedcom, downloadGedcom } from "@/lib/gedcomExport";
+import { getHomePersonId, setHomePersonId } from "@/lib/homePerson";
 import { localeTag } from "@/i18n";
 import type {
   TreeRole,
@@ -119,6 +121,8 @@ import {
   Download,
   Image as ImageIcon,
   ArrowDownToLine,
+  GitCompareArrows,
+  House,
 } from "lucide-react";
 import { toast } from "sonner";
 import { findSpouseRel } from "@/lib/spouseMeta";
@@ -151,6 +155,12 @@ export default function TreeWorkspace() {
   >("family");
   const [chartFullscreen, setChartFullscreen] = useState(false);
   const [maxGenerations, setMaxGenerations] = useState(8);
+  const [howRelatedOpen, setHowRelatedOpen] = useState(false);
+  const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (treeId > 0) setHomePersonIdState(getHomePersonId(treeId));
+  }, [treeId]);
 
   useEffect(() => {
     if (!chartFullscreen) return;
@@ -613,6 +623,36 @@ export default function TreeWorkspace() {
                   size="icon"
                   variant="outline"
                   className="h-8 w-8"
+                  title={t("tree.howRelatedTitle")}
+                  onClick={() => setHowRelatedOpen(true)}
+                >
+                  <GitCompareArrows className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  title={t("tree.goHomePerson")}
+                  onClick={() => {
+                    const hid = homePersonId ?? getHomePersonId(treeId);
+                    if (hid == null || !peopleById.has(hid)) {
+                      toast.message(t("tree.noHomePerson"));
+                      return;
+                    }
+                    const p = peopleById.get(hid)!;
+                    setDetailPerson(p);
+                    setChartFocusId(hid);
+                    setHomePersonIdState(hid);
+                  }}
+                >
+                  <House className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
                   title={
                     chartFullscreen
                       ? t("chart.exitFullscreen")
@@ -979,6 +1019,18 @@ export default function TreeWorkspace() {
         onLinked={refreshChart}
       />
       <CsvImportDialog treeId={treeId} open={importOpen} onOpenChange={setImportOpen} />
+      <RelationPathDialog
+        open={howRelatedOpen}
+        onOpenChange={setHowRelatedOpen}
+        people={people}
+        rels={rels}
+        defaultFromId={detailPerson?.id ?? chartFocusId ?? homePersonId}
+        onOpenPerson={(p) => {
+          setDetailPerson(p);
+          setChartFocusId(p.id);
+          setHowRelatedOpen(false);
+        }}
+      />
 
       {/* بطاقة الشخص */}
       <Sheet open={!!detailPerson} onOpenChange={(o) => !o && setDetailPerson(null)}>
@@ -1091,7 +1143,7 @@ export default function TreeWorkspace() {
                   </div>
                 </div>
               </SheetHeader>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
@@ -1133,6 +1185,28 @@ export default function TreeWorkspace() {
                 >
                   <Home className="h-3.5 w-3.5" />
                   {t("chart.viewClose")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={homePersonId === detailPerson.id ? "secondary" : "outline"}
+                  className="gap-1.5"
+                  onClick={() => {
+                    setHomePersonId(treeId, detailPerson.id);
+                    setHomePersonIdState(detailPerson.id);
+                    toast.success(t("tree.homePersonSet"));
+                  }}
+                >
+                  <House className="h-3.5 w-3.5" />
+                  {t("tree.setHomePerson")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setHowRelatedOpen(true)}
+                >
+                  <GitCompareArrows className="h-3.5 w-3.5" />
+                  {t("tree.howRelatedTitle")}
                 </Button>
               </div>
               <ImmediateFamilyStrip
