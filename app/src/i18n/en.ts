@@ -1188,6 +1188,8 @@ export const en = {
     qrFooter: "Scan to open this profile in Nasab",
     downloadQR: "Download QR",
     qrDownloaded: "QR code downloaded",
+    completenessHint: "Transparent completeness of visible public data",
+    pickPersonForChart: "Pick a person to show this chart view",
   },
   settings: {
     title: "Tree settings",

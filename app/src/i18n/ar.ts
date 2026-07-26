@@ -1186,6 +1186,8 @@ export const ar = {
     qrFooter: "امسح الرمز لفتح الملف في نَسَب",
     downloadQR: "تنزيل الرمز",
     qrDownloaded: "تم تنزيل رمز QR",
+    completenessHint: "شفافية اكتمال البيانات الظاهرة للزوار",
+    pickPersonForChart: "اختر شخصاً من الشجرة لعرض هذا المخطط",
   },
   settings: {
     title: "إعدادات الشجرة",

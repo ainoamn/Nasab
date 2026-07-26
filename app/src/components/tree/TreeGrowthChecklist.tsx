@@ -27,12 +27,12 @@ type Props = {
   focusPerson: Person | null;
   canWrite: boolean;
   completenessScore: number;
-  onAddRelative: (
+  onAddRelative?: (
     personId: number,
     kinship: "father" | "mother" | "spouse",
   ) => void;
-  onEditPerson: (person: Person) => void;
-  onAddFirst: () => void;
+  onEditPerson?: (person: Person) => void;
+  onAddFirst?: () => void;
   className?: string;
 };
 
@@ -151,22 +151,22 @@ export default function TreeGrowthChecklist({
 
   const run = (action: ChecklistAction) => {
     if (action.kind === "addFirst") {
-      onAddFirst();
+      onAddFirst?.();
       return;
     }
     if (action.kind === "addFather") {
-      onAddRelative(action.person.id, "father");
+      onAddRelative?.(action.person.id, "father");
       return;
     }
     if (action.kind === "addMother") {
-      onAddRelative(action.person.id, "mother");
+      onAddRelative?.(action.person.id, "mother");
       return;
     }
     if (action.kind === "addSpouse") {
-      onAddRelative(action.person.id, "spouse");
+      onAddRelative?.(action.person.id, "spouse");
       return;
     }
-    onEditPerson(action.person);
+    onEditPerson?.(action.person);
   };
 
   return (

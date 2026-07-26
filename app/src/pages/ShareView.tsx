@@ -2,6 +2,9 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import FamilyChart from "@/components/tree/FamilyChart";
+import PedigreeView from "@/components/tree/PedigreeView";
+import FanChartView from "@/components/tree/FanChartView";
+import DescendantsView from "@/components/tree/DescendantsView";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import EventsStrip from "@/components/tree/EventsStrip";
 import TodayEventsBanner from "@/components/tree/TodayEventsBanner";
@@ -14,12 +17,15 @@ import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
 import PersonShareQrDialog from "@/components/tree/PersonShareQrDialog";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PhotosGallery from "@/components/tree/PhotosGallery";
+import TreeGrowthChecklist from "@/components/tree/TreeGrowthChecklist";
+import ShareCompletenessCard from "@/components/tree/ShareCompletenessCard";
 import KinshipCertificateDialog from "@/components/tree/KinshipCertificateDialog";
 import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog";
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
 import FamilyBriefPrintDialog from "@/components/tree/FamilyBriefPrintDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
+import { computeTreeCompleteness } from "@/lib/treeCompleteness";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +45,10 @@ import {
   MapPin,
   Image as ImageIcon,
   QrCode,
+  Network,
+  GitBranch,
+  Fan,
+  ArrowDownToLine,
 } from "lucide-react";
 import type { Person } from "@db/schema";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -123,6 +133,9 @@ export default function ShareView() {
   const [showPlacesPanel, setShowPlacesPanel] = useState(false);
   const [showPhotosPanel, setShowPhotosPanel] = useState(false);
   const [qrPerson, setQrPerson] = useState<Person | null>(null);
+  const [chartView, setChartView] = useState<
+    "family" | "pedigree" | "fan" | "descendants"
+  >("family");
   const { t } = useTranslation();
   const L = useLabels();
 
@@ -518,6 +531,14 @@ export default function ShareView() {
     };
   }, [occasionsPeople, occasionsRels, shareToken]);
 
+  const completeness = useMemo(
+    () => computeTreeCompleteness(people, rels),
+    [people, rels],
+  );
+
+  const chartFocusId =
+    detail?.id ?? relateId ?? people[0]?.id ?? null;
+
   if (query.isLoading) {
     return (
       <div className="min-h-screen p-10 space-y-4">
@@ -853,16 +874,93 @@ export default function ShareView() {
           }}
         />
 
+        <ShareCompletenessCard completeness={completeness} />
+
+        <TreeGrowthChecklist
+          people={people}
+          rels={rels}
+          focusPerson={detail ?? people[0] ?? null}
+          canWrite={false}
+          completenessScore={completeness.score}
+        />
+
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {(
+            [
+              { id: "family" as const, icon: Network, label: t("chart.viewFamily") },
+              { id: "pedigree" as const, icon: GitBranch, label: t("chart.viewPedigree") },
+              { id: "fan" as const, icon: Fan, label: t("chart.viewFan") },
+              {
+                id: "descendants" as const,
+                icon: ArrowDownToLine,
+                label: t("chart.viewDescendants"),
+              },
+            ] as const
+          ).map(({ id, icon: Icon, label }) => (
+            <Button
+              key={id}
+              type="button"
+              size="sm"
+              variant={chartView === id ? "secondary" : "outline"}
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setChartView(id)}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </Button>
+          ))}
+        </div>
+
         <Card>
           <CardContent className="p-2">
-            <FamilyChart
-              people={people}
-              rels={rels}
-              selectedPersonId={detail?.id ?? null}
-              centerRequest={centerRequest}
-              highlightPathIds={highlightPathIds}
-              onPersonClick={(p) => openPerson(p)}
-            />
+            {chartView === "family" && (
+              <FamilyChart
+                people={people}
+                rels={rels}
+                selectedPersonId={detail?.id ?? null}
+                centerRequest={centerRequest}
+                highlightPathIds={highlightPathIds}
+                onPersonClick={(p) => openPerson(p)}
+              />
+            )}
+            {chartView === "pedigree" && chartFocusId != null && (
+              <PedigreeView
+                people={people}
+                rels={rels}
+                focusId={chartFocusId}
+                selectedPersonId={detail?.id ?? null}
+                kinshipFocusId={relateId ?? chartFocusId}
+                onPersonClick={(p) => openPerson(p)}
+                onFocusPerson={(p) => openPerson(p)}
+              />
+            )}
+            {chartView === "fan" && chartFocusId != null && (
+              <FanChartView
+                people={people}
+                rels={rels}
+                focusId={chartFocusId}
+                selectedPersonId={detail?.id ?? null}
+                kinshipFocusId={relateId ?? chartFocusId}
+                onPersonClick={(p) => openPerson(p)}
+                onFocusPerson={(p) => openPerson(p)}
+              />
+            )}
+            {chartView === "descendants" && chartFocusId != null && (
+              <DescendantsView
+                people={people}
+                rels={rels}
+                focusId={chartFocusId}
+                selectedPersonId={detail?.id ?? null}
+                kinshipFocusId={relateId ?? chartFocusId}
+                onPersonClick={(p) => openPerson(p)}
+                onFocusPerson={(p) => openPerson(p)}
+              />
+            )}
+            {chartView !== "family" && chartFocusId == null && (
+              <p className="p-6 text-center text-sm text-muted-foreground">
+                {t("share.pickPersonForChart")}
+              </p>
+            )}
           </CardContent>
         </Card>
       </main>
