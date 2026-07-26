@@ -3,6 +3,7 @@ import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import FamilyChart from "@/components/tree/FamilyChart";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
+import EventsStrip from "@/components/tree/EventsStrip";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLabels } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,14 @@ import {
   formatPersonShareCard,
   formatRelationPathText,
 } from "@/lib/relationShare";
+import {
+  buildOccasionIcs,
+  buildMultiOccasionIcs,
+  downloadIcs,
+  occasionGreetingText,
+} from "@/lib/occasionShare";
+import { formatFamilyBrief } from "@/lib/familyBrief";
+import { buildTreeOccasions, type TreeOccasion } from "@/lib/treeOccasions";
 import {
   buildChildrenOf,
   buildSpousesOf,
@@ -220,6 +229,97 @@ export default function ShareView() {
     toast.success(t("tree.personCardCopied"));
   };
 
+  const shareOccasionCalendar = (ev: TreeOccasion) => {
+    if (!ev.person) return;
+    const personUrl = absoluteUrl(
+      buildSharePersonPath(shareToken, ev.person.id),
+    );
+    const title =
+      ev.kind === "birthday"
+        ? t("tree.icsBirthdayTitle", { name: ev.person.givenName })
+        : t("tree.icsAnniversaryTitle", { name: ev.label });
+    downloadIcs(
+      `nasab-${ev.key}`,
+      buildOccasionIcs(ev, {
+        title,
+        description: t("tree.icsDescription", { url: personUrl }),
+        url: personUrl,
+      }),
+    );
+    toast.success(t("tree.icsDownloaded"));
+  };
+
+  const shareOccasionGreeting = (ev: TreeOccasion) => {
+    if (!ev.person) return;
+    const personUrl = absoluteUrl(
+      buildSharePersonPath(shareToken, ev.person.id),
+    );
+    void navigator.clipboard.writeText(
+      occasionGreetingText(ev.kind, ev.person.givenName, personUrl, {
+        birthday: t("tree.greetingBirthday"),
+        anniversary: t("tree.greetingAnniversary"),
+      }),
+    );
+    toast.success(t("tree.greetingCopied"));
+  };
+
+  const downloadUpcomingOccasionsCalendar = () => {
+    const upcoming = buildTreeOccasions(people, rels).filter(
+      (e) => e.daysUntil <= 90,
+    );
+    if (upcoming.length === 0) {
+      toast.error(t("tree.occasionsDownloadEmpty"));
+      return;
+    }
+    const items = upcoming.map((ev) => {
+      const personUrl = ev.person
+        ? absoluteUrl(buildSharePersonPath(shareToken, ev.person.id))
+        : undefined;
+      return {
+        ev,
+        title:
+          ev.kind === "birthday"
+            ? t("tree.icsBirthdayTitle", {
+                name: ev.person?.givenName ?? ev.label,
+              })
+            : t("tree.icsAnniversaryTitle", { name: ev.label }),
+        description: t("tree.icsDescription", { url: personUrl ?? "" }),
+        url: personUrl,
+      };
+    });
+    downloadIcs(`nasab-share-occasions-90d`, buildMultiOccasionIcs(items));
+    toast.success(t("tree.occasionsDownloadDone", { count: upcoming.length }));
+  };
+
+  const copyFamilyBrief = () => {
+    const all = buildTreeOccasions(people, rels);
+    const today = all.filter((e) => e.daysUntil === 0);
+    const week = all.filter((e) => e.daysUntil > 0 && e.daysUntil <= 7);
+    const text = formatFamilyBrief({
+      today,
+      week,
+      researchCount: 0,
+      urlFor: (ev) =>
+        ev.person
+          ? absoluteUrl(buildSharePersonPath(shareToken, ev.person.id))
+          : null,
+      labels: {
+        title: t("tree.familyBriefTitle"),
+        todayHeader: t("tree.familyBriefToday"),
+        weekHeader: t("tree.familyBriefWeek"),
+        emptyToday: t("tree.familyBriefEmptyToday"),
+        emptyWeek: t("tree.familyBriefEmptyWeek"),
+        birthday: t("tree.eventBirthday"),
+        anniversary: t("tree.eventAnniversary"),
+        todayTag: t("tree.eventToday"),
+        inDays: t("tree.familyBriefInDays"),
+        researchFooter: t("tree.familyBriefResearch"),
+      },
+    });
+    void navigator.clipboard.writeText(text);
+    toast.success(t("tree.familyBriefCopied"));
+  };
+
   if (query.isLoading) {
     return (
       <div className="min-h-screen p-10 space-y-4">
@@ -378,6 +478,21 @@ export default function ShareView() {
             </div>
           </div>
         )}
+
+        <EventsStrip
+          people={people}
+          rels={rels}
+          onPersonClick={(p) => openPerson(p)}
+          onCopyPersonLink={(p) => {
+            const url = absoluteUrl(buildSharePersonPath(shareToken, p.id));
+            void navigator.clipboard.writeText(url);
+            toast.success(t("detail.linkCopied"));
+          }}
+          onAddToCalendar={shareOccasionCalendar}
+          onCopyGreeting={shareOccasionGreeting}
+          onDownloadUpcomingCalendar={downloadUpcomingOccasionsCalendar}
+          onCopyFamilyBrief={copyFamilyBrief}
+        />
 
         <Card>
           <CardContent className="p-2">

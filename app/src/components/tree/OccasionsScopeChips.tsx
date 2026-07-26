@@ -5,15 +5,18 @@ import { cn } from "@/lib/utils";
 type Props = {
   value: OccasionsScope;
   onChange: (scope: OccasionsScope) => void;
+  /** مفتاح ترجمة للتسمية — افتراضي مناسبات */
+  labelKey?: string;
   className?: string;
 };
 
 const SCOPES: OccasionsScope[] = ["close", "favorites", "all"];
 
-/** نطاق المناسبات: دائرتي / المفضلة / الكل */
+/** نطاق دائرتي / المفضلة / الكل — مناسبات أو جولة بحث */
 export default function OccasionsScopeChips({
   value,
   onChange,
+  labelKey = "tree.occasionsScopeLabel",
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -22,10 +25,10 @@ export default function OccasionsScopeChips({
     <div
       className={cn("flex flex-wrap items-center gap-1.5", className)}
       role="group"
-      aria-label={t("tree.occasionsScopeLabel")}
+      aria-label={t(labelKey)}
     >
       <span className="text-[11px] font-medium text-muted-foreground">
-        {t("tree.occasionsScopeLabel")}
+        {t(labelKey)}
       </span>
       {SCOPES.map((scope) => (
         <button

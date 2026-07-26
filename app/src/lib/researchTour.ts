@@ -18,10 +18,13 @@ export function buildResearchTourItems(
     homeId?: number | null;
     favoriteIds?: number[];
     recentIds?: number[];
+    /** إن وُجد: اقتصر الجولة على هؤلاء الأشخاص */
+    allowedPersonIds?: Set<number> | null;
   },
 ): ResearchTourItem[] {
   const dismissed = new Set(dismissedKeys);
   const fav = new Set(opts?.favoriteIds ?? []);
+  const allowed = opts?.allowedPersonIds ?? null;
   const recent = new Map<number, number>();
   (opts?.recentIds ?? []).forEach((id, i) => recent.set(id, i));
 
@@ -34,6 +37,7 @@ export function buildResearchTourItems(
 
   const items: ResearchTourItem[] = [];
   for (const [personId, gaps] of gapsById) {
+    if (allowed && !allowed.has(personId)) continue;
     const person = peopleById.get(personId);
     if (!person) continue;
     for (const g of gaps) {

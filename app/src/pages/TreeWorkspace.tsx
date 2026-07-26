@@ -65,6 +65,11 @@ import {
 import { formatFamilyBrief } from "@/lib/familyBrief";
 import { buildResearchTourItems } from "@/lib/researchTour";
 import {
+  getResearchTourState,
+  setResearchTourState,
+  type ResearchTourScope,
+} from "@/lib/researchTourState";
+import {
   getFavoritePersonIds,
   toggleFavoritePersonId,
 } from "@/lib/favoritePeople";
@@ -260,6 +265,8 @@ export default function TreeWorkspace() {
   const [homePersonId, setHomePersonIdState] = useState<number | null>(null);
   const [occasionsScope, setOccasionsScopeState] =
     useState<OccasionsScope>("close");
+  const [researchTourScope, setResearchTourScope] =
+    useState<ResearchTourScope>("close");
   const [focusTrail, setFocusTrail] = useState<number[]>([]);
   const [highlightPathIds, setHighlightPathIds] = useState<number[] | null>(null);
   const [urlRelateId, setUrlRelateId] = useState<number | null>(null);
@@ -287,6 +294,7 @@ export default function TreeWorkspace() {
       setDismissedDiscoveryKeys(getDismissedDiscoveryKeys(treeId));
       setOccasionsScopeState(getOccasionsScope(treeId));
       setRecentRelatePairs(getRecentRelates(treeId));
+      setResearchTourScope(getResearchTourState(treeId).scope);
     }
   }, [treeId]);
 
@@ -1009,6 +1017,29 @@ export default function TreeWorkspace() {
     [people, rels],
   );
 
+  const researchTourAllowedIds = useMemo(() => {
+    if (researchTourScope === "all") return null;
+    if (researchTourScope === "favorites") {
+      const ids = new Set(favoriteIds);
+      if (homePersonId != null) ids.add(homePersonId);
+      return ids;
+    }
+    const focus =
+      homePersonId ?? chartFocusId ?? detailPerson?.id ?? people[0]?.id ?? null;
+    if (focus == null) return null;
+    return new Set(
+      collectCloseFamily(focus, people, rels).people.map((p) => p.id),
+    );
+  }, [
+    researchTourScope,
+    favoriteIds,
+    homePersonId,
+    chartFocusId,
+    detailPerson?.id,
+    people,
+    rels,
+  ]);
+
   if (treeQuery.isLoading || dataQuery.isLoading) {
     return (
       <div className="min-h-screen">
@@ -1418,12 +1449,22 @@ export default function TreeWorkspace() {
             )}
 
             <ResearchTourStrip
+              treeId={treeId}
               gapsById={researchGapsById}
               peopleById={peopleById}
               dismissedKeys={dismissedDiscoveryKeys}
               homePersonId={homePersonId}
               favoriteIds={favoriteIds}
               recentIds={recentIds}
+              allowedPersonIds={researchTourAllowedIds}
+              scope={researchTourScope}
+              onScopeChange={(s) => {
+                setResearchTourScope(s);
+                setResearchTourState(treeId, {
+                  scope: s,
+                  index: getResearchTourState(treeId).index,
+                });
+              }}
               canWrite={canWrite}
               onFix={fixResearchGap}
               onShow={(p) => revealOnChart(p)}
@@ -2135,6 +2176,44 @@ export default function TreeWorkspace() {
         onCopyPathLink={copyPathLink}
         onCopyPathText={copyPathText}
         recentPairs={recentRelatePairs}
+        homePersonId={homePersonId}
+        onCopyPersonCard={copyPersonCard}
+        onCopyBothCards={(a, b) => {
+          const pa = peopleById.get(a);
+          const pb = peopleById.get(b);
+          if (!pa || !pb) return;
+          const cardA = (() => {
+            const url = absoluteUrl(
+              buildTreePersonPath(treeId, pa.id, { tab: "chart" }),
+            );
+            return formatPersonShareCard({
+              person: pa,
+              url,
+              labels: {
+                kinship: t("tree.personCardKinship"),
+                pathHeader: t("tree.pathTextHops"),
+                linkHeader: t("tree.pathTextLink"),
+              },
+            });
+          })();
+          const cardB = (() => {
+            const url = absoluteUrl(
+              buildTreePersonPath(treeId, pb.id, { tab: "chart" }),
+            );
+            return formatPersonShareCard({
+              person: pb,
+              url,
+              labels: {
+                kinship: t("tree.personCardKinship"),
+                pathHeader: t("tree.pathTextHops"),
+                linkHeader: t("tree.pathTextLink"),
+              },
+            });
+          })();
+          void navigator.clipboard.writeText(`${cardA}\n\n——\n\n${cardB}`);
+          rememberRelate(a, b);
+          toast.success(t("tree.bothCardsCopied"));
+        }}
         onSelectRecentPair={(a, b) => {
           rememberRelate(a, b);
           setHowRelatedPair({ from: a, to: b });
