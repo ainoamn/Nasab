@@ -16,9 +16,6 @@ import * as relations from "@db/relations";
  * Multi-dialect runtime (SQLite dev / MySQL or Postgres prod).
  * Drivers are required lazily so Vite SSR does not resolve `postgres`
  * during local SQLite development.
- *
- * On Vercel Build Output, `scripts/vercel-build.mjs` copies `postgres`
- * into the function `node_modules` so this lazy require resolves.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AppDb = any;
@@ -43,9 +40,6 @@ export function isSqliteDb(): boolean {
 
 export function getDb(): AppDb {
   if (!instance) {
-    if (!env.databaseUrl?.trim()) {
-      throw new Error("DATABASE_URL is not set");
-    }
     const dialect = getDatabaseDialect(env.databaseUrl);
     const require = nodeRequire();
     if (dialect === "sqlite") {
@@ -63,11 +57,11 @@ export function getDb(): AppDb {
       const { drizzle } =
         require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");
       const url = sanitizeDatabaseUrl(env.databaseUrl);
-      const max = process.env.VERCEL || process.env.NASAB_SERVERLESS === "1" ? 1 : 10;
+      const max = process.env.VERCEL ? 1 : 10;
       const client = postgres(url, {
         prepare: false,
         max,
-        connect_timeout: 8,
+        connect_timeout: 10,
         idle_timeout: 20,
         max_lifetime: 60 * 5,
       });

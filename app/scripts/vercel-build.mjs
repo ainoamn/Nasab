@@ -99,20 +99,6 @@ writeFileSync(
   ),
 );
 
-// Lazy `require("postgres")` / `require("drizzle-orm/...")` stay external to
-// esbuild — copy them into the function so getDb() works on Build Output.
-for (const pkg of ["postgres", "drizzle-orm"]) {
-  const src = path.join(root, "node_modules", pkg);
-  const dest = path.join(funcDir, "node_modules", pkg);
-  if (!existsSync(src)) {
-    console.error(`[vercel-build] missing node_modules/${pkg} — run npm install`);
-    process.exit(1);
-  }
-  mkdirSync(path.dirname(dest), { recursive: true });
-  cpSync(src, dest, { recursive: true });
-  console.log(`[vercel-build] copied node_modules/${pkg} into api.func`);
-}
-
 writeFileSync(
   path.join(out, "config.json"),
   JSON.stringify(

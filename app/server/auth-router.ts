@@ -94,39 +94,17 @@ export const authRouter = createRouter({
         });
       }
 
-      try {
-        await Promise.race([
-          (async () => {
-            await upsertUser({
-              unionId,
-              name,
-              email,
-              username,
-              role: "admin",
-              plan: "print",
-              lastSignInAt: new Date(),
-              signInIp: ip,
-              registrationIp: ip,
-            });
-          })(),
-          new Promise((_, reject) => {
-            setTimeout(
-              () => reject(new Error("db-timeout")),
-              process.env.VERCEL ? 12_000 : 20_000,
-            );
-          }),
-        ]);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[nasab] loginLocal db error:", msg);
-        throw new TRPCError({
-          code: "SERVICE_UNAVAILABLE",
-          message:
-            msg === "db-timeout" || /timeout|DATABASE_URL/i.test(msg)
-              ? "قاعدة البيانات لا تستجيب — تحقق من DATABASE_URL على Vercel (Neon pooled) ثم أعد النشر"
-              : "تعذر الاتصال بقاعدة البيانات",
-        });
-      }
+      await upsertUser({
+        unionId,
+        name,
+        email,
+        username,
+        role: "admin",
+        plan: "print",
+        lastSignInAt: new Date(),
+        signInIp: ip,
+        registrationIp: ip,
+      });
       const user = await findUserByUnionId(unionId);
       if (user) await ensureUserIdentity(user.id);
 
