@@ -45,6 +45,8 @@ export const en = {
     start: "Start now — free",
     how: "How it works",
     points: "Free up to 500 persons • No credit card • Your data stays yours",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    buildBehindCta: "Setup & deploy status",
   },
   features: {
     title: "Why Nasab?",
@@ -1165,6 +1167,8 @@ export const en = {
       eidTitle: "Eid greeting card",
       eidSubtitle: "Greet the family on holidays",
       eidFooter: "Eid Mubarak — may you be well every year",
+      guestListTitle: "Relatives / guest list",
+      guestFocus: "focus",
     },
     fanRoot: "Lineage root",
     fanHint: "Each arc is a generation — from root below to descendants on upper arcs",

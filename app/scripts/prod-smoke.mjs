@@ -4,6 +4,8 @@
  * Usage: node scripts/prod-smoke.mjs [https://nasab-mu.vercel.app]
  */
 const base = (process.argv[2] || "https://nasab-mu.vercel.app").replace(/\/$/, "");
+const GITHUB_MAIN =
+  "https://api.github.com/repos/ainoamn/Nasab/commits/main";
 
 async function get(path) {
   const t0 = Date.now();
@@ -45,6 +47,19 @@ async function post(path, body, contentType) {
   return { path, status: res.status, ms: Date.now() - t0, json, text: text.slice(0, 200) };
 }
 
+async function fetchOriginMainSha() {
+  try {
+    const res = await fetch(GITHUB_MAIN, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return typeof d?.sha === "string" ? d.sha.slice(0, 7) : null;
+  } catch {
+    return null;
+  }
+}
+
 const results = [];
 results.push(await get("/api/health"));
 results.push(await get("/api/diag"));
@@ -77,11 +92,17 @@ const headersOk =
   health?.headers?.nosniff === "nosniff" &&
   String(health?.headers?.frame || "").toUpperCase() === "DENY";
 
+const liveBuild = health?.json?.build || diag?.build || null;
+const originMain = await fetchOriginMainSha();
+const deployInSync = Boolean(liveBuild && originMain && liveBuild === originMain);
+
 console.log("\nVERDICT");
 console.log({
   base,
   healthOk,
-  build: health?.json?.build || diag?.build || null,
+  liveBuild,
+  originMain,
+  deployInSync,
   dbConfigured: Boolean(diag?.dbConfigured),
   hasAppSecret: Boolean(diag?.hasAppSecret),
   sidecar: Boolean(diag?.sidecar),
@@ -90,9 +111,11 @@ console.log({
   loginError: login?.json?.error,
   setupOk: results.find((r) => r.path === "/setup")?.status === 200,
   securityHeadersOk: headersOk,
-  nextStep: diag?.dbConfigured
-    ? "Try /login with admin credentials"
-    : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",
+  nextStep: !deployInSync
+    ? "Live SHA behind GitHub main → Vercel Deployments → Redeploy (Root Directory = app)"
+    : diag?.dbConfigured
+      ? "Try /login with admin credentials"
+      : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",
 });
 
 process.exit(healthOk ? 0 : 1);

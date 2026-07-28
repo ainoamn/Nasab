@@ -45,6 +45,8 @@ export const ar = {
     start: "ابدأ الآن — مجاناً",
     how: "كيف تعمل؟",
     points: "مجانية حتى 500 فرد • بلا بطاقة ائتمانية • بياناتك ملكك",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    buildBehindCta: "حالة الإعداد والنشر",
   },
   features: {
     title: "لماذا نَسَب؟",
@@ -1163,6 +1165,8 @@ export const ar = {
       eidTitle: "بطاقة عيد",
       eidSubtitle: "لتهنئة العائلة في الأعياد",
       eidFooter: "كل عام وأنتم بخير — عيدكم مبارك",
+      guestListTitle: "قائمة الأقارب / الضيوف",
+      guestFocus: "المحور",
     },
     fanRoot: "جذر السلالة",
     fanHint: "كل قوس = جيل — من الجذر في الأسفل إلى الأحفاد في الأقواس العليا",

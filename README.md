@@ -444,6 +444,8 @@ http://localhost:5173/api/oauth/google/callback
 5. مزامنة المتغيرات من الجهاز (بعد `vercel login`): `cd app && npm run vercel:env` ثم Redeploy
 6. تحقق: `https://…/api/health` → `"dbConfigured":true` ثم دخول من `/login`
 
+**إن بقي `/api/health` على SHA قديم بعد دفع `main`:** Vercel → Deployments → **Redeploy** (Root Directory = `app`). تحقق بـ `npm run deploy:status` أو `npm run prod:smoke` (يعرض `deployInSync`).
+
 الموقع الحالي: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
 
 الدليل التفصيلي: [`app/DEPLOY.md`](app/DEPLOY.md)

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
@@ -26,10 +27,48 @@ import {
 const featureIcons = [ScrollText, ShieldCheck, Users, FileSpreadsheet, History, Printer];
 const designIcons = [TreePalm, ScrollText, BookOpen, Frame, Map, Landmark, Gift, Sparkles];
 const planSlugs = ["free", "plus", "print"] as const;
+const GITHUB_MAIN_SHA =
+  "https://api.github.com/repos/ainoamn/Nasab/commits/main";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
+  const [liveBuild, setLiveBuild] = useState<string | null>(null);
+  const [mainSha, setMainSha] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/diag")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { build?: string | null } | null) => {
+        if (!cancelled && d?.build) setLiveBuild(d.build);
+      })
+      .catch(() => {
+        /* optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(GITHUB_MAIN_SHA, {
+      headers: { Accept: "application/vnd.github+json" },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { sha?: string } | null) => {
+        if (!cancelled && d?.sha) setMainSha(d.sha.slice(0, 7));
+      })
+      .catch(() => {
+        /* optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const buildBehind = Boolean(liveBuild && mainSha && liveBuild !== mainSha);
 
   const featuresRaw = t("features.items", { returnObjects: true });
   const designsRaw = t("printDesigns.items", { returnObjects: true });
@@ -103,6 +142,17 @@ export default function Home() {
               <a href="#features">{t("hero.how")} <ChevronDown className="h-4 w-4" /></a>
             </Button>
           </div>
+          {buildBehind ? (
+            <p
+              className="mx-auto mt-5 max-w-xl rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+              role="status"
+            >
+              {t("hero.buildBehind", { live: liveBuild, main: mainSha })}{" "}
+              <Link to="/setup" className="font-medium underline underline-offset-2">
+                {t("hero.buildBehindCta")}
+              </Link>
+            </p>
+          ) : null}
           <p className="mt-4 text-sm text-muted-foreground text-pretty px-2">{t("hero.points")}</p>
         </div>
       </section>

@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Baby, Sparkles } from "lucide-react";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
+import { collectCloseFamily } from "@/lib/closeFamily";
+import { comparePeopleByBirth } from "@/lib/birthOrder";
+import { personDisplayNameWithTwin } from "@/lib/printData";
 
 type Occasion = "wedding" | "newborn" | "eid";
 
@@ -38,6 +41,15 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
 
   const style = OCCASION_STYLES[occasion];
   const Icon = style.icon;
+
+  const guestList = useMemo(() => {
+    const { people: close } = collectCloseFamily(rootPersonId, people, rels);
+    const focus = close.find((p) => p.id === rootPersonId);
+    const others = close
+      .filter((p) => p.id !== rootPersonId)
+      .sort(comparePeopleByBirth);
+    return focus ? [focus, ...others] : others;
+  }, [rootPersonId, people, rels]);
 
   return (
     <div>
@@ -87,6 +99,43 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
         <div className="rounded-2xl bg-white/80 p-4 shadow-inner">
           <PrintFamilyChart people={people} rels={rels} rootPersonId={rootPersonId} levels={levels} />
         </div>
+
+        {guestList.length > 0 ? (
+          <div
+            className="mt-6 rounded-2xl border-2 bg-white/90 p-4 print:break-inside-avoid"
+            style={{ borderColor: `${style.border}55` }}
+          >
+            <p
+              className="mb-3 text-center font-display text-sm font-bold"
+              style={{ color: style.border }}
+            >
+              {t("printPage.occasion.guestListTitle")}
+              <span className="ms-1 text-xs font-normal text-stone-500">
+                ({guestList.length})
+              </span>
+            </p>
+            <ul className="columns-1 sm:columns-2 gap-x-6 text-sm font-display">
+              {guestList.map((p, i) => (
+                <li
+                  key={p.id}
+                  className="mb-1.5 flex items-baseline gap-2 break-inside-avoid border-b border-stone-100 pb-1"
+                >
+                  <span className="w-5 shrink-0 text-[10px] tabular-nums text-stone-400">
+                    {i + 1}.
+                  </span>
+                  <span className={p.id === rootPersonId ? "font-bold" : undefined}>
+                    {personDisplayNameWithTwin(p, people)}
+                    {p.id === rootPersonId ? (
+                      <span className="ms-1 text-[10px] font-normal text-stone-500">
+                        ({t("printPage.occasion.guestFocus")})
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <p className="mt-6 text-center font-display text-sm italic text-stone-600">
           {t(`printPage.occasion.${occasion}Footer`)}
