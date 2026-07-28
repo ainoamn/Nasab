@@ -22,7 +22,8 @@
 - [ما بعد الإطلاق (تحسينات اختيارية)](#ما-بعد-الإطلاق-تحسينات-اختيارية)
 - [سجل التغييرات](./CHANGELOG.md)
 - [خطة الترقية والربط بـ Neon](./UPGRADE.md)
-- جاهزية الإطلاق في الواجهة: [/setup](https://nasab-mu.vercel.app/setup)
+- [جاهزية الإطلاق في الواجهة: /setup](https://nasab-mu.vercel.app/setup)
+- فحص دوري: GitHub Actions `Ops` (دخان + نسخ Neon)
 
 ---
 

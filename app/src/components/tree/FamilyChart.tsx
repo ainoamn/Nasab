@@ -13,7 +13,7 @@ import type { Person, Relationship } from "@db/tables";
 import type { TreeBranch } from "@db/tables";
 import { useLabels } from "@/lib/labels";
 import { useTranslation } from "react-i18next";
-import { computePersonRanks, birthSortKey } from "@/lib/birthOrder";
+import { computePersonRanks, comparePeopleByBirth } from "@/lib/birthOrder";
 import {
   childrenOfPair,
   childrenWithFatherOnly,
@@ -277,7 +277,7 @@ export default function FamilyChart({
         const pa = byId.get(a);
         const pb = byId.get(b);
         if (!pa || !pb) return 0;
-        return birthSortKey(pa) - birthSortKey(pb);
+        return comparePeopleByBirth(pa, pb);
       });
       childrenOf.set(pid, kids);
     }
@@ -780,9 +780,7 @@ export default function FamilyChart({
     }
     for (const group of byGroup.values()) {
       if (group.length < 2) continue;
-      const sorted = [...group].sort(
-        (a, b) => birthSortKey(a) - birthSortKey(b),
-      );
+      const sorted = [...group].sort(comparePeopleByBirth);
       sorted.forEach((p, i) => {
         map.set(p.id, { order: i + 1, total: sorted.length });
       });
@@ -1498,7 +1496,7 @@ function ChildrenRow({
   const sorted = [...kidIds].sort((a, b) => {
     const pa = byId.get(a)!;
     const pb = byId.get(b)!;
-    return birthSortKey(pa) - birthSortKey(pb);
+    return comparePeopleByBirth(pa, pb);
   });
 
   return (
@@ -2162,7 +2160,7 @@ function CoupleNode({
       // الطباعة: الأبناء عند الأب إن وُجد في الشجرة، وإلا عند الأم (focus إن كانت الأم)
       return preferredParentId(kidId, rels, byId) === focus.id;
     })
-    .sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
+    .sort((a, b) => comparePeopleByBirth(byId.get(a)!, byId.get(b)!));
 
   const spouseRel =
     father && mother ? findSpouseRel(rels, father.id, mother.id) : undefined;

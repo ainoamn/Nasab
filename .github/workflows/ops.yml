@@ -1,0 +1,56 @@
+name: Ops
+
+on:
+  schedule:
+    # يومياً 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  prod-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Production smoke
+        run: npm run prod:smoke
+        env:
+          PROD_SMOKE_URL: https://nasab-mu.vercel.app
+
+  neon-backup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Dump Neon snapshot
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::Skip backup — add repository secret DATABASE_URL (Neon pooled)"
+            exit 0
+          fi
+          npm run db:backup-neon
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-backup-${{ github.run_id }}
+          path: app/.data/backups/*.json
+          if-no-files-found: ignore
+          retention-days: 14

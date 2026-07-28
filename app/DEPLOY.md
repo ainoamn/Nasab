@@ -233,6 +233,21 @@ npm start
 5. `/admin/gateways` — راجع التحويل البنكي (بيانات `BANK_*` من `.env`) أو فعّل Thawani/Stripe بمفاتيح حية.
 6. اختبر مسار شراء كامل: `/checkout?plan=plus`.
 
+### نسخ احتياطي وفحص دوري
+
+```bash
+cd app
+npm run db:backup-neon   # → .data/backups/neon-*.json (محلي)
+npm run prod:smoke       # دخان حي
+npm run launch:status    # Neon محلي + دخان حي
+```
+
+على GitHub: workflow [`Ops`](../.github/workflows/ops.yml) يعمل يومياً (دخان الإنتاج + نسخ Neon إن وُجد السر `DATABASE_URL`).
+
+### GEDCOM والتوائم
+
+التصدير/الاستيراد يحفظ مجموعات التوائم عبر `_TGID` و`ASSO` / `RELA twin` — انظر المرحلة 9 في [`UPGRADE.md`](../UPGRADE.md).
+
 ### ضبط الإطلاق بسرعة
 
 ```bash

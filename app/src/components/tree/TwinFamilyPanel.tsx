@@ -151,6 +151,7 @@ export default function TwinFamilyPanel({
                   <span className="font-medium truncate">{twin.givenName}</span>
                   <TwinBadge
                     compact
+                    kind={twinKindForGroup(twin, people)}
                     order={twinOrderInGroup(twin, people)}
                     total={twinTotal}
                   />

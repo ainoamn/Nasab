@@ -6,7 +6,7 @@ import { useLabels } from "@/lib/labels";
 import { relationToFocus } from "@/lib/relationshipLabel";
 import { MhPersonPill } from "@/components/tree/MhPersonPill";
 import { cn } from "@/lib/utils";
-import { birthSortKey } from "@/lib/birthOrder";
+import { comparePeopleByBirth } from "@/lib/birthOrder";
 
 type Props = {
   people: Person[];
@@ -67,7 +67,7 @@ export default function DescendantsView({
           const pa = byId.get(a);
           const pb = byId.get(b);
           if (!pa || !pb) return a - b;
-          return birthSortKey(pa) - birthSortKey(pb);
+          return comparePeopleByBirth(pa, pb);
         });
         if (kids.length === 0) {
           col.push({

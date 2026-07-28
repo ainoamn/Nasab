@@ -10,7 +10,7 @@ import {
   oppositeSpouses,
 } from "@/lib/familyGraph";
 import { preferredParentId } from "@/lib/printLineage";
-import { birthSortKey } from "@/lib/birthOrder";
+import { comparePeopleByBirth } from "@/lib/birthOrder";
 import { sortSpouses } from "@/lib/spouseMeta";
 import { twinGroupSize } from "@/lib/twins";
 
@@ -677,7 +677,7 @@ export function computeSunLayout(
   const kidsOf = (id: number): number[] =>
     familyChildrenOf(id, childrenOf, spousesOf, rels, byId)
       .filter((cid) => byId.has(cid))
-      .sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
+      .sort((a, b) => comparePeopleByBirth(byId.get(a)!, byId.get(b)!));
 
   /** نسل الدم من شخص (يتجاهل جيل الأزواج الدخلاء) */
   const bloodKids = (id: number): number[] => {
@@ -749,7 +749,7 @@ export function computeSunLayout(
       groups.set(key, list);
     }
     for (const list of groups.values()) {
-      list.sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
+      list.sort((a, b) => comparePeopleByBirth(byId.get(a)!, byId.get(b)!));
     }
 
     const spouseOrder = sortSpouses(
