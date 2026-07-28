@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router";
 import { Toaster } from "@/components/ui/sonner";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import Setup from "./pages/Setup";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import AccountSettings from "./pages/AccountSettings";
@@ -39,6 +40,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/account" element={<AccountSettings />} />
         <Route

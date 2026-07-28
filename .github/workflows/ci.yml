@@ -25,3 +25,9 @@ jobs:
         env:
           VITE_KIMI_AUTH_URL: https://example.com
           VITE_APP_ID: ci-test
+      - name: Production smoke (informational)
+        continue-on-error: true
+        run: npm run prod:smoke
+        env:
+          # Optional live URL; defaults inside the script
+          PROD_SMOKE_URL: https://nasab-mu.vercel.app

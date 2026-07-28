@@ -255,7 +255,8 @@ export const ar = {
     localSuccess: "تم تسجيل الدخول",
     localError: "فشل تسجيل الدخول",
     dbNotConfigured:
-      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر. راجع UPGRADE.md",
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    openSetup: "فتح صفحة الجاهزية",
     localNote: "للتطوير المحلي فقط — لا يُستخدم في الإنتاج",
     or: "أو",
     google: "الدخول عبر Google",

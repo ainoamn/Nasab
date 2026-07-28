@@ -255,7 +255,8 @@ export const en = {
     localSuccess: "Signed in",
     localError: "Sign-in failed",
     dbNotConfigured:
-      "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy. See UPGRADE.md",
+      "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
+    openSetup: "Open setup checklist",
     localNote: "For local development only — not used in production",
     or: "or",
     google: "Sign in with Google",

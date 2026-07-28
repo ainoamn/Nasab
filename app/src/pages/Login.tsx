@@ -109,7 +109,13 @@ export default function Login() {
                 className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
                 role="status"
               >
-                {t("login.dbNotConfigured")}
+                <p>{t("login.dbNotConfigured")}</p>
+                <a
+                  href="/setup"
+                  className="mt-1 inline-block text-sm font-medium underline underline-offset-2"
+                >
+                  {t("login.openSetup")}
+                </a>
               </div>
             ) : null}
             {authConfig.data?.googleEnabled && (

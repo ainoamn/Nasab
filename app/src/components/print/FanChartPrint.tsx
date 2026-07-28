@@ -4,6 +4,7 @@ import type { Person } from "@db/schema";
 import {
   computeFanLayout,
   formatPrintChartName,
+  fullNasabName,
   groupByGeneration,
 } from "@/lib/printData";
 import {
