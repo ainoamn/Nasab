@@ -246,7 +246,7 @@ npm start
 ```bash
 cd app
 npm run db:backup-neon   # → .data/backups/neon-*.json (محلي)
-npm run prod:smoke       # دخان حي — يفشل إن تعطلت الصفحات أو headers أو ردّ الدخول
+npm run prod:smoke       # دخان حي — يفشل إن تعطلت الصفحات/headers/رد الدخول أو غابت بصمة البناء
 npm run deploy:status    # مقارنة SHA (غالباً BEHIND حتى Redeploy يدوي)
 npm run launch:status    # Neon محلي استشاري + دخان حي
 ```

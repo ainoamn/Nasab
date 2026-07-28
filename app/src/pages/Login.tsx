@@ -66,14 +66,14 @@ export default function Login() {
         error?: string;
       };
       if (!res.ok || !data.success) {
-        toast.error(data.message || t("login.localError") || "فشل تسجيل الدخول");
+        toast.error(data.message || t("login.localError"));
         return;
       }
       toast.success(t("login.localSuccess"));
       await utils.auth.me.invalidate();
       navigate("/dashboard");
     } catch {
-      toast.error(t("login.localError") || "فشل تسجيل الدخول");
+      toast.error(t("login.localError"));
     } finally {
       setSigningIn(false);
     }

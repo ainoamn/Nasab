@@ -6,6 +6,8 @@ import {
   findRelationPath,
 } from "@/lib/relationPath";
 import type { RecentRelatePair } from "@/lib/recentRelates";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { History, Eye, Printer, Star, GitCompareArrows } from "lucide-react";
@@ -46,8 +48,12 @@ export default function RecentRelatesStrip({
         return {
           a: pair.a,
           b: pair.b,
+          aPerson: a,
+          bPerson: b,
           aName: a.givenName,
           bName: b.givenName,
+          aTwin: isTwin(a, people),
+          bTwin: isTwin(b, people),
           rel: t(`tree.rel.${key}`),
           hops: hops?.map((h) => h.personId) ?? [],
         };
@@ -74,10 +80,30 @@ export default function RecentRelatesStrip({
             <button
               type="button"
               onClick={() => onOpenCompare(chip.a, chip.b)}
-              className="max-w-[11rem] truncate px-2.5 py-1.5 text-start text-[11px] font-semibold text-sky-950 hover:bg-sky-100/80"
+              className="max-w-[14rem] truncate px-2.5 py-1.5 text-start text-[11px] font-semibold text-sky-950 hover:bg-sky-100/80"
               title={`${chip.aName} ↔ ${chip.bName} — ${chip.rel}`}
             >
-              {chip.aName} ↔ {chip.bName}
+              <span className="inline-flex items-center gap-0.5">
+                {chip.aName}
+                {chip.aTwin ? (
+                  <TwinBadge
+                    compact
+                    order={twinOrderInGroup(chip.aPerson, people)}
+                    total={twinGroupSize(chip.aPerson, people)}
+                  />
+                ) : null}
+              </span>
+              {" ↔ "}
+              <span className="inline-flex items-center gap-0.5">
+                {chip.bName}
+                {chip.bTwin ? (
+                  <TwinBadge
+                    compact
+                    order={twinOrderInGroup(chip.bPerson, people)}
+                    total={twinGroupSize(chip.bPerson, people)}
+                  />
+                ) : null}
+              </span>
               <span className="ms-1 font-normal text-sky-800/70">
                 · {chip.rel}
               </span>

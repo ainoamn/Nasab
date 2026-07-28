@@ -19,6 +19,7 @@ export const ar = {
     personCount: "{{count}} أفراد",
     personCountOne: "{{count}} فرد",
     currencyOmr: "ر.ع.",
+    emDash: "—",
     required: "مطلوب",
     search: "ابحث...",
     confirm: "تأكيد",
@@ -1498,6 +1499,10 @@ export const ar = {
     title: "الصفحة غير موجودة",
     body: "الرابط الذي فتحته غير صحيح أو أن الصفحة نُقلت",
     home: "العودة للرئيسية",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
   },
   user: "مستخدم",
 } as const;

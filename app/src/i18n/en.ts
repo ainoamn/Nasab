@@ -19,6 +19,7 @@ export const en = {
     personCount: "{{count}} persons",
     personCountOne: "{{count}} person",
     currencyOmr: "OMR",
+    emDash: "—",
     required: "required",
     search: "Search...",
     confirm: "Confirm",
@@ -1500,6 +1501,10 @@ export const en = {
     title: "Page not found",
     body: "The link you opened is incorrect or the page has moved",
     home: "Back to home",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
   },
   user: "User",
 } as const;

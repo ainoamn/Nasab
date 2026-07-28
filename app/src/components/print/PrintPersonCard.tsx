@@ -102,7 +102,9 @@ export function PrintPersonCard({
             </p>
           )}
           {birth && <p className="mt-0.5 text-[8px] text-stone-500">{birth}</p>}
-          <p className="mt-0.5 text-[7px] text-stone-400">{female ? "♀" : "♂"}</p>
+          <p className="mt-0.5 text-[7px] text-stone-400">
+            {female ? t("common.female") : t("common.male")}
+          </p>
         </div>
       </div>
     );
@@ -168,8 +170,8 @@ export function PrintPersonCard({
             ? `↑${Math.abs(genLevel)}`
             : `${displayGenerationNumber(genLevel)}`
           : female
-            ? "♀"
-            : "♂"}
+            ? t("common.female")
+            : t("common.male")}
         {!living && ` · ${t("common.deceased")}`}
         {isTwinCard && ` · ${t("twins.badge")}`}
       </div>

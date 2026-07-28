@@ -189,7 +189,7 @@ export default function PedigreeView({
                             ? t("chart.addFather")
                             : cell.slot === "mother"
                               ? t("chart.addMother")
-                              : "—"
+                              : t("common.emDash")
                         }
                         relationLabel={
                           cell.person

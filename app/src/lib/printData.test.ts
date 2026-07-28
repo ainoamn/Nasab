@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Person, Relationship } from "@db/tables";
-import { assignGenerationsStable, groupByGeneration, buildPalmTreeLayout, formatPalmCouple, computePrintStats, assignGenerationsFromPrintRoot, formatBirthYear } from "@/lib/printData";
+import { assignGenerationsStable, groupByGeneration, buildPalmTreeLayout, formatPalmCouple, computePrintStats, assignGenerationsFromPrintRoot, formatBirthYear, personDisplayNameWithTwin } from "@/lib/printData";
 import { buildPrintSubgraph, DEFAULT_PRINT_SCOPE } from "@/lib/printFilter";
 
 function person(
@@ -793,5 +793,28 @@ describe("formatBirthYear", () => {
 
   it("returns null without birth year", () => {
     expect(formatBirthYear(person(1, "بلا"))).toBeNull();
+  });
+});
+
+describe("personDisplayNameWithTwin", () => {
+  it("appends twin mark for group members", () => {
+    const a = person(1, "أحمد");
+    a.twinGroupId = 7;
+    a.birthYear = 2000;
+    a.birthMonth = 1;
+    a.birthDay = 1;
+    const b = person(2, "خالد");
+    b.twinGroupId = 7;
+    b.birthYear = 2000;
+    b.birthMonth = 1;
+    b.birthDay = 2;
+    expect(personDisplayNameWithTwin(a, [a, b])).toBe("أحمد · ت1");
+    expect(personDisplayNameWithTwin(a, [a, b], "T")).toBe("أحمد · T1");
+  });
+
+  it("omits mark for singleton twinGroupId", () => {
+    const alone = person(1, "وحيد");
+    alone.twinGroupId = 99;
+    expect(personDisplayNameWithTwin(alone, [alone])).toBe("وحيد");
   });
 });

@@ -2866,11 +2866,16 @@ export default function TreeWorkspace() {
                       <img src={detailPerson.photoUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <span
-                        className={`flex h-full w-full items-center justify-center text-2xl text-white ${
+                        className={`flex h-full w-full items-center justify-center text-xl font-bold text-white ${
                           detailPerson.gender === "female" ? "bg-pink-600" : "bg-blue-600"
                         }`}
+                        aria-label={
+                          detailPerson.gender === "female"
+                            ? t("common.female")
+                            : t("common.male")
+                        }
                       >
-                        {detailPerson.gender === "female" ? "♀" : "♂"}
+                        {detailPerson.givenName.slice(0, 1)}
                       </span>
                     )}
                   </span>
@@ -2923,6 +2928,13 @@ export default function TreeWorkspace() {
                       <span className={!detailPerson.isLiving ? "line-through decoration-2 text-rose-900" : ""}>
                         {detailPerson.givenName}
                       </span>
+                      {isTwin(detailPerson, people) ? (
+                        <TwinBadge
+                          compact
+                          order={twinOrderInGroup(detailPerson, people)}
+                          total={twinGroupSize(detailPerson, people)}
+                        />
+                      ) : null}
                       <Badge variant={detailPerson.isLiving ? "default" : "destructive"}>
                         {detailPerson.isLiving ? t("detail.alive") : t("detail.dead")}
                       </Badge>

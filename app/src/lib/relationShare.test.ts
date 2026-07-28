@@ -4,7 +4,7 @@ import {
   formatPersonShareCard,
   formatRelationPathText,
 } from "@/lib/relationShare";
-import { buildMultiOccasionIcs } from "@/lib/occasionShare";
+import { buildMultiOccasionIcs, buildOccasionIcs } from "@/lib/occasionShare";
 import type { TreeOccasion } from "@/lib/treeOccasions";
 
 function person(id: number, givenName: string, birthYear?: number): Person {
@@ -86,6 +86,31 @@ describe("relationShare", () => {
     expect(text).toContain("فاطمة · 1990");
     expect(text).toContain("أخت لـ أحمد");
     expect(text).toContain("أحمد → أب → فاطمة");
+  });
+});
+
+describe("buildOccasionIcs", () => {
+  it("emits yearly all-day event with escaped text and URL", () => {
+    const ev: TreeOccasion = {
+      key: "b-9",
+      kind: "birthday",
+      month: 1,
+      day: 2,
+      label: "اسم;خاص",
+      daysUntil: 5,
+    };
+    const ics = buildOccasionIcs(ev, {
+      title: "عيد, خاص",
+      description: "سطر1\nسطر2",
+      url: "https://nasab.example/p/9",
+    });
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).toContain("DTSTART;VALUE=DATE:");
+    expect(ics).toContain("RRULE:FREQ=YEARLY");
+    expect(ics).toContain("SUMMARY:عيد\\, خاص");
+    expect(ics).toContain("DESCRIPTION:سطر1\\nسطر2");
+    expect(ics).toContain("URL:https://nasab.example/p/9");
+    expect(ics).toContain("UID:nasab-b-9@nasab.app");
   });
 });
 
