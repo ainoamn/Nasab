@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
@@ -26,6 +28,31 @@ app.use("/api/trpc/*", bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
+
+/** Temporary launch diagnostics — no secrets, only presence flags. */
+app.get("/api/diag", (c) => {
+  const url = process.env.DATABASE_URL || "";
+  return c.json({
+    ok: true,
+    vercel: Boolean(process.env.VERCEL),
+    vercelEnv: process.env.VERCEL_ENV || null,
+    nasabServerless: process.env.NASAB_SERVERLESS || null,
+    nodeEnv: process.env.NODE_ENV || null,
+    cwd: process.cwd(),
+    dbConfigured: Boolean(url),
+    dbIsPostgres: /^postgres(ql)?:\/\//i.test(url),
+    dbHost: (() => {
+      try {
+        return url ? new URL(url).host : null;
+      } catch {
+        return "parse-error";
+      }
+    })(),
+    sidecar: existsSync(path.join(process.cwd(), "db-pg.cjs")),
+    hasAppSecret: Boolean(process.env.APP_SECRET),
+    passwordLoginEmail: env.passwordLoginEmail,
+  });
+});
 
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
