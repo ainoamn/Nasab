@@ -13,14 +13,12 @@ import * as mysqlSchema from "@db/schema";
 import * as sqliteSchema from "@db/schema.sqlite";
 import * as pgSchema from "@db/schema.pg";
 import * as relations from "@db/relations";
+import { createNeonHttpDb } from "./pg-neon";
 
 /**
  * Multi-dialect runtime (SQLite dev / MySQL or Postgres prod).
- * Drivers are required lazily so Vite SSR does not resolve `postgres`
- * during local SQLite development.
- *
- * On Vercel, Postgres uses `@neondatabase/serverless` (HTTP) so cold
- * starts do not hang on TCP sockets the way `postgres` (postgres.js) can.
+ * Postgres on Vercel uses Neon HTTP (bundled). Other drivers stay lazy
+ * so Vite SSR does not resolve native/TCP clients during SQLite dev.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AppDb = any;
@@ -64,11 +62,7 @@ export function getDb(): AppDb {
       const url = sanitizeDatabaseUrl(env.databaseUrl);
       const fullSchema = { ...pgSchema, ...relations };
       if (isServerlessRuntime()) {
-        const { neon } =
-          require("@neondatabase/serverless") as typeof import("@neondatabase/serverless");
-        const { drizzle } =
-          require("drizzle-orm/neon-http") as typeof import("drizzle-orm/neon-http");
-        instance = drizzle(neon(url), { schema: fullSchema });
+        instance = createNeonHttpDb(url, fullSchema);
       } else {
         const postgres = require("postgres") as typeof import("postgres");
         const { drizzle } =

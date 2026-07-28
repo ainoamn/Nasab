@@ -8,14 +8,16 @@
 
 ### الإصلاح
 - على Vercel/serverless: اتصال Postgres عبر `@neondatabase/serverless` (HTTP) بدل `postgres` TCP لتجنب تعليق تسجيل الدخول.
+- **تضمين Neon داخل حزمة الدالة** عبر استيراد ثابت (`pg-neon.ts`) — `require` الديناميكي كان يترك الحزمة خارج الـ bundle فيفشل التشغيل على Vercel.
 - رفض `DATABASE_URL` الفارغ بدل السقوط صامتاً على MySQL.
 - `/api/health` يعرض `dbConfigured` / `dialect`؛ و`?db=1` يفحص الاتصال بمهلة قصيرة.
 - مهلة واضحة لـ `auth.loginLocal` مع رسالة تطلب ضبط `DATABASE_URL` على Vercel.
 - سكربت `npm run vercel:env` لمزامنة المتغيرات من `.env.production` إلى Vercel.
 
 ### التحقق المحلي
+- الحزمة المجمّعة: `GET /api/health?db=1` → `db:ok` و`auth.loginLocal` → 200 + cookie.
 - Neon pooled يصل من الجهاز؛ صف المشرف `admin@bhd.om` محدّث عبر `npm run admin:ensure`.
-- الموقع الحي: الواجهة + `/api/health` + `auth.config` تعمل؛ تسجيل الدخول يحتاج `DATABASE_URL` على مشروع Vercel ثم إعادة نشر.
+- الموقع الحي يحتاج `DATABASE_URL` على مشروع Vercel ثم إعادة نشر بعد هذا الإصلاح.
 
 ---
 

@@ -27,11 +27,25 @@ function seedInBackground() {
 }
 
 function nasabHandler(req: IncomingMessage, res: ServerResponse) {
-  // Seed only on health probes — never block auth/login paths.
-  if ((req.url ?? "").includes("/api/health")) {
-    seedInBackground();
+  try {
+    // Seed only on health probes — never block auth/login paths.
+    if ((req.url ?? "").includes("/api/health")) {
+      seedInBackground();
+    }
+    return listener(req, res);
+  } catch (err) {
+    console.error("[nasab] handler crash:", err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader("content-type", "application/json; charset=utf-8");
+      res.end(
+        JSON.stringify({
+          error: "handler_crash",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
   }
-  return listener(req, res);
 }
 
 export default nasabHandler;

@@ -17,7 +17,6 @@ import {
 import { securityHeadersMiddleware } from "./lib/security-headers";
 import { Paths, PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
 import {
-  getDatabaseDialect,
   isPostgresDatabase,
   isSqliteDatabase,
 } from "@db/dialect";
@@ -31,37 +30,45 @@ app.use("/api/trpc/*", bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
 
 app.get("/api/health", async (c) => {
-  const url = env.databaseUrl || "";
-  let dialect: string = "none";
-  if (url) {
-    try {
-      dialect = getDatabaseDialect(url);
-    } catch {
-      dialect = isSqliteDatabase(url)
+  const url = (env.databaseUrl || "").trim();
+  const payload = {
+    ok: true as boolean,
+    ts: Date.now(),
+    dialect: url
+      ? isSqliteDatabase(url)
         ? "sqlite"
         : isPostgresDatabase(url)
           ? "postgres"
-          : "unknown";
-    }
-  }
-  const payload: Record<string, unknown> = {
-    ok: true,
-    ts: Date.now(),
-    dialect,
-    dbConfigured: Boolean(url.trim()),
-    serverless: Boolean(process.env.VERCEL) || process.env.NASAB_SERVERLESS === "1",
+          : "mysql"
+      : "none",
+    dbConfigured: Boolean(url),
+    serverless:
+      Boolean(process.env.VERCEL) || process.env.NASAB_SERVERLESS === "1",
   };
-  // Optional deep check: GET /api/health?db=1
   if (c.req.query("db") === "1") {
-    const { pingDatabase } = await import("./queries/connection");
-    const ping = await pingDatabase(4000);
-    payload.db = ping.ok ? "ok" : "error";
-    if (!ping.ok) {
-      payload.dbError = ping.error;
-      payload.ok = false;
+    try {
+      const { pingDatabase } = await import("./queries/connection");
+      const ping = await pingDatabase(4000);
+      if (!ping.ok) {
+        return c.json(
+          { ...payload, ok: false, db: "error", dbError: ping.error },
+          503,
+        );
+      }
+      return c.json({ ...payload, db: "ok" });
+    } catch (err) {
+      return c.json(
+        {
+          ...payload,
+          ok: false,
+          db: "error",
+          dbError: err instanceof Error ? err.message : String(err),
+        },
+        503,
+      );
     }
   }
-  return c.json(payload, payload.ok ? 200 : 503);
+  return c.json(payload);
 });
 
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
