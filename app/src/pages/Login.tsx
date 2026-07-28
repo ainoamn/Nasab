@@ -30,6 +30,7 @@ export default function Login() {
   const [username, setUsername] = useState("admin@bhd.om");
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+  const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
 
   const authConfig = trpc.auth.config.useQuery();
   const showPasswordForm = true;
@@ -40,6 +41,21 @@ export default function Login() {
       toast.error(t("login.googleError"));
     }
   }, [params, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/diag")
+      .then((r) => r.json())
+      .then((d: { dbConfigured?: boolean }) => {
+        if (!cancelled) setDbConfigured(Boolean(d.dbConfigured));
+      })
+      .catch(() => {
+        if (!cancelled) setDbConfigured(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function signInWithPassword() {
     setSigningIn(true);
@@ -88,6 +104,14 @@ export default function Login() {
             <p className="text-sm text-muted-foreground mt-1">{t("login.subtitle")}</p>
           </CardHeader>
           <CardContent className="space-y-3">
+            {dbConfigured === false ? (
+              <div
+                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+                role="status"
+              >
+                {t("login.dbNotConfigured")}
+              </div>
+            ) : null}
             {authConfig.data?.googleEnabled && (
               <>
                 <Button

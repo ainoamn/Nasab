@@ -253,6 +253,9 @@ export const ar = {
     emailButton: "تسجيل الدخول",
     localSigningIn: "جارٍ الدخول...",
     localSuccess: "تم تسجيل الدخول",
+    localError: "فشل تسجيل الدخول",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر. راجع UPGRADE.md",
     localNote: "للتطوير المحلي فقط — لا يُستخدم في الإنتاج",
     or: "أو",
     google: "الدخول عبر Google",

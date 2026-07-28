@@ -30,7 +30,7 @@ app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
-/** Temporary launch diagnostics — no secrets, only presence flags. */
+/** Launch diagnostics — no secrets, only presence flags. */
 app.get("/api/diag", (c) => {
   const url = process.env.DATABASE_URL || "";
   return c.json({

@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-07-28 — خطة ترقية + ربط Neon الحقيقي
+
+### قاعدة البيانات (Neon) — تم التحقق محلياً
+- 18 جدولاً، مشرف `admin@bhd.om`، خطط (3)، بوابات دفع (5).
+- أوامر: `npm run db:verify-neon`، `npm run db:seed-neon`، `npm run admin:ensure`.
+
+### المنتج
+- خطة التنفيذ في [`UPGRADE.md`](./UPGRADE.md).
+- تنبيه في `/login` عند غياب `DATABASE_URL` على الخادم.
+- `vercel:env` يولّد `APP_SECRET` إن نقص.
+
+### متبقٍ (يدوي على Vercel)
+- ضبط `DATABASE_URL` + `APP_SECRET` ثم Redeploy — المرحلة 2 في UPGRADE.md.
+
+---
+
 ## 2026-07-28 — إصلاح انهيار دالة Vercel + نسخ postgres
 
 ### السبب

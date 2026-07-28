@@ -3,13 +3,14 @@
  * Push critical production env vars to Vercel from local .env.production / .env.
  *
  * Usage:
- *   set VERCEL_TOKEN=...   (or vercel login)
+ *   vercel login
  *   node scripts/push-vercel-env.mjs
  *
  * Requires: vercel CLI linked to the project (Root Directory = app).
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, appendFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,6 +41,16 @@ const env = {
   ...loadEnvFile(path.join(root, ".env")),
   ...loadEnvFile(path.join(root, ".env.production")),
 };
+
+if (!env.APP_SECRET || env.APP_SECRET.length < 32) {
+  const generated = randomBytes(48).toString("hex");
+  env.APP_SECRET = generated;
+  appendFileSync(
+    path.join(root, ".env.production"),
+    `\nAPP_SECRET=${generated}\n`,
+  );
+  console.log("Generated APP_SECRET and appended to .env.production");
+}
 
 const required = [
   "DATABASE_URL",
@@ -104,18 +115,16 @@ console.log("Pushing env to Vercel (production)…");
 for (const [key, value] of Object.entries(toPush)) {
   if (!value) continue;
   process.stdout.write(`  ${key}… `);
-  // Remove then add to force update (vercel env add is interactive without --force on older CLIs)
   spawnSync("vercel", ["env", "rm", key, "production", "-y"], {
     cwd: root,
     encoding: "utf8",
     shell: process.platform === "win32",
     env: process.env,
   });
-  const ok = vercel(
-    ["env", "add", key, "production"],
-    `${value}\n`,
-  );
+  const ok = vercel(["env", "add", key, "production"], `${value}\n`);
   console.log(ok ? "ok" : "FAIL");
 }
 
-console.log("\nDone. Trigger a Redeploy from the Vercel dashboard (or: vercel --prod).");
+console.log(
+  "\nDone. Trigger a Redeploy from the Vercel dashboard (or: vercel --prod).",
+);
