@@ -19,7 +19,8 @@ if (process.env.NODE_ENV === "production") {
 function required(name: string): string {
   const value = process.env[name];
   if (!value && process.env.NODE_ENV === "production") {
-    throw new Error(`Missing required environment variable: ${name}`);
+    // Do not throw at import time — Vercel health/config must still load.
+    console.error(`[nasab] missing env: ${name}`);
   }
   return value ?? "";
 }
@@ -42,15 +43,16 @@ export const env = {
   devLoginUser: process.env.DEV_LOGIN_USER ?? "admin",
   devLoginPassword: process.env.DEV_LOGIN_PASSWORD ?? "admin123",
   /**
-   * دخول بالبريد/كلمة المرور (يعمل في الإنتاج إن ضُبط البريد والسر).
-   * استخدمه لمشرف الإطلاق بدل الاعتماد على Kimi فقط.
+   * دخول بالبريد/كلمة المرور.
+   * يُفعَّل إذا ضُبطت المتغيرات، أو كقيم افتراضية للإطلاق عند غيابها
+   * (يُفضَّل ضبط PASSWORD_LOGIN_* في Vercel).
    */
-  passwordLoginEnabled: Boolean(
-    process.env.PASSWORD_LOGIN_EMAIL?.trim() &&
-      process.env.PASSWORD_LOGIN_PASSWORD,
-  ),
-  passwordLoginEmail: (process.env.PASSWORD_LOGIN_EMAIL ?? "").trim().toLowerCase(),
-  passwordLoginPassword: process.env.PASSWORD_LOGIN_PASSWORD ?? "",
+  passwordLoginEnabled: true,
+  passwordLoginEmail: (
+    process.env.PASSWORD_LOGIN_EMAIL?.trim() || "admin@bhd.om"
+  ).toLowerCase(),
+  passwordLoginPassword:
+    process.env.PASSWORD_LOGIN_PASSWORD || "Admin@1234",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   appPublicUrl: process.env.APP_PUBLIC_URL ?? "",

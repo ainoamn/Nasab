@@ -49,7 +49,10 @@ export default app;
 
 /** Long-running Node server (Docker / VPS). Skip on Vercel serverless. */
 const shouldListen =
-  env.isProduction && !process.env.VERCEL && !process.env.VERCEL_ENV;
+  env.isProduction &&
+  !process.env.VERCEL &&
+  !process.env.VERCEL_ENV &&
+  process.env.NASAB_SERVERLESS !== "1";
 
 if (shouldListen) {
   void (async () => {

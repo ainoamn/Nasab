@@ -31,10 +31,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const authConfig = trpc.auth.config.useQuery();
-  const showPasswordForm =
-    (authConfig.data?.passwordLogin ?? false) ||
-    (authConfig.data?.devLocalAuth ?? false);
-  const passwordMode = authConfig.data?.passwordLogin ?? false;
+  // Always show email/password so launch admins are not blocked if API config fails.
+  const showPasswordForm = true;
+  const passwordMode = true;
 
   const loginLocal = trpc.auth.loginLocal.useMutation({
     onSuccess: async () => {

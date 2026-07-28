@@ -1,12 +1,12 @@
 /**
- * Vercel serverless entry — bundled to api/index.js during npm run build.
+ * Vercel serverless entry — bundled to .vercel/output/functions/api.func
  */
 import { handle } from "hono/vercel";
 import app from "./boot";
 
-export default handle(app);
+const handler = handle(app);
+export default handler;
 
-// Seed plans/gateways on cold start (non-blocking).
 void import("./seedDefaults")
   .then((m) => m.ensurePlatformDefaults())
   .then(() => console.log("[nasab] platform defaults ready"))

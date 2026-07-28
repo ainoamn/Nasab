@@ -14,7 +14,7 @@ import * as relations from "@db/relations";
 
 /**
  * Multi-dialect runtime (SQLite dev / MySQL or Postgres prod).
- * DB drivers are required lazily so Vite SSR does not resolve `postgres`
+ * Drivers are required lazily so Vite SSR does not resolve `postgres`
  * during local SQLite development.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,7 +22,17 @@ export type AppDb = any;
 
 let instance: AppDb;
 
-const require = createRequire(import.meta.url);
+function nodeRequire(): NodeRequire {
+  try {
+    const metaUrl = import.meta.url;
+    if (typeof metaUrl === "string" && metaUrl.length > 0) {
+      return createRequire(metaUrl);
+    }
+  } catch {
+    /* CJS bundle: import.meta may be empty */
+  }
+  return createRequire(path.join(process.cwd(), "package.json"));
+}
 
 export function isSqliteDb(): boolean {
   return isSqliteDatabase(env.databaseUrl);
@@ -31,6 +41,7 @@ export function isSqliteDb(): boolean {
 export function getDb(): AppDb {
   if (!instance) {
     const dialect = getDatabaseDialect(env.databaseUrl);
+    const require = nodeRequire();
     if (dialect === "sqlite") {
       const Database = require("better-sqlite3") as typeof import("better-sqlite3");
       const { drizzle } =
@@ -42,7 +53,6 @@ export function getDb(): AppDb {
       const fullSchema = { ...sqliteSchema, ...relations };
       instance = drizzle(sqlite, { schema: fullSchema });
     } else if (dialect === "postgres") {
-      // Use CJS entry via require — Vite SSR mis-resolves the ESM export path.
       const postgres = require("postgres") as typeof import("postgres");
       const { drizzle } =
         require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");

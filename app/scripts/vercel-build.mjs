@@ -3,6 +3,8 @@
  * Vercel Build Output API (v3):
  * - static site → .vercel/output/static
  * - one Node function → .vercel/output/functions/api.func
+ *
+ * Bundle ALL JS deps into the function (Build Output does not ship node_modules).
  */
 import { build } from "esbuild";
 import {
@@ -10,6 +12,7 @@ import {
   mkdirSync,
   rmSync,
   writeFileSync,
+  appendFileSync,
   existsSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -45,25 +48,39 @@ if (!existsSync(staticSrc)) {
 }
 cpSync(staticSrc, path.join(out, "static"), { recursive: true });
 
-console.log("[vercel-build] bundling serverless api.func…");
+console.log("[vercel-build] bundling serverless api.func (full bundle)…");
+const funcDir = path.join(out, "functions", "api.func");
+const funcOut = path.join(funcDir, "index.js");
 await build({
   entryPoints: [path.join(root, "server", "vercel.ts")],
-  outfile: path.join(out, "functions", "api.func", "index.js"),
+  outfile: funcOut,
   platform: "node",
-  format: "esm",
+  format: "cjs",
   bundle: true,
-  packages: "external",
   absWorkingDir: root,
+  external: ["better-sqlite3", "mysql2"],
+  define: {
+    "process.env.NASAB_SERVERLESS": '"1"',
+  },
   alias: {
     "@db": path.join(root, "db"),
     "@contracts": path.join(root, "contracts"),
     "@": path.join(root, "src"),
   },
+  logOverride: {
+    "empty-import-meta": "silent",
+  },
 });
 
+// Force CommonJS inside the function package (repo root is "type": "module").
 writeFileSync(
-  path.join(out, "functions", "api.func", "package.json"),
-  JSON.stringify({ type: "module" }, null, 2),
+  path.join(funcDir, "package.json"),
+  JSON.stringify({ type: "commonjs" }, null, 2),
+);
+
+appendFileSync(
+  funcOut,
+  `\nmodule.exports = typeof vercel_default !== "undefined" ? vercel_default : module.exports.default;\n`,
 );
 
 writeFileSync(
