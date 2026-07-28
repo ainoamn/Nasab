@@ -1015,14 +1015,15 @@ export const en = {
   gedcomImport: {
     title: "Import GEDCOM",
     short: "Import GEDCOM",
-    hint: "Upload a .ged file from MyHeritage, Ancestry, or any genealogy app — we import people plus parent/spouse links.",
+    hint: "Upload a .ged file from MyHeritage, Ancestry, or any genealogy app — we import people, parent/spouse links, and twin groups.",
     pickFile: "Choose a .ged file",
-    preview: "{{people}} people · {{links}} links",
+    preview: "{{people}} people · {{links}} links · {{twins}} twin groups",
     noPeople: "No people found in the file",
     parseError: "Could not parse the GEDCOM file",
     importing: "Importing...",
     import: "Import into tree",
-    success: "Imported {{created}} people and {{linked}} links from GEDCOM",
+    success:
+      "Imported {{created}} people, {{linked}} links, and {{twins}} twin groups from GEDCOM",
   },
   shortcuts: {
     title: "Keyboard shortcuts",

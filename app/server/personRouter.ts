@@ -19,7 +19,7 @@ import {
   resolveFatherForMotherChild,
   searchSimilarPersons,
 } from "./lineageHelpers";
-import { assignTwinOf, clearTwinGroup } from "./twinLink";
+import { assignTwinOf, clearTwinGroup, applyImportedTwinGroups } from "./twinLink";
 
 const spouseDateFields = {
   marriageDay: z.number().int().min(1).max(31).nullish(),
@@ -1542,6 +1542,7 @@ export const personRouter = createRouter({
               isLiving: z.boolean().default(true),
               kunya: z.string().max(255).nullish(),
               notes: z.string().max(10000).nullish(),
+              twinGroupKey: z.string().min(1).max(64).nullish(),
             }),
           )
           .min(1)
@@ -1573,6 +1574,7 @@ export const personRouter = createRouter({
       await assertCanAddPerson(treeRow.ownerId, input.treeId, input.people.length);
 
       const idByKey = new Map<string, number>();
+      const twinEntries: Array<{ personId: number; twinGroupKey: string }> = [];
       let created = 0;
       for (const row of input.people) {
         const id = await insertReturningId(persons, {
@@ -1594,6 +1596,9 @@ export const personRouter = createRouter({
           createdById: ctx.user.id,
         });
         idByKey.set(row.key, id);
+        if (row.twinGroupKey) {
+          twinEntries.push({ personId: id, twinGroupKey: row.twinGroupKey });
+        }
         created++;
       }
 
@@ -1618,13 +1623,19 @@ export const personRouter = createRouter({
         linked++;
       }
 
+      const twinGroups = await applyImportedTwinGroups(
+        db,
+        input.treeId,
+        twinEntries,
+      );
+
       await logChange({
         treeId: input.treeId,
         userId: ctx.user.id,
         action: "import_gedcom",
-        details: `استورد GEDCOM: ${created} شخصاً و${linked} رابطاً`,
+        details: `استورد GEDCOM: ${created} شخصاً و${linked} رابطاً و${twinGroups} مجموعة توأم`,
       });
-      return { created, linked };
+      return { created, linked, twinGroups };
     }),
 
   /** بحث عن أشخاص مشابهين بالاسم والنسب */

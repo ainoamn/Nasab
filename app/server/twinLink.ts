@@ -72,6 +72,43 @@ async function nextTwinGroupId(db: Db, treeId: number): Promise<number> {
   return (row[0]?.maxId ?? 0) + 1;
 }
 
+/** يطبّق مجموعات التوائم بعد استيراد GEDCOM (مفاتيح نصية → أرقام داخل الشجرة) */
+export async function applyImportedTwinGroups(
+  db: Db,
+  treeId: number,
+  entries: Array<{ personId: number; twinGroupKey: string }>,
+): Promise<number> {
+  const byKey = new Map<string, number[]>();
+  for (const e of entries) {
+    const k = e.twinGroupKey.trim();
+    if (!k) continue;
+    const list = byKey.get(k) ?? [];
+    list.push(e.personId);
+    byKey.set(k, list);
+  }
+  let groups = 0;
+  let next = await nextTwinGroupId(db, treeId);
+  for (const ids of byKey.values()) {
+    const unique = [...new Set(ids)];
+    if (unique.length < 2) continue;
+    for (const personId of unique) {
+      await db
+        .update(persons)
+        .set({ twinGroupId: next })
+        .where(
+          and(
+            eq(persons.id, personId),
+            eq(persons.treeId, treeId),
+            isNull(persons.deletedAt),
+          ),
+        );
+    }
+    next += 1;
+    groups += 1;
+  }
+  return groups;
+}
+
 /** يربط شخصاً بتوأم موجود — يُنشئ مجموعة جديدة إن لزم */
 export async function assignTwinOf(
   db: Db,

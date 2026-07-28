@@ -15,6 +15,8 @@ export type GedcomPersonDraft = {
   isLiving: boolean;
   kunya?: string | null;
   notes?: string | null;
+  /** مفتاح مجموعة توأم مستقر عبر الاستيراد (من _TGID أو ASSO/twin) */
+  twinGroupKey?: string | null;
 };
 
 export type GedcomLinkDraft = {
@@ -88,8 +90,71 @@ function xref(v: string | undefined): string | null {
   return m ? m[1] : null;
 }
 
+function isTwinRela(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return (
+    v === "twin" ||
+    v === "twins" ||
+    v === "multiple birth" ||
+    v.includes("twin") ||
+    v.includes("توأم")
+  );
+}
+
+/** دمج مجموعات التوائم من _TGID وروابط ASSO */
+export function assignTwinGroupKeys(
+  people: GedcomPersonDraft[],
+  twinAssocs: Array<{ fromKey: string; toKey: string }>,
+): void {
+  const parent = new Map<string, string>();
+  const find = (k: string): string => {
+    const p = parent.get(k);
+    if (!p || p === k) {
+      parent.set(k, k);
+      return k;
+    }
+    const root = find(p);
+    parent.set(k, root);
+    return root;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(rb, ra);
+  };
+
+  for (const p of people) {
+    if (p.twinGroupKey) {
+      parent.set(p.key, `tg:${p.twinGroupKey}`);
+      parent.set(`tg:${p.twinGroupKey}`, `tg:${p.twinGroupKey}`);
+    }
+  }
+  for (const a of twinAssocs) {
+    union(a.fromKey, a.toKey);
+  }
+
+  const rootToMembers = new Map<string, string[]>();
+  for (const p of people) {
+    if (!parent.has(p.key) && !p.twinGroupKey) continue;
+    const root = find(p.key);
+    const list = rootToMembers.get(root) ?? [];
+    list.push(p.key);
+    rootToMembers.set(root, list);
+  }
+
+  for (const [root, members] of rootToMembers) {
+    if (members.length < 2) continue;
+    const key = root.startsWith("tg:")
+      ? root.slice(3)
+      : `asso:${[...members].sort().join("-")}`;
+    for (const p of people) {
+      if (members.includes(p.key)) p.twinGroupKey = key;
+    }
+  }
+}
+
 /**
- * محلّل GEDCOM 5.5.1 مبسّط — أفراد + روابط أب/زوج من FAM.
+ * محلّل GEDCOM 5.5.1 مبسّط — أفراد + روابط أب/زوج من FAM + توائم (_TGID / ASSO).
  */
 export function parseGedcom(text: string): ParsedGedcom {
   const lines = text
@@ -97,7 +162,11 @@ export function parseGedcom(text: string): ParsedGedcom {
     .split(/\r?\n/)
     .map((l) => l.replace(/\r$/, ""));
 
-  type Rec = { tag: string; xref: string | null; fields: Array<{ level: number; tag: string; value: string }> };
+  type Rec = {
+    tag: string;
+    xref: string | null;
+    fields: Array<{ level: number; tag: string; value: string }>;
+  };
   const records: Rec[] = [];
   let current: Rec | null = null;
 
@@ -121,6 +190,7 @@ export function parseGedcom(text: string): ParsedGedcom {
 
   const people: GedcomPersonDraft[] = [];
   const peopleKeys = new Set<string>();
+  const twinAssocs: Array<{ fromKey: string; toKey: string }> = [];
 
   for (const rec of records) {
     if (rec.tag !== "INDI" || !rec.xref) continue;
@@ -133,19 +203,29 @@ export function parseGedcom(text: string): ParsedGedcom {
     let deathDate = "";
     let deathPlace: string | null = null;
     let hasDeath = false;
-    let ctx: "none" | "birt" | "deat" = "none";
+    let twinGroupKey: string | null = null;
+    let ctx: "none" | "birt" | "deat" | "asso" = "none";
+    let assoTarget: string | null = null;
 
     for (const f of rec.fields) {
       if (f.level === 1) {
         ctx = "none";
+        assoTarget = null;
         if (f.tag === "NAME" && !nameRaw) nameRaw = f.value;
-        else if (f.tag === "SEX") sex = f.value.toUpperCase().startsWith("F") ? "F" : "M";
+        else if (f.tag === "SEX")
+          sex = f.value.toUpperCase().startsWith("F") ? "F" : "M";
         else if (f.tag === "ALIA" || f.tag === "NICK") kunya = f.value || kunya;
-        else if (f.tag === "NOTE") notes = [notes, f.value].filter(Boolean).join("\n");
+        else if (f.tag === "NOTE")
+          notes = [notes, f.value].filter(Boolean).join("\n");
         else if (f.tag === "BIRT") ctx = "birt";
         else if (f.tag === "DEAT") {
           hasDeath = true;
           ctx = "deat";
+        } else if (f.tag === "_TGID" && f.value) {
+          twinGroupKey = f.value.trim();
+        } else if (f.tag === "ASSO") {
+          ctx = "asso";
+          assoTarget = xref(f.value);
         }
       } else if (f.level === 2) {
         if (ctx === "birt") {
@@ -154,6 +234,13 @@ export function parseGedcom(text: string): ParsedGedcom {
         } else if (ctx === "deat") {
           if (f.tag === "DATE") deathDate = f.value;
           if (f.tag === "PLAC") deathPlace = f.value;
+        } else if (
+          ctx === "asso" &&
+          f.tag === "RELA" &&
+          assoTarget &&
+          isTwinRela(f.value)
+        ) {
+          twinAssocs.push({ fromKey: rec.xref, toKey: assoTarget });
         }
       }
     }
@@ -177,14 +264,27 @@ export function parseGedcom(text: string): ParsedGedcom {
       isLiving: !hasDeath,
       kunya,
       notes,
+      twinGroupKey,
     });
     peopleKeys.add(rec.xref);
   }
 
+  assignTwinGroupKeys(
+    people,
+    twinAssocs.filter(
+      (a) => peopleKeys.has(a.fromKey) && peopleKeys.has(a.toKey),
+    ),
+  );
+
   const links: GedcomLinkDraft[] = [];
   const seen = new Set<string>();
-  const addLink = (type: "parent" | "spouse", fromKey: string, toKey: string) => {
-    if (!peopleKeys.has(fromKey) || !peopleKeys.has(toKey) || fromKey === toKey) return;
+  const addLink = (
+    type: "parent" | "spouse",
+    fromKey: string,
+    toKey: string,
+  ) => {
+    if (!peopleKeys.has(fromKey) || !peopleKeys.has(toKey) || fromKey === toKey)
+      return;
     const k = `${type}:${[fromKey, toKey].sort().join(">")}:${type === "parent" ? fromKey + ">" + toKey : ""}`;
     if (seen.has(k)) return;
     seen.add(k);

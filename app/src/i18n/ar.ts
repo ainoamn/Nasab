@@ -1013,14 +1013,15 @@ export const ar = {
   gedcomImport: {
     title: "استيراد GEDCOM",
     short: "استيراد GEDCOM",
-    hint: "ارفع ملف .ged من MyHeritage أو Ancestry أو أي برنامج أنساب — نستورد الأفراد وروابط الأب/الزوج.",
+    hint: "ارفع ملف .ged من MyHeritage أو Ancestry أو أي برنامج أنساب — نستورد الأفراد وروابط الأب/الزوج ومجموعات التوائم.",
     pickFile: "اختر ملف .ged",
-    preview: "{{people}} شخص · {{links}} رابط",
+    preview: "{{people}} شخص · {{links}} رابط · {{twins}} مجموعة توأم",
     noPeople: "لا يوجد أفراد في الملف",
     parseError: "تعذّر قراءة ملف GEDCOM",
     importing: "جارٍ الاستيراد...",
     import: "استيراد إلى الشجرة",
-    success: "تم استيراد {{created}} شخصاً و{{linked}} رابطاً من GEDCOM",
+    success:
+      "تم استيراد {{created}} شخصاً و{{linked}} رابطاً و{{twins}} مجموعة توأم من GEDCOM",
   },
   shortcuts: {
     title: "اختصارات لوحة المفاتيح",

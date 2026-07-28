@@ -80,6 +80,20 @@ export function buildGedcom(
     if (p.notes) {
       lines.push(`1 NOTE ${esc(p.notes)}`);
     }
+    if (p.twinGroupId != null) {
+      const mates = people.filter(
+        (o) => o.twinGroupId === p.twinGroupId && o.id !== p.id,
+      );
+      if (mates.length > 0) {
+        lines.push(`1 _TGID ${p.twinGroupId}`);
+        for (const mate of mates) {
+          const mateXref = idMap.get(mate.id);
+          if (!mateXref) continue;
+          lines.push(`1 ASSO @${mateXref}@`);
+          lines.push(`2 RELA twin`);
+        }
+      }
+    }
   }
 
   // عائلات: نجمع الأب+الأم ثم الأبناء

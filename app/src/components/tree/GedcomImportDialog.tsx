@@ -33,6 +33,7 @@ export default function GedcomImportDialog({
   const [preview, setPreview] = useState<{
     people: number;
     links: number;
+    twins: number;
     sample: string[];
   } | null>(null);
   const [payload, setPayload] = useState<ReturnType<typeof parseGedcom> | null>(
@@ -45,6 +46,7 @@ export default function GedcomImportDialog({
         t("gedcomImport.success", {
           created: res.created,
           linked: res.linked,
+          twins: res.twinGroups ?? 0,
         }),
       );
       await utils.person.list.invalidate({ treeId });
@@ -67,9 +69,15 @@ export default function GedcomImportDialog({
       }
       setPayload(parsed);
       setFileName(file.name);
+      const twinKeys = new Set(
+        parsed.people
+          .map((p) => p.twinGroupKey)
+          .filter((k): k is string => Boolean(k)),
+      );
       setPreview({
         people: parsed.people.length,
         links: parsed.links.length,
+        twins: twinKeys.size,
         sample: parsed.people.slice(0, 5).map((p) => p.givenName),
       });
     } catch {
@@ -117,6 +125,7 @@ export default function GedcomImportDialog({
               {t("gedcomImport.preview", {
                 people: preview.people,
                 links: preview.links,
+                twins: preview.twins,
               })}
             </p>
             {preview.sample.length > 0 && (

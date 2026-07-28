@@ -59,6 +59,17 @@ describe("buildGedcom", () => {
     expect(ged).toContain("1 SEX F");
     expect(ged.trim().endsWith("0 TRLR")).toBe(true);
   });
+
+  it("emits twin group tags and ASSO links", () => {
+    const a = person(1, "أحمد");
+    const b = person(2, "خالد");
+    a.twinGroupId = 42;
+    b.twinGroupId = 42;
+    const ged = buildGedcom("توائم", [a, b], []);
+    expect(ged).toContain("1 _TGID 42");
+    expect(ged).toContain("1 ASSO @I2@");
+    expect(ged).toContain("2 RELA twin");
+  });
 });
 
 describe("findDiscoveries", () => {
