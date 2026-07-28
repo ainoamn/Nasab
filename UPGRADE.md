@@ -68,7 +68,7 @@ npm run db:seed-neon
 
 3. **Redeploy** للإنتاج.
 4. تحقق: `https://nasab-mu.vercel.app/api/diag` → `dbConfigured: true`
-5. دخول: `/login` → `admin@bhd.om` / `Admin@1234`
+5. دخول: `/login` → البريد من `PASSWORD_LOGIN_EMAIL` (بعد التدوير استخدم كلمة المرور الجديدة)
 
 ---
 
