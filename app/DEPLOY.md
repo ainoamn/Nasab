@@ -155,11 +155,24 @@ npm run admin:ensure
 
 فحص بعد النشر:
 
-- `GET /api/health` → `{"ok":true}`
+- `GET /api/health` → `{"ok":true,"dbConfigured":true,"dialect":"postgres"}`
+- `GET /api/health?db=1` → `"db":"ok"` (يفحص Neon فعلياً)
 - `GET /api/trpc/auth.config` → `passwordLogin: true`
+- `POST /api/trpc/auth.loginLocal` ببريد المشرف → 200 + cookie
 - `/login` يظهر حقول البريد وكلمة المرور
 
-عند **504** على `/api/*`: تأكد أن البناء هو `node scripts/vercel-build.mjs` وأن الدالة تستخدم Node listener (`getRequestListener`).
+### إن فشل تسجيل الدخول (504 / مهلة)
+
+1. في Vercel → Project → Settings → Environment Variables تأكد من وجود **`DATABASE_URL`** = رابط Neon **pooled** (`…-pooler.…?sslmode=require`).
+2. أو من الجهاز (بعد `vercel login`):
+   ```bash
+   cd app
+   npm run vercel:env
+   ```
+   ثم **Redeploy** للإنتاج.
+3. على Vercel يُستخدم سائق Neon HTTP (`@neondatabase/serverless`) وليس TCP — لا حاجة لـ Render إذا اكتمل إعداد Neon + المتغيرات.
+
+عند **504** على `/api/*` عموماً: تأكد أن البناء هو `node scripts/vercel-build.mjs` وأن الدالة تستخدم Node listener (`getRequestListener`).
 
 ---
 

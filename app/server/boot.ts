@@ -16,6 +16,11 @@ import {
 } from "./payments/webhooks";
 import { securityHeadersMiddleware } from "./lib/security-headers";
 import { Paths, PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
+import {
+  getDatabaseDialect,
+  isPostgresDatabase,
+  isSqliteDatabase,
+} from "@db/dialect";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -25,7 +30,39 @@ app.use("/api/webhooks/*", bodyLimit({ maxSize: 256 * 1024 }));
 app.use("/api/trpc/*", bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
 
-app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
+app.get("/api/health", async (c) => {
+  const url = env.databaseUrl || "";
+  let dialect: string = "none";
+  if (url) {
+    try {
+      dialect = getDatabaseDialect(url);
+    } catch {
+      dialect = isSqliteDatabase(url)
+        ? "sqlite"
+        : isPostgresDatabase(url)
+          ? "postgres"
+          : "unknown";
+    }
+  }
+  const payload: Record<string, unknown> = {
+    ok: true,
+    ts: Date.now(),
+    dialect,
+    dbConfigured: Boolean(url.trim()),
+    serverless: Boolean(process.env.VERCEL) || process.env.NASAB_SERVERLESS === "1",
+  };
+  // Optional deep check: GET /api/health?db=1
+  if (c.req.query("db") === "1") {
+    const { pingDatabase } = await import("./queries/connection");
+    const ping = await pingDatabase(4000);
+    payload.db = ping.ok ? "ok" : "error";
+    if (!ping.ok) {
+      payload.dbError = ping.error;
+      payload.ok = false;
+    }
+  }
+  return c.json(payload, payload.ok ? 200 : 503);
+});
 
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());

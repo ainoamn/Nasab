@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-07-28 — Neon HTTP على Vercel + فحص صحة أوضح
+
+### الإصلاح
+- على Vercel/serverless: اتصال Postgres عبر `@neondatabase/serverless` (HTTP) بدل `postgres` TCP لتجنب تعليق تسجيل الدخول.
+- رفض `DATABASE_URL` الفارغ بدل السقوط صامتاً على MySQL.
+- `/api/health` يعرض `dbConfigured` / `dialect`؛ و`?db=1` يفحص الاتصال بمهلة قصيرة.
+- مهلة واضحة لـ `auth.loginLocal` مع رسالة تطلب ضبط `DATABASE_URL` على Vercel.
+- سكربت `npm run vercel:env` لمزامنة المتغيرات من `.env.production` إلى Vercel.
+
+### التحقق المحلي
+- Neon pooled يصل من الجهاز؛ صف المشرف `admin@bhd.om` محدّث عبر `npm run admin:ensure`.
+- الموقع الحي: الواجهة + `/api/health` + `auth.config` تعمل؛ تسجيل الدخول يحتاج `DATABASE_URL` على مشروع Vercel ثم إعادة نشر.
+
+---
+
 ## 2026-07-28 — إصلاح 504 للـ API على Vercel
 
 ### الإصلاح

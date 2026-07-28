@@ -19,7 +19,22 @@ export function isMysqlDatabase(url?: string): boolean {
 export function getDatabaseDialect(url?: string): DatabaseDialect {
   if (isSqliteDatabase(url)) return "sqlite";
   if (isPostgresDatabase(url)) return "postgres";
+  if (isMysqlDatabase(url)) return "mysql";
+  const resolved = resolveUrl(url).trim();
+  if (!resolved) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  // Legacy bare mysql URLs without an explicit scheme.
   return "mysql";
+}
+
+/** Vercel / Build Output serverless — prefer Neon HTTP over TCP. */
+export function isServerlessRuntime(): boolean {
+  return (
+    Boolean(process.env.VERCEL) ||
+    Boolean(process.env.VERCEL_ENV) ||
+    process.env.NASAB_SERVERLESS === "1"
+  );
 }
 
 /** Neon / some drivers struggle with channel_binding=require */
