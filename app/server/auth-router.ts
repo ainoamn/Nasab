@@ -14,10 +14,15 @@ import { isGoogleAuthEnabled } from "./google/auth";
 import { issueSessionForUser } from "./lib/issue-session";
 import { rateLimit, clientRateKey } from "./lib/rate-limit";
 
+function passwordUnionId(email: string): string {
+  return `password:${email.toLowerCase()}`;
+}
+
 export const authRouter = createRouter({
   config: publicQuery.query(() => ({
     googleEnabled: isGoogleAuthEnabled(),
     devLocalAuth: env.devLocalAuthEnabled,
+    passwordLogin: env.passwordLoginEnabled,
   })),
   me: authedQuery.query((opts) => opts.ctx.user),
   loginLocal: publicQuery
@@ -28,10 +33,12 @@ export const authRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!env.devLocalAuthEnabled) {
+      const passwordLoginOn = env.passwordLoginEnabled;
+      const devLoginOn = env.devLocalAuthEnabled;
+      if (!passwordLoginOn && !devLoginOn) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "تسجيل الدخول المحلي غير مفعّل",
+          message: "تسجيل الدخول بالبريد غير مفعّل",
         });
       }
 
@@ -48,32 +55,54 @@ export const authRouter = createRouter({
         });
       }
 
-      if (
-        input.username !== env.devLoginUser ||
-        input.password !== env.devLoginPassword
-      ) {
+      const identity = input.username.trim();
+      const identityLower = identity.toLowerCase();
+      let unionId = LOCAL_DEV_UNION_ID;
+      let name = "مستخدم التطوير";
+      let email = "dev@local";
+      let username = identity;
+
+      const passwordOk =
+        passwordLoginOn &&
+        identityLower === env.passwordLoginEmail &&
+        input.password === env.passwordLoginPassword;
+
+      const devOk =
+        devLoginOn &&
+        identity === env.devLoginUser &&
+        input.password === env.devLoginPassword;
+
+      if (passwordOk) {
+        unionId = passwordUnionId(env.passwordLoginEmail);
+        name = env.passwordLoginEmail.split("@")[0] || "Admin";
+        email = env.passwordLoginEmail;
+        username = env.passwordLoginEmail;
+      } else if (devOk) {
+        // keep LOCAL_DEV_UNION_ID defaults
+      } else {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "اسم المستخدم أو كلمة المرور غير صحيحة",
+          message: "البريد أو كلمة المرور غير صحيحة",
         });
       }
 
       await upsertUser({
-        unionId: LOCAL_DEV_UNION_ID,
-        name: "مستخدم التطوير",
-        email: "dev@local",
-        username: input.username,
+        unionId,
+        name,
+        email,
+        username,
         role: "admin",
         lastSignInAt: new Date(),
-        signInIp: getClientIp(ctx.req.headers),
+        signInIp: ip,
+        registrationIp: ip,
       });
-      const user = await findUserByUnionId(LOCAL_DEV_UNION_ID);
+      const user = await findUserByUnionId(unionId);
       if (user) await ensureUserIdentity(user.id);
 
       const token = user
-        ? await issueSessionForUser(user.id, LOCAL_DEV_UNION_ID, env.appId || "local-dev")
+        ? await issueSessionForUser(user.id, unionId, env.appId || "local-dev")
         : await signSessionToken({
-            unionId: LOCAL_DEV_UNION_ID,
+            unionId,
             clientId: env.appId || "local-dev",
             sessionVersion: 0,
           });

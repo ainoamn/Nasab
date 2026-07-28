@@ -31,7 +31,10 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const authConfig = trpc.auth.config.useQuery();
-  const devLocalAuth = authConfig.data?.devLocalAuth ?? false;
+  const showPasswordForm =
+    (authConfig.data?.passwordLogin ?? false) ||
+    (authConfig.data?.devLocalAuth ?? false);
+  const passwordMode = authConfig.data?.passwordLogin ?? false;
 
   const loginLocal = trpc.auth.loginLocal.useMutation({
     onSuccess: async () => {
@@ -83,16 +86,20 @@ export default function Login() {
                 </div>
               </>
             )}
-            {devLocalAuth ? (
+            {showPasswordForm ? (
               <>
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="username">{t("login.localUser")}</Label>
+                    <Label htmlFor="username">
+                      {passwordMode ? t("login.email") : t("login.localUser")}
+                    </Label>
                     <Input
                       id="username"
+                      type={passwordMode ? "email" : "text"}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      autoComplete="username"
+                      autoComplete={passwordMode ? "email" : "username"}
+                      placeholder={passwordMode ? "admin@example.com" : undefined}
                     />
                   </div>
                   <div className="space-y-2">
@@ -120,11 +127,15 @@ export default function Login() {
                   >
                     {loginLocal.isPending
                       ? t("login.localSigningIn")
-                      : t("login.localButton")}
+                      : passwordMode
+                        ? t("login.emailButton")
+                        : t("login.localButton")}
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    {t("login.localNote")}
-                  </p>
+                  {!passwordMode ? (
+                    <p className="text-center text-xs text-muted-foreground">
+                      {t("login.localNote")}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-3">
                   <Separator className="flex-1" />
@@ -138,7 +149,11 @@ export default function Login() {
             <Button
               className="w-full"
               size="lg"
-              variant={devLocalAuth || authConfig.data?.googleEnabled ? "outline" : "default"}
+              variant={
+                showPasswordForm || authConfig.data?.googleEnabled
+                  ? "outline"
+                  : "default"
+              }
               onClick={() => {
                 window.location.href = "/api/oauth/kimi/start";
               }}

@@ -34,12 +34,23 @@ export const env = {
   ownerUnionId: process.env.OWNER_UNION_ID ?? "",
   /** إذا لم يُضبط OWNER_UNION_ID: أول مستخدم يُنشأ يصبح مشرفاً */
   bootstrapFirstAdmin: process.env.BOOTSTRAP_FIRST_ADMIN !== "false",
+  /** دخول تطوير محلي (معطّل تلقائياً في الإنتاج) */
   devLocalAuthEnabled:
     !process.env.NODE_ENV || process.env.NODE_ENV !== "production"
       ? process.env.DEV_LOCAL_AUTH === "true"
       : false,
   devLoginUser: process.env.DEV_LOGIN_USER ?? "admin",
   devLoginPassword: process.env.DEV_LOGIN_PASSWORD ?? "admin123",
+  /**
+   * دخول بالبريد/كلمة المرور (يعمل في الإنتاج إن ضُبط البريد والسر).
+   * استخدمه لمشرف الإطلاق بدل الاعتماد على Kimi فقط.
+   */
+  passwordLoginEnabled: Boolean(
+    process.env.PASSWORD_LOGIN_EMAIL?.trim() &&
+      process.env.PASSWORD_LOGIN_PASSWORD,
+  ),
+  passwordLoginEmail: (process.env.PASSWORD_LOGIN_EMAIL ?? "").trim().toLowerCase(),
+  passwordLoginPassword: process.env.PASSWORD_LOGIN_PASSWORD ?? "",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   appPublicUrl: process.env.APP_PUBLIC_URL ?? "",

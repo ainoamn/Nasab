@@ -123,6 +123,7 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 | `VITE_APP_ID` / `VITE_KIMI_AUTH_URL` | نعم (وقت البناء) |
 | `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` | نعم (نطاقك على HTTPS) |
 | `OWNER_UNION_ID` | مُستحسن |
+| `PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD` | اختياري — دخول مشرف بالبريد بدون Kimi |
 | `TRUST_PROXY` | `true` |
 
 5. بعد أول نشر ناجح افحص: `https://your-app.vercel.app/api/health`

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@db/tables";
 import type { InsertUser } from "@db/tables";
 import { getDb, isSqliteDb } from "./connection";
+import { getDatabaseDialect } from "@db/dialect";
 import { env } from "../lib/env";
 
 export async function findUserByUnionId(unionId: string) {
@@ -63,7 +64,8 @@ export async function upsertUser(
     }
   }
 
-  if (isSqliteDb()) {
+  const dialect = getDatabaseDialect(env.databaseUrl);
+  if (dialect === "sqlite" || dialect === "postgres") {
     await db
       .insert(schema.users)
       .values(values)
