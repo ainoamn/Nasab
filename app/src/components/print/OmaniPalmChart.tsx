@@ -1,5 +1,5 @@
 import type { PalmFrondBranch } from "@/lib/printData";
-import { formatPalmCouple, personDisplayName } from "@/lib/printData";
+import { formatPalmCouple, personDisplayNameWithTwin } from "@/lib/printData";
 import { twinMarkLabel } from "@/lib/twins";
 import type { Person } from "@db/schema";
 import {
@@ -238,7 +238,7 @@ export default function OmaniPalmChart({
             <SvgNameBadge
               x={couplePt.x}
               y={couplePt.y}
-              text={formatPalmCouple(frond.father, frond.mother)}
+              text={formatPalmCouple(frond.father, frond.mother, people)}
               variant="couple"
               maxWidth={150}
               accent={accent}
@@ -303,7 +303,7 @@ export default function OmaniPalmChart({
             fontFamily="'Noto Naskh Arabic', serif"
             direction="rtl"
           >
-            {personDisplayName(founder)}
+            {personDisplayNameWithTwin(founder, people)}
           </text>
         )}
       </g>

@@ -283,6 +283,7 @@ export const en = {
     dbNotConfigured:
       "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
     openSetup: "Open setup checklist",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
     localNote: "For local development only — not used in production",
     or: "or",
     google: "Sign in with Google",

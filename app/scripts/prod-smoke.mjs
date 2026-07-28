@@ -71,6 +71,7 @@ results.push(
     "application/x-www-form-urlencoded",
   ),
 );
+results.push(await get("/"));
 results.push(await get("/login"));
 results.push(await get("/setup"));
 
@@ -110,6 +111,7 @@ console.log({
   loginStatus: login?.status,
   loginError: login?.json?.error,
   setupOk: results.find((r) => r.path === "/setup")?.status === 200,
+  homeOk: results.find((r) => r.path === "/")?.status === 200,
   securityHeadersOk: headersOk,
   nextStep: !deployInSync
     ? "Live SHA behind GitHub main → Vercel Deployments → Redeploy (Root Directory = app)"

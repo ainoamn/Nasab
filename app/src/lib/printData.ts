@@ -1366,10 +1366,18 @@ export function buildPalmTreeLayout(
   return { founder, fronds };
 }
 
-export function formatPalmCouple(father: Person | null, mother: Person | null): string {
+export function formatPalmCouple(
+  father: Person | null,
+  mother: Person | null,
+  people: Person[] = [],
+): string {
+  const label = (p: Person) =>
+    people.length > 0
+      ? personDisplayNameWithTwin(p, people)
+      : personDisplayName(p);
   const parts: string[] = [];
-  if (father) parts.push(personDisplayName(father));
-  if (mother) parts.push(personDisplayName(mother));
+  if (father) parts.push(label(father));
+  if (mother) parts.push(label(mother));
   return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
@@ -1377,8 +1385,13 @@ export function formatPalmCouple(father: Person | null, mother: Person | null): 
 export function formatPalmCoupleAll(
   head: Person,
   spouses: Person[],
+  people: Person[] = [],
 ): string {
-  const parts = [personDisplayName(head), ...spouses.map(personDisplayName)];
+  const label = (p: Person) =>
+    people.length > 0
+      ? personDisplayNameWithTwin(p, people)
+      : personDisplayName(p);
+  const parts = [label(head), ...spouses.map(label)];
   return parts.join(" · ");
 }
 

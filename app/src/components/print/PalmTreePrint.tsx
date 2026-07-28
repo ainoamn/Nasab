@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   buildPalmTreeLayout,
   formatPalmCouple,
-  personDisplayName,
+  personDisplayNameWithTwin,
 } from "@/lib/printData";
 import OmaniPalmChart from "./OmaniPalmChart";
 import { PALM_FROND_ARCS } from "./palmGeometry";
@@ -64,11 +64,11 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
             {hiddenFronds.map((f, i) => (
               <li key={i} className="flex flex-wrap gap-x-2 border-b border-stone-100 py-1">
                 <span className="text-emerald-800 font-semibold">
-                  {formatPalmCouple(f.father, f.mother)}
+                  {formatPalmCouple(f.father, f.mother, people)}
                 </span>
                 {f.children.length > 0 && (
                   <span className="text-stone-500 text-xs">
-                    ← {f.children.map((c) => personDisplayName(c)).join(" · ")}
+                    ← {f.children.map((c) => personDisplayNameWithTwin(c, people)).join(" · ")}
                   </span>
                 )}
               </li>

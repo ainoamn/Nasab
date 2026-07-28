@@ -433,6 +433,25 @@ describe("buildPalmTreeLayout", () => {
     expect(palm.fronds[0]!.mother?.id).toBe(3);
     expect(palm.fronds[0]!.children.map((c) => c.id).sort()).toEqual([4, 5]);
     expect(formatPalmCouple(palm.fronds[0]!.father, palm.fronds[0]!.mother)).toContain("حمدان");
+    expect(
+      formatPalmCouple(palm.fronds[0]!.father, palm.fronds[0]!.mother, people),
+    ).toContain("حمدان");
+  });
+
+  it("marks twins in palm couple labels", () => {
+    const people = [
+      person(1, "أب"),
+      person(2, "أم", null, "female"),
+    ];
+    people[0]!.twinGroupId = 9;
+    people[0]!.birthYear = 1980;
+    // second twin not needed for mark on father alone if group size < 2
+    const twinBro = person(3, "عم");
+    twinBro.twinGroupId = 9;
+    twinBro.birthYear = 1980;
+    people.push(twinBro);
+    const label = formatPalmCouple(people[0]!, people[1]!, people);
+    expect(label).toMatch(/ت/);
   });
 
   it("orders twin leaflets by stable birth then id", () => {

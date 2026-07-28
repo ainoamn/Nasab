@@ -5,8 +5,9 @@ import PrintFamilyChart from "./PrintFamilyChart";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
 import { collectCloseFamily } from "@/lib/closeFamily";
-import { comparePeopleByBirth } from "@/lib/birthOrder";
+import { comparePeopleByBirth, formatBirthDate } from "@/lib/birthOrder";
 import { personDisplayNameWithTwin } from "@/lib/printData";
+import { relationToFocus } from "@/lib/relationshipLabel";
 
 type Occasion = "wedding" | "newborn" | "eid";
 
@@ -36,13 +37,15 @@ const OCCASION_STYLES: Record<
 
 export default function OccasionsPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [occasion, setOccasion] = useState<Occasion>("wedding");
 
   const style = OCCASION_STYLES[occasion];
   const Icon = style.icon;
+  const birthLocale = i18n.language?.startsWith("en") ? "en-GB" : "ar-OM";
 
   const guestList = useMemo(() => {
+    if (rootPersonId == null) return [];
     const { people: close } = collectCloseFamily(rootPersonId, people, rels);
     const focus = close.find((p) => p.id === rootPersonId);
     const others = close
@@ -100,7 +103,7 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
           <PrintFamilyChart people={people} rels={rels} rootPersonId={rootPersonId} levels={levels} />
         </div>
 
-        {guestList.length > 0 ? (
+        {guestList.length > 0 && rootPersonId != null ? (
           <div
             className="mt-6 rounded-2xl border-2 bg-white/90 p-4 print:break-inside-avoid"
             style={{ borderColor: `${style.border}55` }}
@@ -115,24 +118,32 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
               </span>
             </p>
             <ul className="columns-1 sm:columns-2 gap-x-6 text-sm font-display">
-              {guestList.map((p, i) => (
-                <li
-                  key={p.id}
-                  className="mb-1.5 flex items-baseline gap-2 break-inside-avoid border-b border-stone-100 pb-1"
-                >
-                  <span className="w-5 shrink-0 text-[10px] tabular-nums text-stone-400">
-                    {i + 1}.
-                  </span>
-                  <span className={p.id === rootPersonId ? "font-bold" : undefined}>
-                    {personDisplayNameWithTwin(p, people)}
-                    {p.id === rootPersonId ? (
-                      <span className="ms-1 text-[10px] font-normal text-stone-500">
-                        ({t("printPage.occasion.guestFocus")})
+              {guestList.map((p, i) => {
+                const kinKey = relationToFocus(rootPersonId, p.id, people, rels);
+                const birth = formatBirthDate(p, birthLocale);
+                return (
+                  <li
+                    key={p.id}
+                    className="mb-1.5 flex items-baseline gap-2 break-inside-avoid border-b border-stone-100 pb-1"
+                  >
+                    <span className="w-5 shrink-0 text-[10px] tabular-nums text-stone-400">
+                      {i + 1}.
+                    </span>
+                    <span className="min-w-0">
+                      <span className={p.id === rootPersonId ? "font-bold" : undefined}>
+                        {personDisplayNameWithTwin(p, people)}
                       </span>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
+                      <span className="ms-1 text-[10px] font-normal text-stone-500">
+                        (
+                        {p.id === rootPersonId
+                          ? t("printPage.occasion.guestFocus")
+                          : t(`tree.rel.${kinKey}`)}
+                        {birth ? ` · ${birth}` : ""})
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ) : null}

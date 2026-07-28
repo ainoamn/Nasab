@@ -283,6 +283,7 @@ export const ar = {
     dbNotConfigured:
       "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
     openSetup: "فتح صفحة الجاهزية",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
     localNote: "للتطوير المحلي فقط — لا يُستخدم في الإنتاج",
     or: "أو",
     google: "الدخول عبر Google",

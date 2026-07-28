@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { TreePalm } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { toast } from "sonner";
 
@@ -30,7 +31,7 @@ export default function Login() {
   const [username, setUsername] = useState("admin@bhd.om");
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
-  const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
 
   const authConfig = trpc.auth.config.useQuery();
   const showPasswordForm = authConfig.data?.passwordLogin !== false;
@@ -43,21 +44,6 @@ export default function Login() {
       toast.error(t("login.googleError"));
     }
   }, [params, t]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/diag")
-      .then((r) => r.json())
-      .then((d: { dbConfigured?: boolean }) => {
-        if (!cancelled) setDbConfigured(Boolean(d.dbConfigured));
-      })
-      .catch(() => {
-        if (!cancelled) setDbConfigured(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function signInWithPassword(e?: FormEvent) {
     e?.preventDefault();
@@ -114,12 +100,31 @@ export default function Login() {
                 role="status"
               >
                 <p>{t("login.dbNotConfigured")}</p>
-                <a
-                  href="/setup"
+                <Link
+                  to="/setup"
                   className="mt-1 inline-block text-sm font-medium underline underline-offset-2"
                 >
                   {t("login.openSetup")}
-                </a>
+                </Link>
+              </div>
+            ) : null}
+            {buildBehind ? (
+              <div
+                className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+                role="status"
+              >
+                <p>
+                  {t("login.buildBehind", {
+                    live: liveBuild,
+                    main: mainSha,
+                  })}
+                </p>
+                <Link
+                  to="/setup"
+                  className="mt-1 inline-block text-sm font-medium underline underline-offset-2"
+                >
+                  {t("login.openSetup")}
+                </Link>
               </div>
             ) : null}
             {authConfig.data?.googleEnabled && (
