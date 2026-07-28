@@ -1199,6 +1199,23 @@ export default function ShareView() {
                     rels={rels}
                     canWrite={false}
                     onWhatsAppGaps={() => sharePersonGapsWhatsApp(detail)}
+                    onOpenPerson={(id) => {
+                      const p = peopleById.get(id);
+                      if (p) openPerson(p);
+                    }}
+                    onHighlightPair={(aId, bId) => {
+                      const hops = findRelationPath(aId, bId, people, rels);
+                      if (!hops) {
+                        toast.message(t("tree.howRelatedNone"));
+                        return;
+                      }
+                      setHighlightPathIds(hops.map((h) => h.personId));
+                      const a = peopleById.get(aId);
+                      if (a) openPerson(a);
+                      toast.success(
+                        t("tree.pathHighlightActive", { count: hops.length }),
+                      );
+                    }}
                   />
                 </div>
               </>

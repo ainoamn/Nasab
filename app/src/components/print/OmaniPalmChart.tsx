@@ -25,6 +25,7 @@ type Props = {
   accent: string;
   overflowFronds: number;
   overflowNote: string;
+  ariaLabel?: string;
 };
 
 function palmPersonLabel(person: Person, people: Person[], twinWord = "ت"): string {
@@ -128,13 +129,14 @@ export default function OmaniPalmChart({
   accent,
   overflowFronds,
   overflowNote,
+  ariaLabel,
 }: Props) {
   return (
     <svg
       viewBox="0 0 1200 820"
       className="w-full h-auto mx-auto block print-palm-svg"
       role="img"
-      aria-label="شجرة النسب على نخلة عمانية"
+      aria-label={ariaLabel ?? trunkLabel}
     >
       <defs>
         <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">

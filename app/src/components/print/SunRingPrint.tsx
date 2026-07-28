@@ -492,6 +492,10 @@ export default function SunRingPrint(props: PrintTemplateProps) {
   const { tree, people: rawPeople, rels, levels, rootPersonId, today, designName } = props;
   const nameMode: PrintNameMode = props.nameMode === "firstOnly" ? "firstOnly" : "full";
   const { t } = useTranslation();
+  const spouseRole = (gender: Person["gender"]) =>
+    gender === "female"
+      ? t("printPage.spouseWife")
+      : t("printPage.spouseHusband");
 
   // ضمان تطبيق أسلوب الاسم حتى لو تسرّب نسب من المصدر
   const people = useMemo(
@@ -705,8 +709,7 @@ export default function SunRingPrint(props: PrintTemplateProps) {
             })
             .map(({ p, pos }) => {
               const isRootSpouse = !!pos.isSpouse && pos.ring === 0;
-              const role =
-                p.gender === "female" ? "زوجة" : "زوج";
+              const role = spouseRole(p.gender);
               const hasRootSpouses = [...positions.values()].some(
                 (x) => x.isSpouse && x.ring === 0,
               );
@@ -783,7 +786,7 @@ export default function SunRingPrint(props: PrintTemplateProps) {
               if (spousePerson && spousePos && bloodPos) {
                 // زوجات الجذر لها تسمية تحت الأيقونة — لا تكرار هنا
                 if (spousePos.ring === 0) return null;
-                const role = spousePerson.gender === "female" ? "زوجة" : "زوج";
+                const role = spouseRole(spousePerson.gender);
                 const text =
                   nameMode === "firstOnly"
                     ? `${role} ${chartName(spousePerson)}`
@@ -805,12 +808,12 @@ export default function SunRingPrint(props: PrintTemplateProps) {
 
               const noteNearA =
                 nameMode === "firstOnly"
-                  ? `${b.gender === "female" ? "زوجة" : "زوج"} ${chartName(b)}`
-                  : `${b.gender === "female" ? "زوجة" : "زوج"} ${b.givenName}`;
+                  ? `${spouseRole(b.gender)} ${chartName(b)}`
+                  : `${spouseRole(b.gender)} ${b.givenName}`;
               const noteNearB =
                 nameMode === "firstOnly"
-                  ? `${a.gender === "female" ? "زوجة" : "زوج"} ${chartName(a)}`
-                  : `${a.gender === "female" ? "زوجة" : "زوج"} ${a.givenName}`;
+                  ? `${spouseRole(a.gender)} ${chartName(a)}`
+                  : `${spouseRole(a.gender)} ${a.givenName}`;
               const rA = nodeRadius(aPos.ring, ringCount, !!aPos.isSpouse);
               const rB = nodeRadius(bPos.ring, ringCount, !!bPos.isSpouse);
               return (

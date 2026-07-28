@@ -60,7 +60,7 @@ function GoldMedallion({
 
 export default function ManuscriptPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const twinWord = twinMarkWord(i18n.language);
 
   const elders = useMemo(() => {
@@ -108,7 +108,7 @@ export default function ManuscriptPrint(props: PrintTemplateProps) {
           className="text-center font-display text-sm mb-4 tracking-widest"
           style={{ color: accent }}
         >
-          ✦ بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ ✦
+          ✦ {t("printPage.basmala")} ✦
         </p>
         <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
           {elders.map((p) => (

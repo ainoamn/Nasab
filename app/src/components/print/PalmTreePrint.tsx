@@ -52,6 +52,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
         accent={accent}
         overflowFronds={hiddenFronds.length}
         overflowNote={t("printPage.palmMoreFronds", { count: hiddenFronds.length })}
+        ariaLabel={t("printPage.palmAriaLabel")}
       />
       </div>
 

@@ -298,6 +298,10 @@ export const ar = {
     createFirst: "إنشاء أول شجرة",
     owned: "أشجار أملكها",
     shared: "شُاركني فيها",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
     hideArchived: "إخفاء المؤرشفة",
     showArchived: "عرض المؤرشفة ({{count}})",
     actions: {
@@ -1192,6 +1196,9 @@ export const ar = {
     pedigreeListTitle: "سجل السلالة — الأسماء الكاملة",
     spouseWife: "زوجة",
     spouseHusband: "زوج",
+    basmala: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ",
+    nasabJoin: " بن ",
+    palmAriaLabel: "شجرة النسب على نخلة عمانية",
     generationLabel: "الجيل {{n}}",
     generationsCount: "الأجيال: {{count}}",
     classicTitle: "شجرة {{name}}",

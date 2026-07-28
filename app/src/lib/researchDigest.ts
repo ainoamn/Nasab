@@ -20,7 +20,8 @@ export function formatPersonGapsDigest(opts: {
     lines.push(opts.labels.empty);
   } else {
     for (const g of opts.gaps) {
-      lines.push(`• ${opts.gapLabel(g.kind)}`);
+      const peer = g.otherPersonName ? ` (${g.otherPersonName})` : "";
+      lines.push(`• ${opts.gapLabel(g.kind)}${peer}`);
     }
   }
   lines.push("", opts.labels.linkHeader, opts.url);

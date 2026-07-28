@@ -24,6 +24,27 @@ describe("formatPersonGapsDigest", () => {
     expect(text).toContain("الأب");
     expect(text).toContain("https://ex/p/1");
   });
+
+  it("includes twin peer name when present", () => {
+    const text = formatPersonGapsDigest({
+      personName: "سعيد",
+      gaps: [
+        {
+          kind: "possibleTwin",
+          otherPersonId: 4,
+          otherPersonName: "خالد",
+        },
+      ],
+      gapLabel: () => "توأم محتمل",
+      url: "https://ex/p/3",
+      labels: {
+        title: "نواقص {{name}}",
+        linkHeader: "الرابط:",
+        empty: "لا نواقص",
+      },
+    });
+    expect(text).toContain("توأم محتمل (خالد)");
+  });
 });
 
 describe("buildOccasionsCsv", () => {

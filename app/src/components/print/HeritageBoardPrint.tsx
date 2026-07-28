@@ -51,8 +51,8 @@ export default function HeritageBoardPrint(props: PrintTemplateProps) {
     const chain = buildAscendantChain(root.id, people, rels, 6);
     const names = chain.map((p) => personDisplayNameWithTwin(p, people, twinWord));
     if (tree.tribe) names.push(tree.tribe);
-    return names.join(" بن ");
-  }, [rootPersonId, people, rels, tree, twinWord]);
+    return names.join(t("printPage.nasabJoin"));
+  }, [rootPersonId, people, rels, tree, twinWord, t]);
 
   return (
     <div style={{ background: "linear-gradient(180deg, #faf8f4 0%, #f5f0e8 100%)" }}>

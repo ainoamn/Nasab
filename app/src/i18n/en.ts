@@ -298,6 +298,10 @@ export const en = {
     createFirst: "Create your first tree",
     owned: "Trees I own",
     shared: "Shared with me",
+    dbNotConfigured:
+      "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup checklist",
     hideArchived: "Hide archived",
     showArchived: "Show archived ({{count}})",
     actions: {
@@ -1194,6 +1198,9 @@ export const en = {
     pedigreeListTitle: "Pedigree register — full names",
     spouseWife: "wife",
     spouseHusband: "husband",
+    basmala: "In the name of God, the Most Gracious, the Most Merciful",
+    nasabJoin: " ibn ",
+    palmAriaLabel: "Family tree on an Omani palm",
     generationLabel: "Gen {{n}}",
     generationsCount: "Generations: {{count}}",
     classicTitle: "{{name}} Family Tree",

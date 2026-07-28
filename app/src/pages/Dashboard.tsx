@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import AppHeader from "@/components/AppHeader";
@@ -78,6 +79,7 @@ export default function Dashboard() {
   const utils = trpc.useUtils();
   const { t } = useTranslation();
   const L = useLabels();
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [tribe, setTribe] = useState("");
@@ -310,6 +312,31 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
+
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("dashboard.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("dashboard.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("dashboard.openSetup")}
+            </Link>
+          </div>
+        ) : null}
 
         {accountQuery.data && (
           <Card className="mb-6 border-primary/20 bg-primary/5">
