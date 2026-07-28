@@ -21,6 +21,7 @@ export const ar = {
     currencyOmr: "ر.ع.",
     emDash: "—",
     loading: "جارٍ التحميل",
+    close: "إغلاق",
     required: "مطلوب",
     search: "ابحث...",
     confirm: "تأكيد",

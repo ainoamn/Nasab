@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { getParents } from "@/lib/familyGraph";
 import { relationToFocus } from "@/lib/relationshipLabel";
-import { isTwin } from "@/lib/twins";
+import { isTwin, twinMarkLabel, twinMarkWord } from "@/lib/twins";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -66,7 +66,9 @@ export default function FanChartView({
   onFocusPerson,
   onAddParent,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dash = t("common.emDash");
+  const twinWord = twinMarkWord(i18n.language);
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const focus = byId.get(focusId);
   const kinId = kinshipFocusId ?? focusId;
@@ -200,9 +202,12 @@ export default function FanChartView({
               >
                 {person ? (
                   <title>
-                    {`${person.givenName} — ${t(
-                      `tree.rel.${relationToFocus(kinId, person.id, people, rels)}`,
-                    )}${onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""}`}
+                    {(() => {
+                      const mark = twinMarkLabel(person, people, twinWord);
+                      return `${person.givenName}${mark ? ` · ${mark}` : ""} ${dash} ${t(
+                        `tree.rel.${relationToFocus(kinId, person.id, people, rels)}`,
+                      )}${onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""}`;
+                    })()}
                   </title>
                 ) : canAddParent ? (
                   <title>
@@ -268,9 +273,12 @@ export default function FanChartView({
             }}
           >
             <title>
-              {`${focus.givenName} — ${t("tree.rel.self")}${
-                onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""
-              }`}
+              {(() => {
+                const mark = twinMarkLabel(focus, people, twinWord);
+                return `${focus.givenName}${mark ? ` · ${mark}` : ""} ${dash} ${t("tree.rel.self")}${
+                  onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""
+                }`;
+              })()}
             </title>
             <circle
               cx={CX}

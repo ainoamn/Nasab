@@ -7,6 +7,12 @@ import {
   findRelationPath,
 } from "@/lib/relationPath";
 import { formatBirthYear } from "@/lib/printData";
+import {
+  isTwin,
+  twinGroupSize,
+  twinOrderInGroup,
+} from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 import {
   Dialog,
@@ -41,6 +47,7 @@ export default function OccasionCardPrintDialog({
   treeName,
 }: Props) {
   const { t } = useTranslation();
+  const empty = t("common.emDash");
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
   const sheet = useMemo(() => {
@@ -92,10 +99,10 @@ export default function OccasionCardPrintDialog({
         </DialogHeader>
 
         {!sheet ? (
-          <p className="text-sm text-muted-foreground">—</p>
+          <p className="text-sm text-muted-foreground">{empty}</p>
         ) : (
           <PrintableDocumentShell
-            title={`${sheet.kindLabel} — ${sheet.person.givenName}`}
+            title={`${sheet.kindLabel} ${empty} ${sheet.person.givenName}`}
           >
             <article className="space-y-4 text-center" dir="auto">
               <header className="space-y-2 border-b pb-4">
@@ -118,9 +125,32 @@ export default function OccasionCardPrintDialog({
                 <p className="text-sm font-semibold text-muted-foreground">
                   {sheet.kindLabel}
                 </p>
-                <h1 className="font-display text-2xl font-bold">
-                  {sheet.person.givenName}
-                  {sheet.secondary ? ` × ${sheet.secondary.givenName}` : ""}
+                <h1 className="flex flex-wrap items-center justify-center gap-1.5 font-display text-2xl font-bold">
+                  <span className="inline-flex items-center gap-1">
+                    {sheet.person.givenName}
+                    {isTwin(sheet.person, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(sheet.person, people)}
+                        total={twinGroupSize(sheet.person, people)}
+                      />
+                    ) : null}
+                  </span>
+                  {sheet.secondary ? (
+                    <>
+                      <span aria-hidden>×</span>
+                      <span className="inline-flex items-center gap-1">
+                        {sheet.secondary.givenName}
+                        {isTwin(sheet.secondary, people) ? (
+                          <TwinBadge
+                            compact
+                            order={twinOrderInGroup(sheet.secondary, people)}
+                            total={twinGroupSize(sheet.secondary, people)}
+                          />
+                        ) : null}
+                      </span>
+                    </>
+                  ) : null}
                 </h1>
                 <p className="text-base font-medium">{sheet.dateLabel}</p>
                 {sheet.years && (

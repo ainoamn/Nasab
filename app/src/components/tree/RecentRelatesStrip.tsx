@@ -81,7 +81,7 @@ export default function RecentRelatesStrip({
               type="button"
               onClick={() => onOpenCompare(chip.a, chip.b)}
               className="max-w-[14rem] truncate px-2.5 py-1.5 text-start text-[11px] font-semibold text-sky-950 hover:bg-sky-100/80"
-              title={`${chip.aName} ↔ ${chip.bName} — ${chip.rel}`}
+              title={`${chip.aName} ↔ ${chip.bName} ${t("common.emDash")} ${chip.rel}`}
             >
               <span className="inline-flex items-center gap-0.5">
                 {chip.aName}

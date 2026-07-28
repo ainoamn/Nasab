@@ -76,7 +76,7 @@ export default function PathToHomeStrip({
           {t("detail.pathToHome")}
           {label && (
             <span className="ms-1.5 font-normal text-sky-800/80">
-              — {label}
+              {t("common.emDash")} {label}
             </span>
           )}
         </p>

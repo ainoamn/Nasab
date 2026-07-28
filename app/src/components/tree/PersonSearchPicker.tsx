@@ -18,6 +18,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { personMatchesQuery } from "@/lib/personDisplay";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -103,12 +105,23 @@ export default function PersonSearchPicker({
             disabled={disabled}
             className="h-11 w-full justify-between font-normal"
           >
-            <span className="truncate text-start">
-              {selected
-                ? labelFor(selected).text
-                : allowNone && isNone
-                  ? noneText
-                  : (placeholder ?? t("relation.otherPh"))}
+            <span className="flex min-w-0 items-center gap-1 truncate text-start">
+              {selected ? (
+                <>
+                  <span className="truncate">{labelFor(selected).text}</span>
+                  {isTwin(selected, people) ? (
+                    <TwinBadge
+                      compact
+                      order={twinOrderInGroup(selected, people)}
+                      total={twinGroupSize(selected, people)}
+                    />
+                  ) : null}
+                </>
+              ) : allowNone && isNone ? (
+                noneText
+              ) : (
+                (placeholder ?? t("relation.otherPh"))
+              )}
             </span>
             <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -163,7 +176,16 @@ export default function PersonSearchPicker({
                         )}
                       />
                       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate">{text}</span>
+                        <span className="flex items-center gap-1 truncate">
+                          <span className="truncate">{text}</span>
+                          {isTwin(p, people) ? (
+                            <TwinBadge
+                              compact
+                              order={twinOrderInGroup(p, people)}
+                              total={twinGroupSize(p, people)}
+                            />
+                          ) : null}
+                        </span>
                         {(notInChart || dupes) && (
                           <span className="text-xs text-muted-foreground">
                             {[

@@ -30,12 +30,10 @@ function IslamicBorder({ accent }: { accent: string }) {
       {(["top-4 start-4", "top-4 end-4", "bottom-4 start-4", "bottom-4 end-4"] as const).map((pos) => (
         <span
           key={pos}
-          className={`pointer-events-none absolute ${pos} text-2xl opacity-60`}
-          style={{ color: accent }}
+          className={`pointer-events-none absolute ${pos} h-3 w-3 rotate-45 opacity-60`}
+          style={{ backgroundColor: accent }}
           aria-hidden
-        >
-          ✦
-        </span>
+        />
       ))}
     </>
   );

@@ -183,7 +183,7 @@ export default function FamilyBriefPrintDialog({
                     <li key={`${item.name}-${i}`} className="text-sm">
                       <span className="font-medium">{item.name}</span>
                       <span className="text-muted-foreground">
-                        {" — "}
+                        {` ${t("common.emDash")} `}
                         {item.gapLabel}
                       </span>
                       {item.url && (

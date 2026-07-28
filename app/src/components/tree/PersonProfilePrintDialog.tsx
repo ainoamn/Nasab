@@ -6,12 +6,22 @@ import {
   buildSpousesOf,
   getParents,
 } from "@/lib/familyGraph";
-import { formatBirthYear } from "@/lib/printData";
+import {
+  formatBirthYear,
+  personDisplayNameWithTwin,
+} from "@/lib/printData";
 import { findPersonGaps } from "@/lib/personGaps";
 import {
   classifyRelationPath,
   findRelationPath,
 } from "@/lib/relationPath";
+import {
+  isTwin,
+  twinGroupSize,
+  twinMarkWord,
+  twinOrderInGroup,
+} from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 import {
   Dialog,
@@ -32,6 +42,8 @@ type Props = {
   treeName?: string;
 };
 
+type FamilyRow = { role: string; person: Person };
+
 /** ورقة ملف شخص قابلة للطباعة — عائلة مباشرة + نواقص + رابط */
 export default function PersonProfilePrintDialog({
   open,
@@ -43,7 +55,9 @@ export default function PersonProfilePrintDialog({
   personUrl,
   treeName,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const empty = t("common.emDash");
+  const twinWord = twinMarkWord(i18n.language);
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const childrenOf = useMemo(() => buildChildrenOf(rels), [rels]);
   const spousesOf = useMemo(() => buildSpousesOf(rels), [rels]);
@@ -51,22 +65,16 @@ export default function PersonProfilePrintDialog({
   const sheet = useMemo(() => {
     if (!person) return null;
     const { fatherId, motherId } = getParents(person.id, rels, byId);
-    const rows: Array<{ role: string; name: string }> = [];
+    const rows: FamilyRow[] = [];
     if (fatherId && byId.has(fatherId)) {
-      rows.push({
-        role: t("detail.father"),
-        name: byId.get(fatherId)!.givenName,
-      });
+      rows.push({ role: t("detail.father"), person: byId.get(fatherId)! });
     }
     if (motherId && byId.has(motherId)) {
-      rows.push({
-        role: t("detail.mother"),
-        name: byId.get(motherId)!.givenName,
-      });
+      rows.push({ role: t("detail.mother"), person: byId.get(motherId)! });
     }
     for (const sid of spousesOf.get(person.id) ?? []) {
       const s = byId.get(sid);
-      if (s) rows.push({ role: t("detail.spouse"), name: s.givenName });
+      if (s) rows.push({ role: t("detail.spouse"), person: s });
     }
     const siblingIds = new Set<number>();
     for (const pid of [fatherId, motherId]) {
@@ -77,16 +85,16 @@ export default function PersonProfilePrintDialog({
     }
     for (const sid of siblingIds) {
       const s = byId.get(sid);
-      if (s) rows.push({ role: t("detail.sibling"), name: s.givenName });
+      if (s) rows.push({ role: t("detail.sibling"), person: s });
     }
     for (const cid of childrenOf.get(person.id) ?? []) {
       const c = byId.get(cid);
-      if (c) rows.push({ role: t("detail.child"), name: c.givenName });
+      if (c) rows.push({ role: t("detail.child"), person: c });
     }
 
     const gaps = findPersonGaps(person, people, rels);
     let homeKin: string | null = null;
-    let hopNames: string[] = [];
+    let hopPeople: Person[] = [];
     if (homePersonId != null && homePersonId !== person.id) {
       const hops = findRelationPath(homePersonId, person.id, people, rels);
       const key = classifyRelationPath(
@@ -98,9 +106,9 @@ export default function PersonProfilePrintDialog({
       );
       homeKin = t(`tree.rel.${key}`);
       if (hops) {
-        hopNames = hops
-          .map((h) => byId.get(h.personId)?.givenName)
-          .filter((n): n is string => !!n);
+        hopPeople = hops
+          .map((h) => byId.get(h.personId))
+          .filter((p): p is Person => !!p);
       }
     }
 
@@ -109,7 +117,7 @@ export default function PersonProfilePrintDialog({
       rows,
       gaps,
       homeKin,
-      hopNames,
+      hopPeople,
     };
   }, [person, people, rels, byId, childrenOf, spousesOf, homePersonId, t]);
 
@@ -122,10 +130,10 @@ export default function PersonProfilePrintDialog({
         </DialogHeader>
 
         {!person || !sheet ? (
-          <p className="text-sm text-muted-foreground">—</p>
+          <p className="text-sm text-muted-foreground">{empty}</p>
         ) : (
           <PrintableDocumentShell
-            title={`${t("tree.profilePrintTitle")} — ${person.givenName}`}
+            title={`${t("tree.profilePrintTitle")} ${empty} ${personDisplayNameWithTwin(person, people, twinWord)}`}
           >
             <article className="space-y-4 text-start" dir="auto">
               <header className="space-y-1 border-b pb-3 text-center">
@@ -146,8 +154,15 @@ export default function PersonProfilePrintDialog({
                     </span>
                   )}
                 </div>
-                <h1 className="font-display text-2xl font-bold">
+                <h1 className="flex flex-wrap items-center justify-center gap-1.5 font-display text-2xl font-bold">
                   {person.givenName}
+                  {isTwin(person, people) ? (
+                    <TwinBadge
+                      compact
+                      order={twinOrderInGroup(person, people)}
+                      total={twinGroupSize(person, people)}
+                    />
+                  ) : null}
                 </h1>
                 {sheet.years && (
                   <p className="text-sm text-muted-foreground">{sheet.years}</p>
@@ -166,21 +181,48 @@ export default function PersonProfilePrintDialog({
                   </h2>
                   <ul className="space-y-1 text-sm">
                     {sheet.rows.map((r, i) => (
-                      <li key={`${r.role}-${r.name}-${i}`}>
+                      <li
+                        key={`${r.role}-${r.person.id}-${i}`}
+                        className="flex flex-wrap items-center gap-1"
+                      >
                         <span className="text-muted-foreground">{r.role}: </span>
-                        {r.name}
+                        <span>{r.person.givenName}</span>
+                        {isTwin(r.person, people) ? (
+                          <TwinBadge
+                            compact
+                            order={twinOrderInGroup(r.person, people)}
+                            total={twinGroupSize(r.person, people)}
+                          />
+                        ) : null}
                       </li>
                     ))}
                   </ul>
                 </section>
               )}
 
-              {sheet.hopNames.length > 1 && (
+              {sheet.hopPeople.length > 1 && (
                 <section>
                   <h2 className="mb-1 text-sm font-semibold">
                     {t("detail.pathToHome")}
                   </h2>
-                  <p className="text-sm">{sheet.hopNames.join(" → ")}</p>
+                  <p className="flex flex-wrap items-center gap-1 text-sm">
+                    {sheet.hopPeople.map((p, i) => (
+                      <span
+                        key={p.id}
+                        className="inline-flex items-center gap-1"
+                      >
+                        {i > 0 ? <span aria-hidden>→</span> : null}
+                        {p.givenName}
+                        {isTwin(p, people) ? (
+                          <TwinBadge
+                            compact
+                            order={twinOrderInGroup(p, people)}
+                            total={twinGroupSize(p, people)}
+                          />
+                        ) : null}
+                      </span>
+                    ))}
+                  </p>
                 </section>
               )}
 

@@ -18,9 +18,11 @@ import {
   getTwinGroupMembers,
   isTwin,
   twinCandidateSiblings,
-  twinKindForGroup,
-  twinOrderInGroup,
   twinGroupSize,
+  twinKindForGroup,
+  twinMarkLabel,
+  twinMarkWord,
+  twinOrderInGroup,
 } from "@/lib/twins";
 import { formatBirthDate } from "@/lib/birthOrder";
 
@@ -188,11 +190,23 @@ export default function TwinFamilyPanel({
                 <SelectValue placeholder={t("twins.pickSibling")} />
               </SelectTrigger>
               <SelectContent>
-                {candidates.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.givenName}
-                  </SelectItem>
-                ))}
+                {candidates.map((s) => {
+                  const mark = twinMarkLabel(s, people, twinMarkWord(i18n.language));
+                  return (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      <span className="inline-flex items-center gap-1">
+                        {s.givenName}
+                        {mark ? (
+                          <TwinBadge
+                            compact
+                            order={twinOrderInGroup(s, people)}
+                            total={twinGroupSize(s, people)}
+                          />
+                        ) : null}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

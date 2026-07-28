@@ -138,8 +138,16 @@ export default function PlacesBrowser({
                         "group relative flex w-[5.5rem] flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-muted/60",
                         twin && "ring-2 ring-violet-400 bg-violet-50/80",
                       )}
-                      title={rel ? `${p.givenName} — ${rel}` : p.givenName}
-                      aria-label={rel ? `${p.givenName} — ${rel}` : p.givenName}
+                      title={
+                        rel
+                          ? `${p.givenName} ${t("common.emDash")} ${rel}`
+                          : p.givenName
+                      }
+                      aria-label={
+                        rel
+                          ? `${p.givenName} ${t("common.emDash")} ${rel}`
+                          : p.givenName
+                      }
                     >
                       {twin ? (
                         <span className="absolute -top-0.5 start-0.5 z-[2]">

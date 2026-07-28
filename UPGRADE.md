@@ -125,6 +125,19 @@ npm run prod:smoke
 
 ---
 
+## المرحلة 29 — منتقٍ/طباعة توأم + a11y إغلاق + زخارف CSS (منفَّذة)
+
+| البند | الحالة |
+|--------|--------|
+| PersonSearchPicker + TwinFamilyPanel: TwinBadge | ✅ |
+| ملف شخص وبطاقة مناسبة للطباعة: TwinBadge و`emDash` | ✅ |
+| Dialog/Sheet `common.close` + AuthLayout `nav.navigation` | ✅ |
+| عناوين Fan/مسار/أماكن/أقارب: `common.emDash` | ✅ |
+| Ornate/Manuscript: زخارف CSS بدل ✦ | ✅ |
+| اختبارات favoriteRelates / recentRelates / researchTour | ✅ |
+
+---
+
 ## المرحلة 28 — مسارات/نواقص/جولات توأم + a11y + اختبارات عرض (منفَّذة)
 
 | البند | الحالة |

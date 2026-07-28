@@ -21,6 +21,7 @@ export const en = {
     currencyOmr: "OMR",
     emDash: "—",
     loading: "Loading",
+    close: "Close",
     required: "required",
     search: "Search...",
     confirm: "Confirm",

@@ -40,10 +40,11 @@ function AvatarChip({
   twinTotal?: number | null;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const female = person.gender === "female";
   const title = meta
-    ? `${person.givenName} — ${roleLabel} · ${meta}`
-    : `${person.givenName} — ${roleLabel}`;
+    ? `${person.givenName} ${t("common.emDash")} ${roleLabel} · ${meta}`
+    : `${person.givenName} ${t("common.emDash")} ${roleLabel}`;
   return (
     <button
       type="button"
