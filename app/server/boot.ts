@@ -55,9 +55,15 @@ app.get("/api/diag", (c) => {
 });
 
 app.post("/api/auth/password-login", async (c) => {
+  // Fast path first — proves the route responds on Vercel.
+  if (c.req.query("probe") === "1") {
+    return c.json({ ok: true, probe: true, dbConfigured: Boolean(process.env.DATABASE_URL) });
+  }
   const { passwordLoginHandler } = await import("./password-login-handler");
   return passwordLoginHandler(c);
 });
+
+app.post("/api/auth/ping", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
