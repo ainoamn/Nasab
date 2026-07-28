@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PersonSearchPicker from "@/components/tree/PersonSearchPicker";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { buildSpousesOf, oppositeSpouses } from "@/lib/familyGraph";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 import { toast } from "sonner";
 
 type Kinship =
@@ -236,8 +238,17 @@ export default function RelationDialog({
                   <SelectContent>
                     {otherParentOptions.map((p) => (
                       <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.givenName}
-                        {p.fatherName ? ` (${p.fatherName})` : ""}
+                        <span className="inline-flex items-center gap-1">
+                          {p.givenName}
+                          {p.fatherName ? ` (${p.fatherName})` : ""}
+                          {isTwin(p, people) ? (
+                            <TwinBadge
+                              compact
+                              order={twinOrderInGroup(p, people)}
+                              total={twinGroupSize(p, people)}
+                            />
+                          ) : null}
+                        </span>
                       </SelectItem>
                     ))}
                     {addingViaFather && (

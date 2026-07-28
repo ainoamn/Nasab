@@ -36,7 +36,9 @@ export default function TwinBadge({
       : order != null
         ? t("twins.mark", { order })
         : null;
-  const title = mark ? `${baseLabel} — ${mark}` : baseLabel;
+  const title = mark
+    ? `${baseLabel} ${t("common.emDash")} ${mark}`
+    : baseLabel;
 
   return (
     <span

@@ -243,6 +243,7 @@ export default function EventsStrip({
                       variant="ghost"
                       className="h-6 w-6"
                       title={t("tree.occasionsAddCalendar")}
+                      aria-label={t("tree.occasionsAddCalendar")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onAddToCalendar(ev);
@@ -258,6 +259,7 @@ export default function EventsStrip({
                       variant="ghost"
                       className="h-6 w-6"
                       title={t("tree.occasionsCopyGreeting")}
+                      aria-label={t("tree.occasionsCopyGreeting")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onCopyGreeting(ev);
@@ -273,6 +275,7 @@ export default function EventsStrip({
                       variant="ghost"
                       className="h-6 w-6"
                       title={t("tree.occasionsWhatsApp")}
+                      aria-label={t("tree.occasionsWhatsApp")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onWhatsAppGreeting(ev);
@@ -288,6 +291,7 @@ export default function EventsStrip({
                       variant="ghost"
                       className="h-6 w-6"
                       title={t("tree.occasionsPrint")}
+                      aria-label={t("tree.occasionsPrint")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onPrintOccasion(ev);
@@ -303,6 +307,7 @@ export default function EventsStrip({
                       variant="ghost"
                       className="h-6 w-6"
                       title={t("detail.copyPersonLink")}
+                      aria-label={t("detail.copyPersonLink")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onCopyPersonLink(ev.person!);

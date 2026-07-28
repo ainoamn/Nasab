@@ -434,6 +434,7 @@ export default function RelationPathDialog({
             variant="outline"
             className="mx-auto h-9 w-9 shrink-0"
             title={t("tree.howRelatedSwap")}
+            aria-label={t("tree.howRelatedSwap")}
             onClick={swap}
           >
             <GitCompareArrows className="h-4 w-4" />

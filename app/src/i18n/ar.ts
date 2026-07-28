@@ -22,6 +22,8 @@ export const ar = {
     emDash: "—",
     loading: "جارٍ التحميل",
     close: "إغلاق",
+    switchToEnglish: "التبديل إلى الإنجليزية",
+    switchToArabic: "التبديل إلى العربية",
     required: "مطلوب",
     search: "ابحث...",
     confirm: "تأكيد",
@@ -176,9 +178,12 @@ export const ar = {
     copyCommands: "نسخ الأوامر",
     copied: "تم النسخ",
     copyFailed: "تعذّر النسخ",
-    details: "التفاصيل في UPGRADE.md — المرحلة 2.",
+    details:
+      "التفاصيل في UPGRADE.md — ربط قاعدة البيانات ومتغيرات Vercel. تحقق أيضاً: npm run deploy:status",
     login: "صفحة الدخول",
     home: "الرئيسية",
+    refreshDiag: "تحديث الفحص",
+    openDiag: "فتح /api/diag",
   },
   checkout: {
     title: "إتمام الاشتراك",

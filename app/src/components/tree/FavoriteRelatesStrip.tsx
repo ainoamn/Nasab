@@ -113,6 +113,7 @@ export default function FavoriteRelatesStrip({
                 variant="ghost"
                 className="h-7 w-7"
                 title={t("tree.showPathOnChart")}
+                aria-label={t("tree.showPathOnChart")}
                 onClick={() => onShowPath(chip.hops)}
               >
                 <Eye className="h-3 w-3" />
@@ -125,6 +126,7 @@ export default function FavoriteRelatesStrip({
                 variant="ghost"
                 className="h-7 w-7"
                 title={t("tree.printKinshipCert")}
+                aria-label={t("tree.printKinshipCert")}
                 onClick={() => onPrintCert(chip.a, chip.b)}
               >
                 <Printer className="h-3 w-3" />

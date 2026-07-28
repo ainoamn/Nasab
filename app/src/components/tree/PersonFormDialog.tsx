@@ -39,6 +39,8 @@ import {
   isTwin,
   twinCandidateSiblings,
   fullSiblingsOf,
+  twinGroupSize,
+  twinOrderInGroup,
 } from "@/lib/twins";
 import TwinBadge from "@/components/tree/TwinBadge";
 
@@ -762,7 +764,9 @@ export default function PersonFormDialog({
                       {KINSHIPS.map((k) => (
                         <SelectItem key={k} value={k}>
                           {t(`personForm.kinships.${k}`)}
-                          {anchor ? ` — ${anchor.givenName}` : ""}
+                          {anchor
+                            ? ` ${t("common.emDash")} ${anchor.givenName}`
+                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -807,8 +811,17 @@ export default function PersonFormDialog({
                     <SelectContent>
                       {otherParentOptions.map((p) => (
                         <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.givenName}
-                          {p.fatherName ? ` (${p.fatherName})` : ""}
+                          <span className="inline-flex items-center gap-1">
+                            {p.givenName}
+                            {p.fatherName ? ` (${p.fatherName})` : ""}
+                            {isTwin(p, people) ? (
+                              <TwinBadge
+                                compact
+                                order={twinOrderInGroup(p, people)}
+                                total={twinGroupSize(p, people)}
+                              />
+                            ) : null}
+                          </span>
                         </SelectItem>
                       ))}
                       {addingViaMother && (
@@ -978,10 +991,20 @@ export default function PersonFormDialog({
                     className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/80 px-2.5 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {m.givenName}
+                      <p className="flex flex-wrap items-center gap-1 text-sm font-medium">
+                        <span className="truncate">{m.givenName}</span>
+                        {(() => {
+                          const mp = people.find((x) => x.id === m.personId);
+                          return mp && isTwin(mp, people) ? (
+                            <TwinBadge
+                              compact
+                              order={twinOrderInGroup(mp, people)}
+                              total={twinGroupSize(mp, people)}
+                            />
+                          ) : null;
+                        })()}
                         {isSibling && (
-                          <span className="ms-1 text-[10px] font-normal text-amber-700">
+                          <span className="text-[10px] font-normal text-amber-700">
                             ({t("personForm.siblingMatch")})
                           </span>
                         )}
@@ -1126,7 +1149,16 @@ export default function PersonFormDialog({
                       <SelectItem value="none">{t("twins.pickSibling")}</SelectItem>
                       {twinPickerOptions.map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
-                          {p.givenName}
+                          <span className="inline-flex items-center gap-1">
+                            {p.givenName}
+                            {isTwin(p, people) ? (
+                              <TwinBadge
+                                compact
+                                order={twinOrderInGroup(p, people)}
+                                total={twinGroupSize(p, people)}
+                              />
+                            ) : null}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1255,7 +1287,7 @@ export default function PersonFormDialog({
               <SelectContent>
                 {(Object.keys(L.privacy) as PersonPrivacy[]).map((k) => (
                   <SelectItem key={k} value={k}>
-                    {L.privacy[k]} — {L.privacyDescriptions[k]}
+                    {L.privacy[k]} {t("common.emDash")} {L.privacyDescriptions[k]}
                   </SelectItem>
                 ))}
               </SelectContent>

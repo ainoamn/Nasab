@@ -94,6 +94,7 @@ export default function TodayEventsBanner({
                 variant="ghost"
                 className="h-6 w-6 shrink-0"
                 title={t("tree.occasionsAddCalendar")}
+                aria-label={t("tree.occasionsAddCalendar")}
                 onClick={() => onAddToCalendar(ev)}
               >
                 <CalendarPlus className="h-3 w-3" />
@@ -106,6 +107,7 @@ export default function TodayEventsBanner({
                 variant="ghost"
                 className="h-6 w-6 shrink-0"
                 title={t("tree.occasionsCopyGreeting")}
+                aria-label={t("tree.occasionsCopyGreeting")}
                 onClick={() => onCopyGreeting(ev)}
               >
                 <MessageSquare className="h-3 w-3" />
@@ -118,6 +120,7 @@ export default function TodayEventsBanner({
                 variant="ghost"
                 className="h-6 w-6 shrink-0"
                 title={t("tree.occasionsWhatsApp")}
+                aria-label={t("tree.occasionsWhatsApp")}
                 onClick={() => onWhatsAppGreeting(ev)}
               >
                 <MessageCircle className="h-3 w-3" />
@@ -132,6 +135,7 @@ export default function TodayEventsBanner({
         variant="ghost"
         className="h-7 w-7 shrink-0 text-amber-900/70"
         title={t("tree.todayEventsDismiss")}
+        aria-label={t("tree.todayEventsDismiss")}
         onClick={() => {
           dismissTodayEvents(treeId);
           setHidden(true);

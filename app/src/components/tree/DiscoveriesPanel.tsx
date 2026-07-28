@@ -307,6 +307,7 @@ export default function DiscoveriesPanel({
                     variant="ghost"
                     className="h-7 w-7 text-muted-foreground"
                     title={t("tree.discoveryDismiss")}
+                    aria-label={t("tree.discoveryDismiss")}
                     onClick={() => onDismiss(dk)}
                   >
                     <X className="h-3.5 w-3.5" />

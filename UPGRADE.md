@@ -125,6 +125,19 @@ npm run prod:smoke
 
 ---
 
+## المرحلة 31 — نماذج/جدول زمني توأم + a11y أيقونات + إعداد الإطلاق (منفَّذة)
+
+| البند | الحالة |
+|--------|--------|
+| PersonFormDialog / RelationDialog: TwinBadge و`emDash` | ✅ |
+| جدول زمني في بطاقة التفاصيل: TwinBadge | ✅ |
+| aria-label لأزرار المخطط/القائمة/المناسبات/الاكتشافات | ✅ |
+| LanguageSwitcher وTwinBadge: مفاتيح i18n | ✅ |
+| Setup: تحديث التشخيص + أوامر deploy:status | ✅ |
+| اختبارات occasionsCsv / printFilter | ✅ |
+
+---
+
 ## المرحلة 30 — تفاصيل/مسار/QR توأم + a11y مخطط + اختبارات (منفَّذة)
 
 | البند | الحالة |

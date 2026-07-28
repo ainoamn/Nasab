@@ -22,6 +22,8 @@ export const en = {
     emDash: "—",
     loading: "Loading",
     close: "Close",
+    switchToEnglish: "Switch to English",
+    switchToArabic: "Switch to Arabic",
     required: "required",
     search: "Search...",
     confirm: "Confirm",
@@ -176,9 +178,12 @@ export const en = {
     copyCommands: "Copy commands",
     copied: "Copied",
     copyFailed: "Copy failed",
-    details: "Details in UPGRADE.md — phase 2.",
+    details:
+      "Details in UPGRADE.md — database link and Vercel env vars. Also check: npm run deploy:status",
     login: "Login",
     home: "Home",
+    refreshDiag: "Refresh check",
+    openDiag: "Open /api/diag",
   },
   checkout: {
     title: "Complete subscription",

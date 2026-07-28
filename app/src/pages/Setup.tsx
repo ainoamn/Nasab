@@ -28,7 +28,9 @@ type Row = { id: string; label: string; ok: boolean | null; hint?: string };
 const ENV_SNIPPET = `cd app
 npm run vercel:print-env
 # paste into Vercel → Environment Variables
-# then Redeploy`;
+# then Redeploy
+npm run deploy:status
+npm run prod:smoke`;
 
 export default function Setup() {
   const { t } = useTranslation();
@@ -38,21 +40,34 @@ export default function Setup() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/diag")
-      .then((r) => r.json())
-      .then((d: Diag) => {
-        if (!cancelled) setDiag(d);
-      })
-      .catch(() => {
-        if (!cancelled) setDiag(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const load = () => {
+      setLoading(true);
+      void fetch("/api/diag")
+        .then((r) => r.json())
+        .then((d: Diag) => {
+          if (!cancelled) setDiag(d);
+        })
+        .catch(() => {
+          if (!cancelled) setDiag(null);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+    load();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const refreshDiag = () => {
+    setLoading(true);
+    void fetch("/api/diag")
+      .then((r) => r.json())
+      .then((d: Diag) => setDiag(d))
+      .catch(() => setDiag(null))
+      .finally(() => setLoading(false));
+  };
 
   const buildHint = diag?.build || liveBuild;
 
@@ -208,9 +223,17 @@ export default function Setup() {
               <Button asChild>
                 <Link to="/login">{t("setup.login")}</Link>
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={loading}
+                onClick={refreshDiag}
+              >
+                {t("setup.refreshDiag")}
+              </Button>
               <Button asChild variant="outline">
                 <a href="/api/diag" target="_blank" rel="noreferrer">
-                  /api/diag
+                  {t("setup.openDiag")}
                 </a>
               </Button>
               <Button asChild variant="ghost">

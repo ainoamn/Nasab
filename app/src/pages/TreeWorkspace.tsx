@@ -1982,6 +1982,11 @@ export default function TreeWorkspace() {
                         ? t("chart.densityComfortable")
                         : t("chart.densityCompact")
                     }
+                    aria-label={
+                      chartCompact
+                        ? t("chart.densityComfortable")
+                        : t("chart.densityCompact")
+                    }
                     onClick={() => setChartCompact((v) => !v)}
                   >
                     {chartCompact ? (
@@ -1997,6 +2002,7 @@ export default function TreeWorkspace() {
                   variant="outline"
                   className="h-8 w-8"
                   title={t("tree.howRelatedTitle")}
+                  aria-label={t("tree.howRelatedTitle")}
                   onClick={() => {
                     setHowRelatedPair({
                       from: detailPerson?.id ?? chartFocusId ?? homePersonId,
@@ -2013,6 +2019,7 @@ export default function TreeWorkspace() {
                   variant="outline"
                   className="h-8 w-8"
                   title={t("tree.goHomePerson")}
+                  aria-label={t("tree.goHomePerson")}
                   onClick={() => {
                     const hid = homePersonId ?? getHomePersonId(treeId);
                     if (hid == null || !peopleById.has(hid)) {
@@ -2044,6 +2051,11 @@ export default function TreeWorkspace() {
                   variant="outline"
                   className="h-8 w-8"
                   title={
+                    chartFullscreen
+                      ? t("chart.exitFullscreen")
+                      : t("chart.fullscreen")
+                  }
+                  aria-label={
                     chartFullscreen
                       ? t("chart.exitFullscreen")
                       : t("chart.fullscreen")
@@ -2418,19 +2430,39 @@ export default function TreeWorkspace() {
                                   size="icon"
                                   variant="ghost"
                                   title={t("detail.showOnChart")}
+                                  aria-label={t("detail.showOnChart")}
                                   onClick={() => revealOnChart(p)}
                                 >
                                   <Network className="h-4 w-4" />
                                 </Button>
                                 {canWrite && (
                                   <>
-                                    <Button size="icon" variant="ghost" title={t("common.edit")} onClick={() => setEditPerson(p)}>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      title={t("common.edit")}
+                                      aria-label={t("common.edit")}
+                                      onClick={() => setEditPerson(p)}
+                                    >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" title={t("common.link")} onClick={() => setLinkAnchor(p)}>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      title={t("common.link")}
+                                      aria-label={t("common.link")}
+                                      onClick={() => setLinkAnchor(p)}
+                                    >
                                       <Link2 className="h-4 w-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" title={t("common.delete")} className="text-destructive" onClick={() => setDeletePerson(p)}>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      title={t("common.delete")}
+                                      aria-label={t("common.delete")}
+                                      className="text-destructive"
+                                      onClick={() => setDeletePerson(p)}
+                                    >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </>
@@ -3390,7 +3422,7 @@ export default function TreeWorkspace() {
                         {ev.personId != null ? (
                           <button
                             type="button"
-                            className="text-start text-foreground/90 underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-1 text-start text-foreground/90 underline-offset-2 hover:underline"
                             onClick={() => {
                               const p = peopleById.get(ev.personId!);
                               if (p) {
@@ -3401,6 +3433,16 @@ export default function TreeWorkspace() {
                             }}
                           >
                             {ev.label}
+                            {(() => {
+                              const p = peopleById.get(ev.personId!);
+                              return p && isTwin(p, people) ? (
+                                <TwinBadge
+                                  compact
+                                  order={twinOrderInGroup(p, people)}
+                                  total={twinGroupSize(p, people)}
+                                />
+                              ) : null;
+                            })()}
                           </button>
                         ) : (
                           <span className="text-foreground/90">{ev.label}</span>
