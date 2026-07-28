@@ -64,7 +64,7 @@ export function InvoiceReceiptDocument({ invoice }: { invoice: InvoiceLike }) {
         )}
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">{t("account.billing.cols.description")}</dt>
-          <dd className="text-end">{invoice.description ?? "—"}</dd>
+          <dd className="text-end">{invoice.description ?? empty}</dd>
         </div>
         {invoice.planSlug && (
           <div className="flex justify-between gap-4">

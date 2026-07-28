@@ -25,6 +25,25 @@ describe("researchTourState", () => {
       index: 3,
     });
   });
+
+  it("defaults on invalid JSON scope and negative index", () => {
+    const store = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      value: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => store.set(k, v),
+        removeItem: (k: string) => store.delete(k),
+      },
+      configurable: true,
+    });
+    store.set("nasab:researchTour:8", "{bad");
+    expect(getResearchTourState(8)).toEqual({ scope: "close", index: 0 });
+    store.set(
+      "nasab:researchTour:9",
+      JSON.stringify({ scope: "nope", index: -1 }),
+    );
+    expect(getResearchTourState(9)).toEqual({ scope: "close", index: 0 });
+  });
 });
 
 describe("buildResearchTourItems allowedPersonIds", () => {

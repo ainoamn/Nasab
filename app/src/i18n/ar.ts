@@ -20,6 +20,7 @@ export const ar = {
     personCountOne: "{{count}} فرد",
     currencyOmr: "ر.ع.",
     emDash: "—",
+    loading: "جارٍ التحميل",
     required: "مطلوب",
     search: "ابحث...",
     confirm: "تأكيد",

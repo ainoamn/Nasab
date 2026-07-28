@@ -744,7 +744,7 @@ export default function ShareView() {
                       type="button"
                       onClick={() => openPerson(p)}
                       className={cn(
-                        "inline-flex max-w-[7.5rem] truncate rounded-full px-2 py-0.5 text-[11px] font-medium transition hover:bg-white",
+                        "inline-flex max-w-[9rem] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[11px] font-medium transition hover:bg-white",
                         isEnd
                           ? "bg-sky-600 text-white"
                           : isRelate
@@ -754,7 +754,14 @@ export default function ShareView() {
                               : "bg-white/80 text-sky-950 ring-1 ring-sky-200",
                       )}
                     >
-                      {p.givenName}
+                      <span className="truncate">{p.givenName}</span>
+                      {isTwin(p, people) ? (
+                        <TwinBadge
+                          compact
+                          order={twinOrderInGroup(p, people)}
+                          total={twinGroupSize(p, people)}
+                        />
+                      ) : null}
                     </button>
                   </span>
                 );

@@ -8,6 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { House, Eye, ChevronLeft, Link as LinkIcon, Copy } from "lucide-react";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   homePerson: Person;
@@ -141,6 +143,13 @@ export default function PathToHomeStrip({
               >
                 {isHome && <House className="h-3 w-3 shrink-0" />}
                 <span className="truncate">{p.givenName}</span>
+                {isTwin(p, people) ? (
+                  <TwinBadge
+                    compact
+                    order={twinOrderInGroup(p, people)}
+                    total={twinGroupSize(p, people)}
+                  />
+                ) : null}
               </button>
             </span>
           );

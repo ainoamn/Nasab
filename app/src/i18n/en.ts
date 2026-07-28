@@ -20,6 +20,7 @@ export const en = {
     personCountOne: "{{count}} person",
     currencyOmr: "OMR",
     emDash: "—",
+    loading: "Loading",
     required: "required",
     search: "Search...",
     confirm: "Confirm",

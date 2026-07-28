@@ -22,6 +22,8 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   treeId: number;
@@ -127,6 +129,7 @@ export default function ResearchTourStrip({
   const current: ResearchTourItem = items[Math.min(index, items.length - 1)]!;
   const person = peopleById.get(current.personId);
   if (!person) return null;
+  const peopleList = [...peopleById.values()];
 
   const goNext = () => persistIndex((index + 1) % items.length);
   const goPrev = () =>
@@ -162,9 +165,18 @@ export default function ResearchTourStrip({
           className="min-w-0 flex-1 truncate text-start font-medium text-amber-950 underline-offset-2 hover:underline"
           onClick={() => onShow(person)}
         >
-          {current.personName}
-          <span className="ms-1 font-normal text-amber-900/75">
-            — {t(`detail.gap.${current.kind}`)}
+          <span className="inline-flex max-w-full items-center gap-1">
+            <span className="truncate">{current.personName}</span>
+            {isTwin(person, peopleList) ? (
+              <TwinBadge
+                compact
+                order={twinOrderInGroup(person, peopleList)}
+                total={twinGroupSize(person, peopleList)}
+              />
+            ) : null}
+            <span className="font-normal text-amber-900/75">
+              {t("common.emDash")} {t(`detail.gap.${current.kind}`)}
+            </span>
           </span>
         </button>
         <div className="flex flex-wrap items-center gap-1">

@@ -1375,6 +1375,7 @@ export function formatPalmCouple(
   mother: Person | null,
   people: Person[] = [],
   twinWord = "ت",
+  empty = "—",
 ): string {
   const label = (p: Person) =>
     people.length > 0
@@ -1383,7 +1384,7 @@ export function formatPalmCouple(
   const parts: string[] = [];
   if (father) parts.push(label(father));
   if (mother) parts.push(label(mother));
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  return parts.length > 0 ? parts.join(" · ") : empty;
 }
 
 /** تسمية سعف النخلة مع كل الزوجات */

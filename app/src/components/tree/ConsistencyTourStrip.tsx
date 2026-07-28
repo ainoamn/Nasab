@@ -22,6 +22,8 @@ import {
   Network,
   X,
 } from "lucide-react";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   treeId: number;
@@ -170,10 +172,37 @@ export default function ConsistencyTourStrip({
           className="min-w-0 flex-1 truncate text-start font-medium text-rose-950 underline-offset-2 hover:underline"
           onClick={() => onShow(person)}
         >
-          {current.personName}
-          {current.otherPersonName ? ` × ${current.otherPersonName}` : ""}
-          <span className="ms-1 font-normal text-rose-900/75">
-            — {t(`tree.discovery.${current.kind}`)}
+          <span className="inline-flex max-w-full flex-wrap items-center gap-1">
+            <span className="truncate">{current.personName}</span>
+            {isTwin(person, people) ? (
+              <TwinBadge
+                compact
+                order={twinOrderInGroup(person, people)}
+                total={twinGroupSize(person, people)}
+              />
+            ) : null}
+            {current.otherPersonName ? (
+              <>
+                <span>×</span>
+                <span className="truncate">{current.otherPersonName}</span>
+                {(() => {
+                  const other =
+                    current.otherPersonId != null
+                      ? people.find((p) => p.id === current.otherPersonId)
+                      : undefined;
+                  return other && isTwin(other, people) ? (
+                    <TwinBadge
+                      compact
+                      order={twinOrderInGroup(other, people)}
+                      total={twinGroupSize(other, people)}
+                    />
+                  ) : null;
+                })()}
+              </>
+            ) : null}
+            <span className="font-normal text-rose-900/75">
+              {t("common.emDash")} {t(`tree.discovery.${current.kind}`)}
+            </span>
           </span>
         </button>
         <div className="flex flex-wrap items-center gap-1">

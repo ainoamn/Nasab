@@ -13,6 +13,8 @@ import {
   Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   person: Person;
@@ -99,8 +101,22 @@ export default function PersonGapsStrip({
               <span className="min-w-0 flex-1 text-sky-950">
                 {t(`detail.gap.${g.kind}`)}
                 {g.otherPersonName ? (
-                  <span className="ms-1 text-muted-foreground">
-                    ({g.otherPersonName})
+                  <span className="ms-1 inline-flex items-center gap-0.5 text-muted-foreground">
+                    ({g.otherPersonName}
+                    {(() => {
+                      const peer =
+                        g.otherPersonId != null
+                          ? people.find((p) => p.id === g.otherPersonId)
+                          : undefined;
+                      return peer && isTwin(peer, people) ? (
+                        <TwinBadge
+                          compact
+                          order={twinOrderInGroup(peer, people)}
+                          total={twinGroupSize(peer, people)}
+                        />
+                      ) : null;
+                    })()}
+                    )
                   </span>
                 ) : null}
               </span>
