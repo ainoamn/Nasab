@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -84,6 +85,7 @@ export default function TreePrint() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth({ redirectOnUnauthenticated: true });
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
   const { t, i18n } = useTranslation();
   const [template, setTemplate] = useState<PrintTemplateId>("palm");
   const [step, setStep] = useState<"pick" | "preview">("pick");
@@ -314,6 +316,33 @@ export default function TreePrint() {
           </div>
         </div>
       </div>
+
+      {dbConfigured === false || buildBehind ? (
+        <div
+          className="no-print border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-950 dark:text-amber-100"
+          role="status"
+        >
+          <div className="mx-auto max-w-7xl">
+            {dbConfigured === false ? (
+              <p>{t("printPage.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("printPage.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("printPage.openSetup")}
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       {step === "pick" ? (
         <div className="mx-auto max-w-6xl px-3 sm:px-4 py-6 sm:py-10">

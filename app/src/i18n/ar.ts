@@ -750,6 +750,10 @@ export const ar = {
     forbiddenBody: "إما أنها خاصة أو أن الرابط غير صحيح",
     backToTrees: "العودة لأشجاري",
     pausedBanner: "هذه الشجرة موقوفة مؤقتاً — يمكنك العرض فقط. فعّلها من لوحة التحكم للتعديل.",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
     cols: {
       name: "الاسم",
       relation: "القرابة",
@@ -1153,6 +1157,10 @@ export const ar = {
     downloadHint: "حمّل الملف بجودة عالية ثم اطبعه من جهازك — صفحة واحدة بدون تقسيم",
     downloadWorking: "جارٍ تجهيز الملف…",
     downloadDone: "تم التحميل — افتح الملف واطبعه عند الحاجة",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
     downloadFailed: "تعذّر التحميل — أعد المحاولة",
     previewTemplate: "معاينة القالب والطباعة",
     clanHint: "مخطط العشيرة يعرض الشجرة الهرمية — قبيلة ← بطن ← فخذ تظهر عبر حقول النسب لكل شخص",
@@ -1312,6 +1320,10 @@ export const ar = {
     qrDownloaded: "تم تنزيل رمز QR",
     completenessHint: "شفافية اكتمال البيانات الظاهرة للزوار",
     pickPersonForChart: "اختر شخصاً من الشجرة لعرض هذا المخطط",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
   },
   settings: {
     title: "إعدادات الشجرة",

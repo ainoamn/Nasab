@@ -1,4 +1,5 @@
 import type { PaymentGatewaySlug } from "@contracts/constants";
+import { Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BRAND: Record<
@@ -33,6 +34,9 @@ export default function GatewayLogo({ slug, name, className, size = "md" }: Prop
         ? "h-10 w-10 text-sm"
         : "h-14 w-14 text-lg";
 
+  const iconSize =
+    size === "lg" ? "h-9 w-9" : size === "sm" ? "h-5 w-5" : "h-7 w-7";
+
   return (
     <div
       className={cn(
@@ -50,7 +54,7 @@ export default function GatewayLogo({ slug, name, className, size = "md" }: Prop
       ) : slug === "thawani" ? (
         <span className="text-2xl">ث</span>
       ) : slug === "bank_transfer" ? (
-        <span className="text-lg">🏦</span>
+        <Landmark className={iconSize} aria-hidden />
       ) : (
         brand.abbr
       )}

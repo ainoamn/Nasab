@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { personMatchesQuery } from "@/lib/personDisplay";
 import { relationToFocus } from "@/lib/relationshipLabel";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -168,6 +170,13 @@ export default function ChartPersonSearch({
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1 truncate font-medium">
                       {p.givenName}
+                      {isTwin(p, people) ? (
+                        <TwinBadge
+                          compact
+                          order={twinOrderInGroup(p, people)}
+                          total={twinGroupSize(p, people)}
+                        />
+                      ) : null}
                       {badge === "home" && (
                         <House className="h-3 w-3 shrink-0 text-emerald-600" />
                       )}

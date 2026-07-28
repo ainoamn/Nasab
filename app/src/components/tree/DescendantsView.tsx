@@ -7,6 +7,7 @@ import { relationToFocus } from "@/lib/relationshipLabel";
 import { MhPersonPill } from "@/components/tree/MhPersonPill";
 import { cn } from "@/lib/utils";
 import { comparePeopleByBirth } from "@/lib/birthOrder";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 
 type Props = {
   people: Person[];
@@ -150,6 +151,21 @@ export default function DescendantsView({
                           selected={
                             cell.person != null &&
                             selectedPersonId === cell.person.id
+                          }
+                          twin={
+                            cell.person != null
+                              ? isTwin(cell.person, people)
+                              : false
+                          }
+                          twinOrder={
+                            cell.person
+                              ? twinOrderInGroup(cell.person, people)
+                              : null
+                          }
+                          twinTotal={
+                            cell.person
+                              ? twinGroupSize(cell.person, people)
+                              : null
                           }
                           placeholder={t("chart.addChild")}
                           relationLabel={

@@ -94,39 +94,45 @@ const headersOk =
   String(health?.headers?.frame || "").toUpperCase() === "DENY";
 
 const liveBuild = health?.json?.build || diag?.build || null;
+const buildFingerprintOk =
+  typeof liveBuild === "string" && liveBuild.trim().length > 0;
 const originMain = await fetchOriginMainSha();
 const deployInSync = Boolean(liveBuild && originMain && liveBuild === originMain);
 
-  const pagesOk =
-    results.find((r) => r.path === "/")?.status === 200 &&
-    results.find((r) => r.path === "/login")?.status === 200 &&
-    results.find((r) => r.path === "/setup")?.status === 200;
-  const loginResponds = Boolean(login && login.status !== 0 && login.ms < 14000);
-  const smokeOk = healthOk && pagesOk && loginResponds && headersOk;
+const pagesOk =
+  results.find((r) => r.path === "/")?.status === 200 &&
+  results.find((r) => r.path === "/login")?.status === 200 &&
+  results.find((r) => r.path === "/setup")?.status === 200;
+const loginResponds = Boolean(login && login.status !== 0 && login.ms < 14000);
+const smokeOk =
+  healthOk && pagesOk && loginResponds && headersOk && buildFingerprintOk;
 
-  console.log("\nVERDICT");
-  console.log({
-    base,
-    healthOk,
-    liveBuild,
-    originMain,
-    deployInSync,
-    dbConfigured: Boolean(diag?.dbConfigured),
-    hasAppSecret: Boolean(diag?.hasAppSecret),
-    sidecar: Boolean(diag?.sidecar),
-    loginResponds,
-    loginStatus: login?.status,
-    loginError: login?.json?.error,
-    setupOk: results.find((r) => r.path === "/setup")?.status === 200,
-    homeOk: results.find((r) => r.path === "/")?.status === 200,
-    loginPageOk: results.find((r) => r.path === "/login")?.status === 200,
-    securityHeadersOk: headersOk,
-    smokeOk,
-    nextStep: !deployInSync
+console.log("\nVERDICT");
+console.log({
+  base,
+  healthOk,
+  liveBuild,
+  buildFingerprintOk,
+  originMain,
+  deployInSync,
+  dbConfigured: Boolean(diag?.dbConfigured),
+  hasAppSecret: Boolean(diag?.hasAppSecret),
+  sidecar: Boolean(diag?.sidecar),
+  loginResponds,
+  loginStatus: login?.status,
+  loginError: login?.json?.error,
+  setupOk: results.find((r) => r.path === "/setup")?.status === 200,
+  homeOk: results.find((r) => r.path === "/")?.status === 200,
+  loginPageOk: results.find((r) => r.path === "/login")?.status === 200,
+  securityHeadersOk: headersOk,
+  smokeOk,
+  nextStep: !buildFingerprintOk
+    ? "Health/diag missing build fingerprint — Redeploy with Root Directory = app"
+    : !deployInSync
       ? "Live SHA behind GitHub main → Vercel Deployments → Redeploy (Root Directory = app)"
       : diag?.dbConfigured
         ? "Try /login with admin credentials"
         : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",
-  });
+});
 
-  process.exit(smokeOk ? 0 : 1);
+process.exit(smokeOk ? 0 : 1);

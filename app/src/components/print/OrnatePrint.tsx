@@ -32,6 +32,7 @@ function IslamicBorder({ accent }: { accent: string }) {
           key={pos}
           className={`pointer-events-none absolute ${pos} text-2xl opacity-60`}
           style={{ color: accent }}
+          aria-hidden
         >
           ✦
         </span>

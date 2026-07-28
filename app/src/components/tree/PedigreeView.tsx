@@ -6,6 +6,7 @@ import { useLabels } from "@/lib/labels";
 import { relationToFocus } from "@/lib/relationshipLabel";
 import { MhPersonPill } from "@/components/tree/MhPersonPill";
 import { cn } from "@/lib/utils";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 
 type Props = {
   people: Person[];
@@ -167,6 +168,21 @@ export default function PedigreeView({
                         years={years || null}
                         selected={
                           cell.person != null && selectedPersonId === cell.person.id
+                        }
+                        twin={
+                          cell.person != null
+                            ? isTwin(cell.person, people)
+                            : false
+                        }
+                        twinOrder={
+                          cell.person
+                            ? twinOrderInGroup(cell.person, people)
+                            : null
+                        }
+                        twinTotal={
+                          cell.person
+                            ? twinGroupSize(cell.person, people)
+                            : null
                         }
                         placeholder={
                           cell.slot === "father"

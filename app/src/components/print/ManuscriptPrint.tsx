@@ -108,7 +108,8 @@ export default function ManuscriptPrint(props: PrintTemplateProps) {
           className="text-center font-display text-sm mb-4 tracking-widest"
           style={{ color: accent }}
         >
-          ✦ {t("printPage.basmala")} ✦
+          <span aria-hidden>✦</span> {t("printPage.basmala")}{" "}
+          <span aria-hidden>✦</span>
         </p>
         <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
           {elders.map((p) => (

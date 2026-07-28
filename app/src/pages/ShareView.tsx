@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import FamilyChart from "@/components/tree/FamilyChart";
 import PedigreeView from "@/components/tree/PedigreeView";
 import FanChartView from "@/components/tree/FanChartView";
@@ -137,6 +138,7 @@ export default function ShareView() {
     "family" | "pedigree" | "fan" | "descendants"
   >("family");
   const { t } = useTranslation();
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
   const L = useLabels();
 
   const query = trpc.person.listPublic.useQuery(
@@ -589,6 +591,33 @@ export default function ShareView() {
           </div>
         </div>
       </header>
+
+      {dbConfigured === false || buildBehind ? (
+        <div
+          className="border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-950 dark:text-amber-100"
+          role="status"
+        >
+          <div className="mx-auto max-w-7xl">
+            {dbConfigured === false ? (
+              <p>{t("share.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("share.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("share.openSetup")}
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-6 text-center">

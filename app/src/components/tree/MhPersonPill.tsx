@@ -7,6 +7,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Button } from "@/components/ui/button";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   person: Person | null;
@@ -22,6 +23,9 @@ type Props = {
   onHowRelated?: () => void;
   /** عدد نواقص البحث — نقطة كهرمانية */
   researchCount?: number;
+  twin?: boolean;
+  twinOrder?: number | null;
+  twinTotal?: number | null;
 };
 
 /** كبسولة أفقية بأسلوب مخطط الأسلاف (MyHeritage pedigree) */
@@ -37,6 +41,9 @@ export function MhPersonPill({
   onFocus,
   onHowRelated,
   researchCount = 0,
+  twin = false,
+  twinOrder = null,
+  twinTotal = null,
 }: Props) {
   const { t } = useTranslation();
 
@@ -76,6 +83,7 @@ export function MhPersonPill({
         female
           ? "border-pink-200 bg-[#fce8f1]"
           : "border-sky-200 bg-[#e3f0fb]",
+        twin && "ring-2 ring-violet-400",
         selected && "ring-2 ring-sky-500 ring-offset-1",
         className,
       )}
@@ -86,10 +94,15 @@ export function MhPersonPill({
           title={t("chart.researchDot", { count: researchCount })}
         />
       )}
+      {twin ? (
+        <span className="absolute -start-0.5 -top-0.5 z-[1]">
+          <TwinBadge compact order={twinOrder} total={twinTotal} />
+        </span>
+      ) : null}
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white ring-2",
-          female ? "ring-pink-300" : "ring-sky-300",
+          twin ? "ring-violet-400" : female ? "ring-pink-300" : "ring-sky-300",
         )}
       >
         {person.photoUrl ? (
@@ -143,7 +156,12 @@ export function MhPersonPill({
             )}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{person.givenName}</p>
+            <p className="flex items-center gap-1 truncate text-sm font-semibold">
+              {person.givenName}
+              {twin ? (
+                <TwinBadge compact order={twinOrder} total={twinTotal} />
+              ) : null}
+            </p>
             {years && (
               <p className="text-[11px] text-muted-foreground">{years}</p>
             )}

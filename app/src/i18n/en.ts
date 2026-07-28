@@ -751,6 +751,10 @@ export const en = {
     forbiddenBody: "It is either private or the link is incorrect",
     backToTrees: "Back to my trees",
     pausedBanner: "This tree is paused — view only. Activate it from the dashboard to edit.",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
     cols: {
       name: "Name",
       relation: "Relation",
@@ -1156,6 +1160,10 @@ export const en = {
     downloadWorking: "Preparing file…",
     downloadDone: "Downloaded — open the file and print when ready",
     downloadFailed: "Download failed — try again",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
     previewTemplate: "Preview template & print",
     clanHint: "The clan layout shows the hierarchy — tribe ← batn ← fakhdh via each person's lineage fields",
     treeOf: "{{name}} Family Tree",
@@ -1314,6 +1322,10 @@ export const en = {
     qrDownloaded: "QR code downloaded",
     completenessHint: "Transparent completeness of visible public data",
     pickPersonForChart: "Pick a person to show this chart view",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
   },
   settings: {
     title: "Tree settings",
