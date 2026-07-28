@@ -1,13 +1,31 @@
 /**
- * Vercel serverless entry — bundled to .vercel/output/functions/api.func
+ * Vercel Node.js serverless entry (Build Output API).
+ * Exports a Node (IncomingMessage, ServerResponse) listener.
  */
-import { handle } from "hono/vercel";
+import { getRequestListener } from "@hono/node-server";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import app from "./boot";
 
-const handler = handle(app);
-export default handler;
+const listener = getRequestListener(app.fetch);
 
-void import("./seedDefaults")
-  .then((m) => m.ensurePlatformDefaults())
-  .then(() => console.log("[nasab] platform defaults ready"))
-  .catch((err) => console.error("[nasab] seed failed:", err));
+let seeded = false;
+function seedInBackground() {
+  if (seeded) return;
+  const url = process.env.DATABASE_URL ?? "";
+  if (!url || url.startsWith("file:")) return;
+  seeded = true;
+  void import("./seedDefaults")
+    .then((m) => m.ensurePlatformDefaults())
+    .then(() => console.log("[nasab] platform defaults ready"))
+    .catch((err) => {
+      seeded = false;
+      console.error("[nasab] seed failed:", err);
+    });
+}
+
+function nasabHandler(req: IncomingMessage, res: ServerResponse) {
+  seedInBackground();
+  return listener(req, res);
+}
+
+export default nasabHandler;

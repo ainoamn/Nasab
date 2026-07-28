@@ -80,7 +80,7 @@ writeFileSync(
 
 appendFileSync(
   funcOut,
-  `\nmodule.exports = typeof vercel_default !== "undefined" ? vercel_default : module.exports.default;\n`,
+  `\nmodule.exports = typeof nasabHandler !== "undefined" ? nasabHandler : (typeof vercel_default !== "undefined" ? vercel_default : module.exports.default);\n`,
 );
 
 writeFileSync(
@@ -90,6 +90,7 @@ writeFileSync(
       runtime: "nodejs20.x",
       handler: "index.js",
       launcherType: "Nodejs",
+      shouldAddHelpers: true,
       maxDuration: 30,
       memory: 1024,
     },

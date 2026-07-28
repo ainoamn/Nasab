@@ -4,7 +4,18 @@
 
 ---
 
-## 2026-07-28 — مشرف البريد + إصلاح Vercel API
+## 2026-07-28 — إصلاح 504 للـ API على Vercel
+
+### الإصلاح
+- استبدال `hono/vercel` بـ `getRequestListener` من `@hono/node-server` (متوافق مع Node launcher).
+- تفعيل `shouldAddHelpers` في `.vc-config.json`.
+- تأجيل بذر المنصة إلى خلفية أول طلب بدل التحميل عند الاستيراد (يمنع التعليق).
+- التحقق المحلي: `GET /api/health` → 200.
+
+### حالة الأدمن
+- `admin@bhd.om` / `Admin@1234` موجود في Neon كـ `role=admin`.
+
+---
 
 ### الجديد / الإصلاح
 - دخول مشرف ثابت: **admin@bhd.om** / **Admin@1234** (`PASSWORD_LOGIN_*` + `OWNER_UNION_ID=password:admin@bhd.om`).
