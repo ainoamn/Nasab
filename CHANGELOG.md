@@ -25,11 +25,12 @@
 ### الإصلاح
 - إعادة خط الأساس الصحي لـ `/api/health` بعد انهيارات بسبب استيراد السائق عند التحميل.
 - بناء `db-pg.cjs` بجانب الدالة وتحميله فقط داخل `getDb()` عند الحاجة.
+- الـ sidecar يستخدم **Neon HTTP** (`@neondatabase/serverless`) لتفادي تعليق TCP من serverless.
 - مهلة واضحة لتسجيل الدخول إن لم تستجب قاعدة البيانات.
 
 ### تحقق
-- محلياً (حزمة Vercel): health 200 + loginLocal 200.
-- حي: بعد النشر يجب أن يبقى health 200 وأن يعمل الدخول إن وُجد `DATABASE_URL` على Vercel.
+- محلياً (حزمة Vercel): health 200 + loginLocal 200 عبر Neon HTTP.
+- حي: بعد النشر يبقى health 200؛ الدخول يحتاج `DATABASE_URL` على Vercel.
 
 ---
 

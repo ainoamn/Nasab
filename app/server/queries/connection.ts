@@ -60,7 +60,9 @@ export function getDb(): AppDb {
       // Keep this require dynamic so cold start never evaluates postgres.js.
       try {
         if (process.env.VERCEL || process.env.NASAB_SERVERLESS === "1") {
-          const { createPg } = require("./db-pg.cjs") as {
+          // Resolve beside the Vercel handler (cwd = api.func on Build Output).
+          const sidecar = path.join(process.cwd(), "db-pg.cjs");
+          const { createPg } = require(sidecar) as {
             createPg: (
               u: string,
               s: Record<string, unknown>,
@@ -71,7 +73,14 @@ export function getDb(): AppDb {
         } else {
           throw new Error("use-local-postgres");
         }
-      } catch {
+      } catch (err) {
+        if (process.env.VERCEL || process.env.NASAB_SERVERLESS === "1") {
+          console.error(
+            "[nasab] db-pg sidecar failed:",
+            err instanceof Error ? err.message : err,
+          );
+          throw err;
+        }
         const postgres = require("postgres") as typeof import("postgres");
         const { drizzle } =
           require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");
