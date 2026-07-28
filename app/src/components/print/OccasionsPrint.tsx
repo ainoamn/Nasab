@@ -14,25 +14,22 @@ type Occasion = "wedding" | "newborn" | "eid";
 
 const OCCASION_STYLES: Record<
   Occasion,
-  { icon: typeof Heart; gradient: string; border: string; emoji: string }
+  { icon: typeof Heart; gradient: string; border: string }
 > = {
   wedding: {
     icon: Heart,
     gradient: "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%)",
     border: "#9d174d",
-    emoji: "💍",
   },
   newborn: {
     icon: Baby,
     gradient: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%)",
     border: "#2563eb",
-    emoji: "👶",
   },
   eid: {
     icon: Sparkles,
     gradient: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%)",
     border: "#0F5132",
-    emoji: "🌙",
   },
 };
 
@@ -79,8 +76,11 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
         style={{ borderColor: style.border, background: style.gradient }}
       >
         <div className="text-center mb-6">
-          <span className="text-5xl">{style.emoji}</span>
-          <Icon className="mx-auto mt-2 h-8 w-8" style={{ color: style.border }} />
+          <Icon
+            className="mx-auto h-12 w-12"
+            style={{ color: style.border }}
+            aria-hidden
+          />
           <p className="mt-2 font-display text-lg font-bold" style={{ color: style.border }}>
             {t(`printPage.occasion.${occasion}Title`)}
           </p>

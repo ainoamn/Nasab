@@ -210,6 +210,14 @@ export const ar = {
     errorDesc: "تواصل مع الدعم إذا تم خصم المبلغ من حسابك",
     noInvoice: "لم يُعثر على الفاتورة",
     plan: "الخطة",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
+  },
+  errorBoundary: {
+    title: "حدث خطأ في تحميل الصفحة",
+    reload: "إعادة تحميل الصفحة",
   },
   ranks: {
     inFamily: "ترتيبه في العائلة {{n}}",
@@ -847,8 +855,8 @@ export const ar = {
     icsMemorialTitle: "ذكرى {{name}}",
     icsDescription: "من شجرة نَسَب — {{url}}",
     icsDownloaded: "تم تنزيل ملف التقويم",
-    greetingBirthday: "كل عام وأنت بخير يا {{name}} 🎂",
-    greetingAnniversary: "كل عام وأنتما بخير — ذكرى زواج سعيدة 💍",
+    greetingBirthday: "كل عام وأنت بخير يا {{name}}",
+    greetingAnniversary: "كل عام وأنتما بخير — ذكرى زواج سعيدة",
     greetingMemorial: "في ذكرى {{name}} — رحمهم الله",
     greetingCopied: "نُسخت التهنئة مع الرابط",
     whatsAppOpened: "فُتح واتساب بالنص",
@@ -1113,6 +1121,10 @@ export const ar = {
     transferred: "نُقلت الملكية",
     transferTitle: "نقل الملكية إليه",
     roleLabel: "دور: {{role}}",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
   },
   invite: {
     invalidTitle: "الدعوة غير صالحة",
@@ -1125,6 +1137,10 @@ export const ar = {
     joined: "انضممت للشجرة — أهلاً بك في العائلة",
     loginFirst: "سجّل دخولك أولاً ثم عد لهذا الرابط",
     login: "تسجيل الدخول",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
   },
   printPage: {
     back: "العودة للشجرة",

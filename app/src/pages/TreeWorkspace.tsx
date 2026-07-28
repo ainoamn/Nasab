@@ -17,6 +17,8 @@ import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
 import TwinFamilyPanel from "@/components/tree/TwinFamilyPanel";
+import TwinBadge from "@/components/tree/TwinBadge";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 import PersonShareQrDialog from "@/components/tree/PersonShareQrDialog";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
@@ -2302,22 +2304,33 @@ export default function TreeWorkspace() {
                           <TableRow key={p.id} className="cursor-pointer" onClick={() => setDetailPerson(p)}>
                             <TableCell className="font-bold">
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <span
-                                  className={`flex h-9 w-9 shrink-0 overflow-hidden rounded-full ring-2 ${
-                                    p.gender === "female" ? "ring-pink-300 bg-pink-100" : "ring-sky-300 bg-sky-100"
-                                  }`}
-                                >
-                                  {p.photoUrl ? (
-                                    <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    <span
-                                      className={`flex h-full w-full items-center justify-center text-white text-xs ${
-                                        p.gender === "female" ? "bg-pink-500" : "bg-sky-600"
-                                      }`}
-                                    >
-                                      {p.givenName.slice(0, 1)}
+                                <span className="relative shrink-0">
+                                  <span
+                                    className={`flex h-9 w-9 overflow-hidden rounded-full ring-2 ${
+                                      p.gender === "female" ? "ring-pink-300 bg-pink-100" : "ring-sky-300 bg-sky-100"
+                                    } ${isTwin(p, people) ? "ring-violet-400" : ""}`}
+                                  >
+                                    {p.photoUrl ? (
+                                      <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <span
+                                        className={`flex h-full w-full items-center justify-center text-white text-xs ${
+                                          p.gender === "female" ? "bg-pink-500" : "bg-sky-600"
+                                        }`}
+                                      >
+                                        {p.givenName.slice(0, 1)}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {isTwin(p, people) ? (
+                                    <span className="absolute -top-1 -start-1 z-[1]">
+                                      <TwinBadge
+                                        compact
+                                        order={twinOrderInGroup(p, people)}
+                                        total={twinGroupSize(p, people)}
+                                      />
                                     </span>
-                                  )}
+                                  ) : null}
                                 </span>
                                 <span className="min-w-0">
                                   <span className="block truncate">{p.givenName}</span>

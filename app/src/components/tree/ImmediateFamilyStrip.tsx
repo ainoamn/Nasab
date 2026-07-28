@@ -6,6 +6,8 @@ import {
   formatAgeOrLifespan,
   formatSiblingLabel,
 } from "@/lib/birthOrder";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { cn } from "@/lib/utils";
 
 type Member = {
@@ -25,11 +27,17 @@ function AvatarChip({
   person,
   roleLabel,
   meta,
+  twin,
+  twinOrder,
+  twinTotal,
   onClick,
 }: {
   person: Person;
   roleLabel: string;
   meta?: string | null;
+  twin?: boolean;
+  twinOrder?: number | null;
+  twinTotal?: number | null;
   onClick: () => void;
 }) {
   const female = person.gender === "female";
@@ -40,9 +48,17 @@ function AvatarChip({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-[4.75rem] shrink-0 flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-white/80"
+      className={cn(
+        "group relative flex w-[4.75rem] shrink-0 flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-white/80",
+        twin && "ring-2 ring-violet-400 bg-violet-50/80",
+      )}
       title={title}
     >
+      {twin ? (
+        <span className="absolute -top-0.5 start-0.5 z-[2]">
+          <TwinBadge compact order={twinOrder} total={twinTotal} />
+        </span>
+      ) : null}
       <span
         className={cn(
           "flex h-12 w-12 overflow-hidden rounded-full bg-white ring-2 shadow-sm transition group-hover:scale-105",
@@ -150,15 +166,21 @@ export default function ImmediateFamilyStrip({
     <div className={cn("space-y-2", className)}>
       <p className="text-sm font-semibold">{t("detail.immediateFamily")}</p>
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
-        {members.map((m) => (
-          <AvatarChip
-            key={`${m.role}-${m.person.id}`}
-            person={m.person}
-            roleLabel={roleKey(m.role)}
-            meta={metaById.get(m.person.id)}
-            onClick={() => onSelect(m.person)}
-          />
-        ))}
+        {members.map((m) => {
+          const twin = people ? isTwin(m.person, people) : isTwin(m.person);
+          return (
+            <AvatarChip
+              key={`${m.role}-${m.person.id}`}
+              person={m.person}
+              roleLabel={roleKey(m.role)}
+              meta={metaById.get(m.person.id)}
+              twin={twin}
+              twinOrder={people ? twinOrderInGroup(m.person, people) : null}
+              twinTotal={people ? twinGroupSize(m.person, people) : null}
+              onClick={() => onSelect(m.person)}
+            />
+          );
+        })}
       </div>
     </div>
   );

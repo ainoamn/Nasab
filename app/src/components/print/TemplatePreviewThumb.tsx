@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { ChevronDown, Heart, Sparkle } from "lucide-react";
 import type { PrintTemplateId } from "./types";
 
 export function TemplatePreviewThumb({
@@ -132,15 +133,15 @@ export function TemplatePreviewThumb({
       {id === "clan" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-[8px] font-bold" style={{ color: accent }}>
           <span className="px-3 py-0.5 border rounded" style={{ borderColor: accent }}>{t("printPage.clanTribe")}</span>
-          <span>↓</span>
+          <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
           <span className="px-4 py-0.5 border rounded" style={{ borderColor: accent }}>{t("printPage.clanBatn")}</span>
-          <span>↓</span>
+          <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
           <span className="px-5 py-0.5 border rounded" style={{ borderColor: accent }}>{t("printPage.clanFamily")}</span>
         </div>
       )}
       {id === "occasions" && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: `${accent}15` }}>
-          <span className="text-3xl">💍</span>
+          <Heart className="h-10 w-10" style={{ color: accent }} aria-hidden />
         </div>
       )}
       {id === "ornate" && (
@@ -148,7 +149,7 @@ export function TemplatePreviewThumb({
           className="absolute inset-2 border-4 border-double rounded-lg flex items-center justify-center"
           style={{ borderColor: accent }}
         >
-          <span className="text-xl opacity-60" style={{ color: accent }}>✦</span>
+          <Sparkle className="h-6 w-6 opacity-60" style={{ color: accent }} aria-hidden />
         </div>
       )}
       {id === "fan" && (

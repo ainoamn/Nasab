@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ function formatOmr(amount: number, currencyLabel: string) {
 export default function CheckoutSuccess() {
   const { t } = useTranslation();
   const omr = t("common.currencyOmr");
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
   const [params] = useSearchParams();
   const invoiceNumber = params.get("invoice") ?? "";
   const statusParam = params.get("status") ?? "pending";
@@ -51,7 +53,31 @@ export default function CheckoutSuccess() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4">
+      <main className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="w-full max-w-lg rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("checkoutSuccess.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("checkoutSuccess.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("checkoutSuccess.openSetup")}
+            </Link>
+          </div>
+        ) : null}
         <Card className="w-full max-w-lg">
           <CardHeader className="text-center pb-2">
             {isError ? (

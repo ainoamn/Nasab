@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import AppHeader from "@/components/AppHeader";
@@ -49,6 +50,7 @@ export default function TreeMembers() {
   const utils = trpc.useUtils();
   const { t } = useTranslation();
   const L = useLabels();
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
 
   const [inviteRole, setInviteRole] = useState<InviteRole>("editor");
   const [expiresDays, setExpiresDays] = useState("30");
@@ -135,6 +137,31 @@ export default function TreeMembers() {
             <p className="text-sm text-muted-foreground">{t("members.subtitle")}</p>
           </div>
         </div>
+
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("members.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("members.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("members.openSetup")}
+            </Link>
+          </div>
+        ) : null}
 
         {/* إنشاء دعوة */}
         {canAdmin && (

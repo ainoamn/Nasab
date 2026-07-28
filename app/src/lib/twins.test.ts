@@ -10,8 +10,13 @@ import {
   twinMarkLabel,
   twinMarkWord,
   isTwin,
+  twinGroupSize,
+  getTwinGroupMembers,
+  isFullSibling,
+  twinCandidateSiblings,
+  fullSiblingsOf,
 } from "@/lib/twins";
-import type { Person } from "@db/tables";
+import type { Person, Relationship } from "@db/tables";
 
 function person(
   partial: Partial<Person> & { id: number; givenName: string },
@@ -43,6 +48,17 @@ function person(
     deletedAt: null,
     ...partial,
   } as Person;
+}
+
+function parentRel(from: number, to: number): Relationship {
+  return {
+    id: from * 1000 + to,
+    treeId: 1,
+    fromPersonId: from,
+    toPersonId: to,
+    type: "parent",
+    createdAt: new Date(),
+  } as Relationship;
 }
 
 describe("comparePeopleByBirth", () => {
@@ -129,6 +145,67 @@ describe("twins", () => {
     expect(
       formatSiblingLabel(twinA, people, { amongSiblings: 1, siblingsTotal: 2 }, "توأم"),
     ).toBe("توأم 1/2");
+  });
+
+  it("treats singleton twinGroupId as not a twin", () => {
+    const alone = person({ id: 9, givenName: "وحيد", twinGroupId: 99 });
+    expect(isTwin(alone, [alone])).toBe(false);
+    expect(twinGroupSize(alone, [alone])).toBe(1);
+    expect(twinOrderInGroup(alone, [alone])).toBeNull();
+    expect(getTwinGroupMembers(alone, [alone])).toEqual([]);
+  });
+
+  it("returns null twin helpers without twinGroupId", () => {
+    const solo = person({ id: 5, givenName: "فرد" });
+    expect(isTwin(solo, [solo])).toBe(false);
+    expect(twinGroupSize(solo, [solo])).toBe(0);
+    expect(getTwinGroupMembers(solo, people)).toEqual([]);
+  });
+
+  it("lists other members of the twin group", () => {
+    expect(getTwinGroupMembers(twinA, people).map((p) => p.id)).toEqual([2]);
+  });
+});
+
+describe("full siblings and twin candidates", () => {
+  const father = person({ id: 10, givenName: "أب" });
+  const mother = person({ id: 11, givenName: "أم", gender: "female" });
+  const a = person({ id: 1, givenName: "أحمد", birthYear: 2000 });
+  const b = person({ id: 2, givenName: "خالد", birthYear: 2002 });
+  const half = person({ id: 3, givenName: "نصف", birthYear: 2001 });
+  const people = [father, mother, a, b, half];
+  const fullRels = [
+    parentRel(10, 1),
+    parentRel(11, 1),
+    parentRel(10, 2),
+    parentRel(11, 2),
+    parentRel(10, 3),
+  ];
+  const byId = new Map(people.map((p) => [p.id, p]));
+
+  it("requires both parents for full siblings", () => {
+    expect(isFullSibling(1, 2, fullRels, byId)).toBe(true);
+    expect(isFullSibling(1, 3, fullRels, byId)).toBe(false);
+    expect(isFullSibling(1, 1, fullRels, byId)).toBe(false);
+  });
+
+  it("lists full siblings sorted by birth", () => {
+    expect(fullSiblingsOf(a, fullRels, people).map((p) => p.id)).toEqual([2]);
+  });
+
+  it("excludes existing twin-group mates from candidates", () => {
+    const twinA = { ...a, twinGroupId: 7 };
+    const twinB = { ...b, twinGroupId: 7 };
+    const crowd = [father, mother, twinA, twinB, half];
+    expect(
+      twinCandidateSiblings(twinA, [], fullRels, crowd).map((p) => p.id),
+    ).toEqual([]);
+  });
+
+  it("returns full-sibling candidates when parents are complete", () => {
+    expect(
+      twinCandidateSiblings(a, [], fullRels, people).map((p) => p.id),
+    ).toEqual([2]);
   });
 });
 

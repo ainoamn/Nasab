@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { ar } from "@/i18n/ar";
+import { en } from "@/i18n/en";
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -21,14 +23,15 @@ export default class AppErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      const ar = isArabicUi();
+      const arUi = isArabicUi();
+      const copy = arUi ? ar.errorBoundary : en.errorBoundary;
       return (
         <div
-          dir={ar ? "rtl" : "ltr"}
+          dir={arUi ? "rtl" : "ltr"}
           className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 bg-background text-foreground"
         >
           <h1 className="font-display text-2xl font-bold text-destructive">
-            {ar ? "حدث خطأ في تحميل الصفحة" : "Something went wrong loading the page"}
+            {copy.title}
           </h1>
           <p className="text-sm text-muted-foreground text-center max-w-lg">
             {this.state.error.message}
@@ -38,7 +41,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
             className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
             onClick={() => window.location.reload()}
           >
-            {ar ? "إعادة تحميل الصفحة" : "Reload page"}
+            {copy.reload}
           </button>
         </div>
       );

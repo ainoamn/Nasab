@@ -210,6 +210,14 @@ export const en = {
     errorDesc: "Contact support if you were charged",
     noInvoice: "Invoice not found",
     plan: "Plan",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
+  },
+  errorBoundary: {
+    title: "Something went wrong loading the page",
+    reload: "Reload page",
   },
   ranks: {
     inFamily: "Family rank {{n}}",
@@ -854,8 +862,8 @@ export const en = {
     icsMemorialTitle: "In memory of {{name}}",
     icsDescription: "From Nasab — {{url}}",
     icsDownloaded: "Calendar file downloaded",
-    greetingBirthday: "Happy birthday, {{name}}! 🎂",
-    greetingAnniversary: "Happy anniversary! 💍",
+    greetingBirthday: "Happy birthday, {{name}}!",
+    greetingAnniversary: "Happy anniversary!",
     greetingMemorial: "In loving memory of {{name}}",
     greetingCopied: "Greeting copied with link",
     whatsAppOpened: "WhatsApp opened with the text",
@@ -1115,6 +1123,10 @@ export const en = {
     transferred: "Ownership transferred",
     transferTitle: "Transfer ownership to them",
     roleLabel: "Role: {{role}}",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
   },
   invite: {
     invalidTitle: "Invalid invitation",
@@ -1127,6 +1139,10 @@ export const en = {
     joined: "You joined the tree — welcome to the family",
     loginFirst: "Sign in first, then return to this link",
     login: "Sign in",
+    dbNotConfigured:
+      "Database is not configured on the server. Add DATABASE_URL in Vercel, then redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup page",
   },
   printPage: {
     back: "Back to the tree",

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 import {
   buildPalmTreeLayout,
   formatPalmCouple,
@@ -71,8 +72,9 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
                   {formatPalmCouple(f.father, f.mother, people, twinWord)}
                 </span>
                 {f.children.length > 0 && (
-                  <span className="text-stone-500 text-xs">
-                    ← {f.children.map((c) => personDisplayNameWithTwin(c, people, twinWord)).join(" · ")}
+                  <span className="inline-flex items-center gap-1 text-stone-500 text-xs">
+                    <ArrowLeft className="h-3 w-3 rtl:rotate-180" aria-hidden />
+                    {f.children.map((c) => personDisplayNameWithTwin(c, people, twinWord)).join(" · ")}
                   </span>
                 )}
               </li>

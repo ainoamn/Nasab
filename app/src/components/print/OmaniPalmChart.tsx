@@ -1,6 +1,6 @@
 import type { PalmFrondBranch } from "@/lib/printData";
 import { formatPalmCouple, personDisplayNameWithTwin } from "@/lib/printData";
-import { twinMarkLabel } from "@/lib/twins";
+import { twinMarkLabel, twinMarkWord } from "@/lib/twins";
 import type { Person } from "@db/schema";
 import {
   PALM_CROWN,
@@ -28,7 +28,11 @@ type Props = {
   ariaLabel?: string;
 };
 
-function palmPersonLabel(person: Person, people: Person[], twinWord = "ت"): string {
+function palmPersonLabel(
+  person: Person,
+  people: Person[],
+  twinWord = twinMarkWord(),
+): string {
   const mark = twinMarkLabel(person, people, twinWord);
   return mark ? `${person.givenName} · ${mark}` : person.givenName;
 }
@@ -122,7 +126,7 @@ export default function OmaniPalmChart({
   founder,
   fronds,
   people,
-  twinWord = "ت",
+  twinWord = twinMarkWord(),
   trunkLabel,
   coupleLabel,
   leafLabel,

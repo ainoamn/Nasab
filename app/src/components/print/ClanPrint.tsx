@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronDown } from "lucide-react";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { buildClanHierarchy, personDisplayNameWithTwin } from "@/lib/printData";
 import { twinMarkWord } from "@/lib/twins";
@@ -60,7 +61,7 @@ function PyramidLevel({
           )}
         </div>
       </div>
-      <span className="my-2 text-amber-800/50 text-lg">↓</span>
+      <ChevronDown className="my-2 h-5 w-5 text-amber-800/50" aria-hidden />
     </div>
   );
 }

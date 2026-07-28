@@ -1,5 +1,6 @@
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import { useLabels } from "@/lib/labels";
@@ -17,6 +18,7 @@ export default function InviteAccept() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
   const L = useLabels();
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
 
   const infoQuery = trpc.member.inviteInfo.useQuery(
     { token: token ?? "" },
@@ -36,7 +38,31 @@ export default function InviteAccept() {
       <div className="flex justify-start p-4">
         <LanguageSwitcher variant="outline" />
       </div>
-      <div className="flex flex-1 items-center justify-center p-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="w-full max-w-md rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("invite.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("invite.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("invite.openSetup")}
+            </Link>
+          </div>
+        ) : null}
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
