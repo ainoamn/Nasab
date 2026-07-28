@@ -3,7 +3,15 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { findPersonGaps, type PersonGapKind } from "@/lib/personGaps";
 import { Button } from "@/components/ui/button";
-import { Camera, Calendar, UserRoundPlus, Heart, MessageCircle, Users2 } from "lucide-react";
+import {
+  Camera,
+  Calendar,
+  UserRoundPlus,
+  Heart,
+  MessageCircle,
+  Users2,
+  Eye,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -15,6 +23,9 @@ type Props = {
   onAddParent?: (role: "father" | "mother") => void;
   onAddSpouse?: () => void;
   onWhatsAppGaps?: () => void;
+  onOpenPerson?: (personId: number) => void;
+  onHighlightPair?: (aId: number, bId: number) => void;
+  onLinkTwin?: (personId: number, twinOfPersonId: number) => void;
   className?: string;
 };
 
@@ -36,6 +47,9 @@ export default function PersonGapsStrip({
   onAddParent,
   onAddSpouse,
   onWhatsAppGaps,
+  onOpenPerson,
+  onHighlightPair,
+  onLinkTwin,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -78,27 +92,68 @@ export default function PersonGapsStrip({
           const Icon = iconFor(g.kind);
           return (
             <li
-              key={g.kind}
+              key={`${g.kind}-${g.otherPersonId ?? ""}`}
               className="flex flex-wrap items-center gap-2 rounded-lg border border-sky-100 bg-white/80 px-2.5 py-1.5 text-sm"
             >
               <Icon className="h-3.5 w-3.5 shrink-0 text-sky-700" />
               <span className="min-w-0 flex-1 text-sky-950">
                 {t(`detail.gap.${g.kind}`)}
+                {g.otherPersonName ? (
+                  <span className="ms-1 text-muted-foreground">
+                    ({g.otherPersonName})
+                  </span>
+                ) : null}
               </span>
-              {canWrite &&
-                (g.kind === "noPhoto" ||
-                  g.kind === "noBirthYear" ||
-                  g.kind === "possibleTwin") &&
-                onEdit && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={onEdit}
-                >
-                  {t("common.edit")}
-                </Button>
+              {g.kind === "possibleTwin" && g.otherPersonId != null && (
+                <>
+                  {canWrite && onLinkTwin && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs border-violet-300 text-violet-900 hover:bg-violet-50"
+                      onClick={() => onLinkTwin(person.id, g.otherPersonId!)}
+                    >
+                      <Users2 className="h-3 w-3" />
+                      {t("tree.discoveryLinkTwin")}
+                    </Button>
+                  )}
+                  {onHighlightPair && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() =>
+                        onHighlightPair(person.id, g.otherPersonId!)
+                      }
+                    >
+                      <Eye className="h-3 w-3" />
+                      {t("tree.discoveryShowPath")}
+                    </Button>
+                  )}
+                  {onOpenPerson && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      onClick={() => onOpenPerson(g.otherPersonId!)}
+                    >
+                      {t("tree.discoveryOpenOther")}
+                    </Button>
+                  )}
+                </>
               )}
+              {canWrite &&
+                (g.kind === "noPhoto" || g.kind === "noBirthYear") &&
+                onEdit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={onEdit}
+                  >
+                    {t("common.edit")}
+                  </Button>
+                )}
               {canWrite && g.kind === "missingFather" && onAddParent && (
                 <Button
                   size="sm"

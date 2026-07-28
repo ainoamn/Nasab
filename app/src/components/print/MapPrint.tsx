@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { clusterByBirthPlace, personDisplayNameWithTwin } from "@/lib/printData";
+import { twinMarkWord } from "@/lib/twins";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
 
@@ -73,7 +74,8 @@ function GulfMapSvg() {
 
 export default function MapPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const clusters = useMemo(() => clusterByBirthPlace(people), [people]);
   const unknownCount = people.filter((p) => !p.birthPlace?.trim() && !p.deathPlace?.trim()).length;
@@ -153,7 +155,7 @@ export default function MapPrint(props: PrintTemplateProps) {
                   <span className="text-xs text-stone-500">{c.count}</span>
                 </div>
                 <p className="text-xs text-stone-600 line-clamp-2">
-                  {c.people.map((p) => personDisplayNameWithTwin(p, people)).join(" · ")}
+                  {c.people.map((p) => personDisplayNameWithTwin(p, people, twinWord)).join(" · ")}
                 </p>
               </div>
             ))

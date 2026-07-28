@@ -789,8 +789,14 @@ export default function FamilyChart({
   }, [people]);
 
   const printSpouseNotes = useMemo(
-    () => (printLevels ? buildSpouseNotesMap(people, rels) : null),
-    [printLevels, people, rels],
+    () =>
+      printLevels
+        ? buildSpouseNotesMap(people, rels, {
+            wife: t("printPage.spouseWife"),
+            husband: t("printPage.spouseHusband"),
+          })
+        : null,
+    [printLevels, people, rels, t],
   );
 
   return (

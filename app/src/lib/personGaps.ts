@@ -13,6 +13,8 @@ export type PersonGapKind =
 
 export type PersonGap = {
   kind: PersonGapKind;
+  otherPersonId?: number;
+  otherPersonName?: string;
 };
 
 export function sameBirthHint(a: Person, b: Person): boolean {
@@ -60,14 +62,20 @@ export function findPersonGaps(
   }
 
   if (person.twinGroupId == null && person.birthYear != null) {
-    const twinHint = people.some(
+    const twinPeer = people.find(
       (other) =>
         other.id !== person.id &&
         other.twinGroupId == null &&
         sameBirthHint(person, other) &&
         isFullSibling(person.id, other.id, rels, byId),
     );
-    if (twinHint) gaps.push({ kind: "possibleTwin" });
+    if (twinPeer) {
+      gaps.push({
+        kind: "possibleTwin",
+        otherPersonId: twinPeer.id,
+        otherPersonName: twinPeer.givenName,
+      });
+    }
   }
 
   return gaps;

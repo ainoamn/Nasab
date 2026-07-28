@@ -1192,6 +1192,8 @@ export const en = {
     sunPrintQualityHint:
       "For best quality: choose A3 landscape, enable Background graphics in the print dialog, match the paper size, then Save as PDF — the chart is auto-fitted to a single page",
     pedigreeListTitle: "Pedigree register — full names",
+    spouseWife: "wife",
+    spouseHusband: "husband",
     generationLabel: "Gen {{n}}",
     generationsCount: "Generations: {{count}}",
     classicTitle: "{{name}} Family Tree",

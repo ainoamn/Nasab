@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { buildClanHierarchy, personDisplayNameWithTwin } from "@/lib/printData";
+import { twinMarkWord } from "@/lib/twins";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
 
@@ -19,6 +20,7 @@ function PyramidLevel({
   allPeople,
   accent,
   widthPct,
+  twinWord,
 }: {
   label: string;
   kindLabel: string;
@@ -26,6 +28,7 @@ function PyramidLevel({
   allPeople: PrintTemplateProps["people"];
   accent: string;
   widthPct: number;
+  twinWord: string;
 }) {
   return (
     <div className="flex flex-col items-center w-full">
@@ -49,7 +52,7 @@ function PyramidLevel({
               className="text-[9px] sm:text-[10px] bg-white/80 border rounded-full px-2 py-0.5 font-display"
               style={{ borderColor: `${accent}44` }}
             >
-              {personDisplayNameWithTwin(p, allPeople)}
+              {personDisplayNameWithTwin(p, allPeople, twinWord)}
             </span>
           ))}
           {people.length > 12 && (
@@ -64,7 +67,8 @@ function PyramidLevel({
 
 export default function ClanPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const hierarchy = useMemo(() => buildClanHierarchy(tree, people), [tree, people]);
   const widths = [45, 58, 72, 88];
@@ -94,6 +98,7 @@ export default function ClanPrint(props: PrintTemplateProps) {
             allPeople={people}
             accent={accent}
             widthPct={widths[Math.min(i, widths.length - 1)] ?? 88}
+            twinWord={twinWord}
           />
         ))}
         <span className="text-xs text-stone-400 -mt-2">{t("printPage.clanHint")}</span>

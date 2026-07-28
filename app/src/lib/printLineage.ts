@@ -19,8 +19,18 @@ export function preferredParentId(
 }
 
 /** ملاحظة زوجية للعرض بجانب الاسم */
-export function spouseNoteLabel(spouse: Person): string {
-  const role = spouse.gender === "female" ? "زوجة" : "زوج";
+export type SpouseNoteLabels = { wife: string; husband: string };
+
+const DEFAULT_SPOUSE_LABELS: SpouseNoteLabels = {
+  wife: "زوجة",
+  husband: "زوج",
+};
+
+export function spouseNoteLabel(
+  spouse: Person,
+  labels: SpouseNoteLabels = DEFAULT_SPOUSE_LABELS,
+): string {
+  const role = spouse.gender === "female" ? labels.wife : labels.husband;
   return `${role} ${spouse.givenName}`;
 }
 
@@ -31,6 +41,7 @@ export function spouseNoteLabel(spouse: Person): string {
 export function buildSpouseNotesMap(
   people: Person[],
   rels: Relationship[],
+  labels: SpouseNoteLabels = DEFAULT_SPOUSE_LABELS,
 ): Map<number, string[]> {
   const byId = new Map(people.map((p) => [p.id, p]));
   const spousesOf = buildSpousesOf(rels);
@@ -39,7 +50,7 @@ export function buildSpouseNotesMap(
 
   const add = (personId: number, spouse: Person) => {
     if (!ids.has(spouse.id)) return;
-    const note = spouseNoteLabel(spouse);
+    const note = spouseNoteLabel(spouse, labels);
     const list = map.get(personId) ?? [];
     if (!list.includes(note)) list.push(note);
     map.set(personId, list);

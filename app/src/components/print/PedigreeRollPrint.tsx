@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   displayGenerationNumber,
-  fullNasabName,
   pedigreeColumns,
+  personDisplayNameWithTwin,
   sortPeopleByGeneration,
 } from "@/lib/printData";
 import { buildSpouseNotesMap } from "@/lib/printLineage";
-import { twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import { twinGroupSize, twinMarkWord, twinOrderInGroup } from "@/lib/twins";
 import { PrintPersonCard } from "./PrintPersonCard";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
@@ -22,7 +22,8 @@ function generationListLabel(
 
 export default function PedigreeRollPrint(props: PrintTemplateProps) {
   const { tree, people, rels, rootPersonId, levels, scopeSummary, accent, designName, today } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const columns = useMemo(() => pedigreeColumns(people, levels), [people, levels]);
   const sortedPeople = useMemo(
@@ -30,8 +31,12 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
     [people, levels],
   );
   const spouseNotes = useMemo(
-    () => buildSpouseNotesMap(people, rels),
-    [people, rels],
+    () =>
+      buildSpouseNotesMap(people, rels, {
+        wife: t("printPage.spouseWife"),
+        husband: t("printPage.spouseHusband"),
+      }),
+    [people, rels, t, i18n.language],
   );
 
   return (
@@ -68,7 +73,7 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
                 <span className="text-stone-400 text-xs me-2">
                   {generationListLabel(level, t)}
                 </span>
-                {fullNasabName(p, tree.tribe)}
+                {personDisplayNameWithTwin(p, people, twinWord)}
                 {(spouseNotes.get(p.id) ?? []).length > 0 && (
                   <span className="text-amber-800/80 text-xs ms-1">
                     ({(spouseNotes.get(p.id) ?? []).join(" · ")})

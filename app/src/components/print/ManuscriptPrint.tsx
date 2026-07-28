@@ -1,7 +1,8 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { buildAscendantChain, personDisplayName } from "@/lib/printData";
-import { twinGroupSize, twinMarkLabel, twinOrderInGroup } from "@/lib/twins";
+import { twinGroupSize, twinMarkLabel, twinMarkWord, twinOrderInGroup } from "@/lib/twins";
 import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
@@ -11,15 +12,17 @@ function GoldMedallion({
   person,
   people,
   sub,
+  twinWord,
 }: {
   person: Person;
   people: Person[];
   sub?: string | null;
+  twinWord: string;
 }) {
   const order = twinOrderInGroup(person, people);
   const total = twinGroupSize(person, people);
   const isTwin = order != null && total >= 2;
-  const mark = twinMarkLabel(person, people);
+  const mark = twinMarkLabel(person, people, twinWord);
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -57,6 +60,8 @@ function GoldMedallion({
 
 export default function ManuscriptPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
+  const { i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const elders = useMemo(() => {
     const chain = buildAscendantChain(rootPersonId, people, rels, 8);
@@ -112,6 +117,7 @@ export default function ManuscriptPrint(props: PrintTemplateProps) {
               person={p}
               people={people}
               sub={p.laqab ?? p.clan}
+              twinWord={twinWord}
             />
           ))}
         </div>

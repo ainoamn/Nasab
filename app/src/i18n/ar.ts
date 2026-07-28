@@ -1190,6 +1190,8 @@ export const ar = {
     sunPrintQualityHint:
       "للجودة العالية: اختر A3 أفقي، وفي حوار الطباعة فعّل «خلفيات الرسومات»، واختر نفس حجم الورقة، ثم «حفظ كـ PDF» — يُضغط المخطط تلقائياً في صفحة واحدة",
     pedigreeListTitle: "سجل السلالة — الأسماء الكاملة",
+    spouseWife: "زوجة",
+    spouseHusband: "زوج",
     generationLabel: "الجيل {{n}}",
     generationsCount: "الأجيال: {{count}}",
     classicTitle: "شجرة {{name}}",

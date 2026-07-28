@@ -486,8 +486,12 @@ export function personDisplayName(p: Person): string {
 }
 
 /** اسم العرض مع علامة توأم إن وُجدت (للطباعة المخصصة) */
-export function personDisplayNameWithTwin(p: Person, people: Person[]): string {
-  const mark = twinMarkLabel(p, people);
+export function personDisplayNameWithTwin(
+  p: Person,
+  people: Person[],
+  twinWord = "ت",
+): string {
+  const mark = twinMarkLabel(p, people, twinWord);
   const name = personDisplayName(p);
   return mark ? `${name} · ${mark}` : name;
 }
@@ -1370,10 +1374,11 @@ export function formatPalmCouple(
   father: Person | null,
   mother: Person | null,
   people: Person[] = [],
+  twinWord = "ت",
 ): string {
   const label = (p: Person) =>
     people.length > 0
-      ? personDisplayNameWithTwin(p, people)
+      ? personDisplayNameWithTwin(p, people, twinWord)
       : personDisplayName(p);
   const parts: string[] = [];
   if (father) parts.push(label(father));
@@ -1386,10 +1391,11 @@ export function formatPalmCoupleAll(
   head: Person,
   spouses: Person[],
   people: Person[] = [],
+  twinWord = "ت",
 ): string {
   const label = (p: Person) =>
     people.length > 0
-      ? personDisplayNameWithTwin(p, people)
+      ? personDisplayNameWithTwin(p, people, twinWord)
       : personDisplayName(p);
   const parts = [label(head), ...spouses.map(label)];
   return parts.join(" · ");

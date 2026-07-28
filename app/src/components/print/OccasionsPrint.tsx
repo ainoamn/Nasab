@@ -8,6 +8,7 @@ import { collectCloseFamily } from "@/lib/closeFamily";
 import { comparePeopleByBirth, formatBirthDate } from "@/lib/birthOrder";
 import { personDisplayNameWithTwin } from "@/lib/printData";
 import { relationToFocus } from "@/lib/relationshipLabel";
+import { twinMarkWord } from "@/lib/twins";
 
 type Occasion = "wedding" | "newborn" | "eid";
 
@@ -38,6 +39,7 @@ const OCCASION_STYLES: Record<
 export default function OccasionsPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
   const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
   const [occasion, setOccasion] = useState<Occasion>("wedding");
 
   const style = OCCASION_STYLES[occasion];
@@ -131,7 +133,7 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
                     </span>
                     <span className="min-w-0">
                       <span className={p.id === rootPersonId ? "font-bold" : undefined}>
-                        {personDisplayNameWithTwin(p, people)}
+                        {personDisplayNameWithTwin(p, people, twinWord)}
                       </span>
                       <span className="ms-1 text-[10px] font-normal text-stone-500">
                         (

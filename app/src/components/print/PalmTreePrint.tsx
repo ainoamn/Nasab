@@ -5,6 +5,7 @@ import {
   formatPalmCouple,
   personDisplayNameWithTwin,
 } from "@/lib/printData";
+import { twinMarkWord } from "@/lib/twins";
 import OmaniPalmChart from "./OmaniPalmChart";
 import { PALM_FROND_ARCS } from "./palmGeometry";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
@@ -12,7 +13,8 @@ import type { PrintTemplateProps } from "./types";
 
 export default function PalmTreePrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const layout = useMemo(
     () => buildPalmTreeLayout(people, rels, levels, rootPersonId),
@@ -43,6 +45,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
         founder={layout.founder}
         fronds={visibleFronds}
         people={people}
+        twinWord={twinWord}
         trunkLabel={t("printPage.palmTrunkShort")}
         coupleLabel={t("printPage.palmFrondShort")}
         leafLabel={t("printPage.palmLeafletsShort")}
@@ -64,11 +67,11 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
             {hiddenFronds.map((f, i) => (
               <li key={i} className="flex flex-wrap gap-x-2 border-b border-stone-100 py-1">
                 <span className="text-emerald-800 font-semibold">
-                  {formatPalmCouple(f.father, f.mother, people)}
+                  {formatPalmCouple(f.father, f.mother, people, twinWord)}
                 </span>
                 {f.children.length > 0 && (
                   <span className="text-stone-500 text-xs">
-                    ← {f.children.map((c) => personDisplayNameWithTwin(c, people)).join(" · ")}
+                    ← {f.children.map((c) => personDisplayNameWithTwin(c, people, twinWord)).join(" · ")}
                   </span>
                 )}
               </li>

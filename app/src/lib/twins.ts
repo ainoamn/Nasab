@@ -114,7 +114,7 @@ export function twinKindForGroup(
   return "identical";
 }
 
-/** تسمية مختصرة للشارة: ت١ / ت٢ */
+/** تسمية مختصرة للشارة: ت١ / ت٢ أو T1 / T2 */
 export function twinMarkLabel(
   person: Person,
   people: Person[],
@@ -124,4 +124,9 @@ export function twinMarkLabel(
   const size = twinGroupSize(person, people);
   if (!order || size < 2) return null;
   return `${twinWord}${order}`;
+}
+
+/** حرف علامة التوأم حسب لغة الواجهة */
+export function twinMarkWord(lang?: string | null): string {
+  return lang?.toLowerCase().startsWith("en") ? "T" : "ت";
 }

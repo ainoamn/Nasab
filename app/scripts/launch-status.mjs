@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Combined launch status: Neon verify + live prod smoke + deploy SHA sync.
+ * Combined launch status: Neon verify (advisory) + live prod smoke + deploy SHA sync.
  * Usage: node scripts/launch-status.mjs
+ * Neon local failure does not fail the process — production env is the gate.
  */
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -25,7 +26,7 @@ const deployOk = run("deploy:status");
 
 console.log("\n══ LAUNCH STATUS ══");
 console.log({
-  neonLocal: neonOk ? "ok" : "FAIL",
+  neonLocal: neonOk ? "ok" : "WARN (advisory — local Neon optional)",
   productionSmoke: smokeOk ? "ok" : "FAIL",
   deployInSync: deployOk ? "ok" : "BEHIND",
   next: !deployOk
@@ -33,4 +34,4 @@ console.log({
     : "If production dbConfigured=false → npm run vercel:print-env → paste into Vercel → Redeploy",
 });
 
-process.exit(neonOk && smokeOk ? 0 : 1);
+process.exit(smokeOk ? 0 : 1);

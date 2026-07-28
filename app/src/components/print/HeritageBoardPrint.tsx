@@ -5,6 +5,7 @@ import {
   buildAscendantChain,
   personDisplayNameWithTwin,
 } from "@/lib/printData";
+import { twinMarkWord } from "@/lib/twins";
 import { PrintMetaFooter, PrintStatsBar } from "./shared";
 import type { PrintTemplateProps } from "./types";
 
@@ -41,13 +42,14 @@ function HeritageFrame({ accent, children }: { accent: string; children: ReactNo
 
 export default function HeritageBoardPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const nasabChain = useMemo(() => {
     const root = people.find((p) => p.id === rootPersonId);
     if (!root) return tree.name;
     const chain = buildAscendantChain(root.id, people, rels, 6);
-    const names = chain.map((p) => personDisplayNameWithTwin(p, people));
+    const names = chain.map((p) => personDisplayNameWithTwin(p, people, twinWord));
     if (tree.tribe) names.push(tree.tribe);
     return names.join(" بن ");
   }, [rootPersonId, people, rels, tree]);

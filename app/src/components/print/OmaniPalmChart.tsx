@@ -18,6 +18,7 @@ type Props = {
   founder: Person | null;
   fronds: PalmFrondBranch[];
   people: Person[];
+  twinWord?: string;
   trunkLabel: string;
   coupleLabel: string;
   leafLabel: string;
@@ -26,8 +27,8 @@ type Props = {
   overflowNote: string;
 };
 
-function palmPersonLabel(person: Person, people: Person[]): string {
-  const mark = twinMarkLabel(person, people);
+function palmPersonLabel(person: Person, people: Person[], twinWord = "ت"): string {
+  const mark = twinMarkLabel(person, people, twinWord);
   return mark ? `${person.givenName} · ${mark}` : person.givenName;
 }
 
@@ -120,6 +121,7 @@ export default function OmaniPalmChart({
   founder,
   fronds,
   people,
+  twinWord = "ت",
   trunkLabel,
   coupleLabel,
   leafLabel,
@@ -238,7 +240,7 @@ export default function OmaniPalmChart({
             <SvgNameBadge
               x={couplePt.x}
               y={couplePt.y}
-              text={formatPalmCouple(frond.father, frond.mother, people)}
+              text={formatPalmCouple(frond.father, frond.mother, people, twinWord)}
               variant="couple"
               maxWidth={150}
               accent={accent}
@@ -252,7 +254,7 @@ export default function OmaniPalmChart({
                   key={child.id}
                   x={pt.x + off.dx}
                   y={pt.y + off.dy}
-                  text={palmPersonLabel(child, people)}
+                  text={palmPersonLabel(child, people, twinWord)}
                   variant="leaf"
                   accent={accent}
                 />
@@ -276,7 +278,7 @@ export default function OmaniPalmChart({
                   key={gc.id}
                   x={pt.x + (gi === 0 ? -28 : 28)}
                   y={pt.y - 28 - gi * 10}
-                  text={palmPersonLabel(gc, people)}
+                  text={palmPersonLabel(gc, people, twinWord)}
                   variant="tip"
                   accent={accent}
                 />
@@ -303,7 +305,7 @@ export default function OmaniPalmChart({
             fontFamily="'Noto Naskh Arabic', serif"
             direction="rtl"
           >
-            {personDisplayNameWithTwin(founder, people)}
+            {personDisplayNameWithTwin(founder, people, twinWord)}
           </text>
         )}
       </g>

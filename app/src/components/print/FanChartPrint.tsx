@@ -40,7 +40,7 @@ export default function FanChartPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } =
     props;
   const nameMode: PrintNameMode = props.nameMode ?? "full";
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const layout = useMemo(
     () => computeFanLayout(people, levels, rootPersonId),
@@ -48,8 +48,12 @@ export default function FanChartPrint(props: PrintTemplateProps) {
   );
   const groups = useMemo(() => groupByGeneration(people, levels), [people, levels]);
   const spouseNotes = useMemo(
-    () => buildSpouseNotesMap(people, rels),
-    [people, rels],
+    () =>
+      buildSpouseNotesMap(people, rels, {
+        wife: t("printPage.spouseWife"),
+        husband: t("printPage.spouseHusband"),
+      }),
+    [people, rels, t, i18n.language],
   );
   const marriageLinks = useMemo(
     () => collectMarriageLinks(people, rels),

@@ -8,6 +8,7 @@ import {
   twinKindForGroup,
   twinOrderInGroup,
   twinMarkLabel,
+  twinMarkWord,
   isTwin,
 } from "@/lib/twins";
 import type { Person } from "@db/tables";
@@ -99,6 +100,7 @@ describe("twins", () => {
     expect(twinOrderInGroup(twinA, people)).toBe(1);
     expect(twinOrderInGroup(twinB, people)).toBe(2);
     expect(twinMarkLabel(twinA, people)).toBe("ت1");
+    expect(twinMarkLabel(twinA, people, "T")).toBe("T1");
   });
 
   it("marks mixed gender groups as mixed", () => {
@@ -127,5 +129,17 @@ describe("twins", () => {
     expect(
       formatSiblingLabel(twinA, people, { amongSiblings: 1, siblingsTotal: 2 }, "توأم"),
     ).toBe("توأم 1/2");
+  });
+});
+
+describe("twinMarkWord", () => {
+  it("picks T for English locales", () => {
+    expect(twinMarkWord("en")).toBe("T");
+    expect(twinMarkWord("en-US")).toBe("T");
+  });
+
+  it("defaults to Arabic mark", () => {
+    expect(twinMarkWord("ar")).toBe("ت");
+    expect(twinMarkWord(null)).toBe("ت");
   });
 });

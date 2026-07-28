@@ -80,7 +80,10 @@ describe("findPersonGaps", () => {
       parent(2, 4),
     ];
     const gaps = findPersonGaps(a, [father, mother, a, b], rels);
-    expect(gaps.some((g) => g.kind === "possibleTwin")).toBe(true);
+    const twinGap = gaps.find((g) => g.kind === "possibleTwin");
+    expect(twinGap).toBeTruthy();
+    expect(twinGap?.otherPersonId).toBe(4);
+    expect(twinGap?.otherPersonName).toBe("ب");
   });
 
   it("does not flag possibleTwin when already linked", () => {

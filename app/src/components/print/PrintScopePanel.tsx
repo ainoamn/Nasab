@@ -11,6 +11,7 @@ import {
   assignGenerationsStable,
   displayGenerationNumber,
 } from "@/lib/printData";
+import { twinMarkWord } from "@/lib/twins";
 import { personMatchesQuery } from "@/lib/personDisplay";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -57,7 +58,8 @@ export default function PrintScopePanel({
   branches,
   treeFemaleDisplay,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
   const [rootOpen, setRootOpen] = useState(false);
   const [rootQuery, setRootQuery] = useState("");
 
@@ -91,7 +93,7 @@ export default function PrintScopePanel({
   const rootTriggerLabel = selectedRoot
     ? (() => {
         const gen = displayGenerationNumber(levels.get(selectedRoot.id) ?? 0);
-        const name = personDisplayNameWithTwin(selectedRoot, people);
+        const name = personDisplayNameWithTwin(selectedRoot, people, twinWord);
         const laqab = selectedRoot.laqab?.trim();
         return laqab ? `${name} — ${laqab}` : name;
       })()
@@ -196,7 +198,7 @@ export default function PrintScopePanel({
                     </CommandItem>
                     {filteredRoots.map((p) => {
                       const gen = displayGenerationNumber(levels.get(p.id) ?? 0);
-                      const name = personDisplayNameWithTwin(p, people);
+                      const name = personDisplayNameWithTwin(p, people, twinWord);
                       const laqab = p.laqab?.trim();
                       const selected = scope.rootPersonId === p.id;
                       return (

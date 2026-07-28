@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
 import {
   displayGenerationNumber,
@@ -6,11 +7,14 @@ import {
   groupByGeneration,
   personDisplayNameWithTwin,
 } from "@/lib/printData";
+import { twinMarkWord } from "@/lib/twins";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
 
 export default function PosterPrint(props: PrintTemplateProps) {
   const { tree, people, rels, levels, rootPersonId, scopeSummary, accent, designName, today } = props;
+  const { i18n } = useTranslation();
+  const twinWord = twinMarkWord(i18n.language);
 
   const genGroups = useMemo(() => groupByGeneration(people, levels), [people, levels]);
 
@@ -45,9 +49,9 @@ export default function PosterPrint(props: PrintTemplateProps) {
                     key={p.id}
                     className="text-[8px] sm:text-[9px] text-white text-center truncate px-1 py-0.5 rounded font-display"
                     style={{ backgroundColor: color }}
-                    title={personDisplayNameWithTwin(p, people)}
+                    title={personDisplayNameWithTwin(p, people, twinWord)}
                   >
-                    {personDisplayNameWithTwin(p, people)}
+                    {personDisplayNameWithTwin(p, people, twinWord)}
                   </span>
                 ))}
                 {group.people.length > 6 && (

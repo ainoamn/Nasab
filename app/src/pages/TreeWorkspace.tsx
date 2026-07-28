@@ -3227,6 +3227,31 @@ export default function TreeWorkspace() {
                   openAddRelative(detailPerson.id, "spouse")
                 }
                 onWhatsAppGaps={() => sharePersonGapsWhatsApp(detailPerson)}
+                onOpenPerson={(id) => {
+                  const p = peopleById.get(id);
+                  if (p) {
+                    setDetailPerson(p);
+                    revealOnChart(p);
+                  }
+                }}
+                onHighlightPair={(aId, bId) => {
+                  const path = findRelationPath(aId, bId, people, rels);
+                  if (!path) {
+                    toast.message(t("tree.howRelatedNone"));
+                    return;
+                  }
+                  setHighlightPathIds(path.map((h) => h.personId));
+                  setChartView("family");
+                  setChartFocusId(null);
+                  setMainTab("chart");
+                  requestCenterOn(aId);
+                  toast.success(
+                    t("tree.pathHighlightActive", { count: path.length }),
+                  );
+                }}
+                onLinkTwin={(personId, twinOfPersonId) => {
+                  linkTwinMut.mutate({ treeId, personId, twinOfPersonId });
+                }}
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 {detailPerson.kunya && <InfoRow label={t("detail.kunya")} value={detailPerson.kunya} />}
