@@ -54,6 +54,11 @@ app.get("/api/diag", (c) => {
   });
 });
 
+app.post("/api/auth/password-login", async (c) => {
+  const { passwordLoginHandler } = await import("./password-login-handler");
+  return passwordLoginHandler(c);
+});
+
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.get("/api/oauth/google", createGoogleAuthHandler());

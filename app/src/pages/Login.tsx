@@ -29,26 +29,49 @@ export default function Login() {
   const utils = trpc.useUtils();
   const [username, setUsername] = useState("admin@bhd.om");
   const [password, setPassword] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
 
   const authConfig = trpc.auth.config.useQuery();
-  // Always show email/password so launch admins are not blocked if API config fails.
   const showPasswordForm = true;
   const passwordMode = true;
-
-  const loginLocal = trpc.auth.loginLocal.useMutation({
-    onSuccess: async () => {
-      toast.success(t("login.localSuccess"));
-      await utils.auth.me.invalidate();
-      navigate("/dashboard");
-    },
-    onError: (e) => toast.error(e.message),
-  });
 
   useEffect(() => {
     if (params.get("error") === "google") {
       toast.error(t("login.googleError"));
     }
   }, [params, t]);
+
+  async function signInWithPassword() {
+    setSigningIn(true);
+    try {
+      // Direct Hono route — tRPC mutations with Zod `.input()` hang on Vercel.
+      const res = await fetch("/api/auth/password-login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.success) {
+        toast.error(data.message || t("login.localError") || "فشل تسجيل الدخول");
+        return;
+      }
+      toast.success(t("login.localSuccess"));
+      await utils.auth.me.invalidate();
+      navigate("/dashboard");
+    } catch {
+      toast.error(t("login.localError") || "فشل تسجيل الدخول");
+    } finally {
+      setSigningIn(false);
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -114,17 +137,10 @@ export default function Login() {
                   <Button
                     className="w-full"
                     size="lg"
-                    onClick={() =>
-                      loginLocal.mutate({
-                        username: username.trim(),
-                        password,
-                      })
-                    }
-                    disabled={
-                      !username.trim() || !password || loginLocal.isPending
-                    }
+                    onClick={() => void signInWithPassword()}
+                    disabled={!username.trim() || !password || signingIn}
                   >
-                    {loginLocal.isPending
+                    {signingIn
                       ? t("login.localSigningIn")
                       : passwordMode
                         ? t("login.emailButton")
