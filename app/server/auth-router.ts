@@ -39,6 +39,17 @@ export const authRouter = createRouter({
         });
       }
 
+      if (
+        process.env.VERCEL &&
+        !/^postgres(ql)?:\/\//i.test(env.databaseUrl || "")
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "قاعدة البيانات غير مربوطة على Vercel — أضف DATABASE_URL (Neon) ثم أعد النشر",
+        });
+      }
+
       const ip = getClientIp(ctx.req.headers);
       const rl = rateLimit({
         key: clientRateKey("login-local", ip),

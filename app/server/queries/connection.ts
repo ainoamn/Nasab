@@ -58,7 +58,13 @@ export function getDb(): AppDb {
         require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");
       const url = sanitizeDatabaseUrl(env.databaseUrl);
       const max = process.env.VERCEL ? 1 : 10;
-      const client = postgres(url, { prepare: false, max });
+      const client = postgres(url, {
+        prepare: false,
+        max,
+        connect_timeout: 10,
+        idle_timeout: 20,
+        max_lifetime: 60 * 5,
+      });
       const fullSchema = { ...pgSchema, ...relations };
       instance = drizzle(client, { schema: fullSchema });
     } else {

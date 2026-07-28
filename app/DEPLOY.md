@@ -153,13 +153,20 @@ cd app
 npm run admin:ensure
 ```
 
+فحص بعد النشر:
+
+- `GET /api/health` → `{"ok":true}`
+- `GET /api/trpc/auth.config` → `passwordLogin: true`
+- `/login` يظهر حقول البريد وكلمة المرور
+
+عند **504** على `/api/*`: تأكد أن البناء هو `node scripts/vercel-build.mjs` وأن الدالة تستخدم Node listener (`getRequestListener`).
+
 ---
 
 ```bash
 cd app
-npm run build          # vite + dist/boot.js + api/index.js
-npm run build:server   # Docker/VPS فقط
-npm run build:vercel   # دالة Vercel فقط
+npm run build:vercel-output   # أو: node scripts/vercel-build.mjs
+npm run build:server          # Docker/VPS
 ```
 
 ---
