@@ -18,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import { buildTreeOccasions } from "@/lib/treeOccasions";
 import { Button } from "@/components/ui/button";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -213,8 +215,15 @@ export default function EventsStrip({
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-xs font-semibold">
+                  <span className="flex items-center gap-1 truncate text-xs font-semibold">
                     {ev.label}
+                    {ev.person && isTwin(ev.person, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(ev.person, people)}
+                        total={twinGroupSize(ev.person, people)}
+                      />
+                    ) : null}
                   </span>
                   <span className="block text-[10px] text-muted-foreground">
                     {meta.label}

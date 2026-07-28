@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -73,6 +75,7 @@ export default function PlacesBrowser({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("tree.placesSearch")}
+              aria-label={t("tree.placesSearch")}
               className="h-9 pe-8 text-sm"
             />
           </div>
@@ -125,18 +128,36 @@ export default function PlacesBrowser({
                         )
                       : null;
                   const female = p.gender === "female";
+                  const twin = isTwin(p, people);
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => onPersonClick(p)}
-                      className="group flex w-[5.5rem] flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-muted/60"
+                      className={cn(
+                        "group relative flex w-[5.5rem] flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-muted/60",
+                        twin && "ring-2 ring-violet-400 bg-violet-50/80",
+                      )}
                       title={rel ? `${p.givenName} — ${rel}` : p.givenName}
+                      aria-label={rel ? `${p.givenName} — ${rel}` : p.givenName}
                     >
+                      {twin ? (
+                        <span className="absolute -top-0.5 start-0.5 z-[2]">
+                          <TwinBadge
+                            compact
+                            order={twinOrderInGroup(p, people)}
+                            total={twinGroupSize(p, people)}
+                          />
+                        </span>
+                      ) : null}
                       <span
                         className={cn(
                           "flex h-12 w-12 overflow-hidden rounded-full bg-white ring-2 shadow-sm transition group-hover:scale-105",
-                          female ? "ring-pink-300" : "ring-sky-300",
+                          twin
+                            ? "ring-violet-400"
+                            : female
+                              ? "ring-pink-300"
+                              : "ring-sky-300",
                         )}
                       >
                         {p.photoUrl ? (
@@ -156,7 +177,7 @@ export default function PlacesBrowser({
                           </span>
                         )}
                       </span>
-                      <span className="w-full truncate text-center text-[11px] font-medium">
+                      <span className="flex w-full items-center justify-center gap-0.5 truncate text-center text-[11px] font-medium">
                         {p.givenName}
                       </span>
                       {rel && (

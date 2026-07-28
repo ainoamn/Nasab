@@ -960,6 +960,7 @@ export default function TreeWorkspace() {
         hopsHeader: t("tree.pathTextHops"),
         linkHeader: t("tree.pathTextLink"),
         commonAncestor: t("tree.commonAncestorAt"),
+        hopViaPrefix: t("tree.pathHopPrefix"),
       },
     });
     void navigator.clipboard.writeText(text);
@@ -1004,6 +1005,7 @@ export default function TreeWorkspace() {
         hopsHeader: t("tree.pathTextHops"),
         linkHeader: t("tree.pathTextLink"),
         commonAncestor: t("tree.commonAncestorAt"),
+        hopViaPrefix: t("tree.pathHopPrefix"),
       },
     });
     openWhatsAppShare(text);
@@ -2379,12 +2381,12 @@ export default function TreeWorkspace() {
                                 ? t(
                                     `tree.rel.${relationToFocus(listFocusId, p.id, people, rels)}`,
                                   )
-                                : "—"}
+                                : t("common.emDash")}
                             </TableCell>
-                            <TableCell className="font-display text-muted-foreground">{p.fatherName ?? "—"}</TableCell>
-                            <TableCell>{p.kunya ?? "—"}</TableCell>
+                            <TableCell className="font-display text-muted-foreground">{p.fatherName ?? t("common.emDash")}</TableCell>
+                            <TableCell>{p.kunya ?? t("common.emDash")}</TableCell>
                             <TableCell>{p.gender === "female" ? t("common.female") : t("common.male")}</TableCell>
-                            <TableCell className="text-xs">{L.formatYears(p.birthYear, p.deathYear, p.isLiving) || "—"}</TableCell>
+                            <TableCell className="text-xs">{L.formatYears(p.birthYear, p.deathYear, p.isLiving) || t("common.emDash")}</TableCell>
                             <TableCell>
                               <Badge variant="outline">{L.privacy[p.privacy as PersonPrivacy]}</Badge>
                             </TableCell>

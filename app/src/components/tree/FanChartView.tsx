@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { getParents } from "@/lib/familyGraph";
 import { relationToFocus } from "@/lib/relationshipLabel";
+import { isTwin } from "@/lib/twins";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -154,24 +155,31 @@ export default function FanChartView({
             const rLabel = (ringInner(slot.ring) + ringOuter(slot.ring)) / 2;
             const pos = polar(rLabel, mid);
             const female = person?.gender === "female";
+            const twin = person != null && isTwin(person, people);
             const fill = !person
               ? "#fafaf9"
-              : female
-                ? "#fce8f1"
-                : "#e3f0fb";
+              : twin
+                ? "#f5f3ff"
+                : female
+                  ? "#fce8f1"
+                  : "#e3f0fb";
             const stroke = selected
               ? "#0ea5e9"
-              : branchColors[slot.ring % branchColors.length];
+              : twin
+                ? "#7c3aed"
+                : branchColors[slot.ring % branchColors.length];
+
+            const canAddParent =
+              !person &&
+              slot.childId != null &&
+              onAddParent &&
+              (slot.role === "father" || slot.role === "mother");
 
             return (
               <g
                 key={`s-${slot.ring}-${i}`}
                 className={cn(
-                  (person ||
-                    (slot.childId != null &&
-                      onAddParent &&
-                      (slot.role === "father" || slot.role === "mother"))) &&
-                    "cursor-pointer",
+                  (person || canAddParent) && "cursor-pointer",
                 )}
                 onClick={() => {
                   if (person) onPersonClick?.(person);
@@ -190,13 +198,19 @@ export default function FanChartView({
                   onFocusPerson(person);
                 }}
               >
-                {person && (
+                {person ? (
                   <title>
                     {`${person.givenName} — ${t(
                       `tree.rel.${relationToFocus(kinId, person.id, people, rels)}`,
                     )}${onFocusPerson ? ` · ${t("chart.doubleClickFocus")}` : ""}`}
                   </title>
-                )}
+                ) : canAddParent ? (
+                  <title>
+                    {slot.role === "father"
+                      ? t("chart.addFather")
+                      : t("chart.addMother")}
+                  </title>
+                ) : null}
                 <path
                   d={arcPath(
                     ringInner(slot.ring),
@@ -206,7 +220,7 @@ export default function FanChartView({
                   )}
                   fill={fill}
                   stroke={stroke}
-                  strokeWidth={selected ? 2.4 : 1.1}
+                  strokeWidth={selected || twin ? 2.4 : 1.1}
                 />
                 {person ? (
                   <text
@@ -232,6 +246,7 @@ export default function FanChartView({
                     fontSize={16}
                     fill="#d6d3d1"
                     style={{ pointerEvents: "none" }}
+                    aria-hidden={!canAddParent}
                   >
                     +
                   </text>

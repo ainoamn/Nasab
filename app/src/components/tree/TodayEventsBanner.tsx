@@ -10,6 +10,8 @@ import {
 import { Cake, Heart, Flower2, X, CalendarPlus, MessageSquare, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   treeId: number;
@@ -71,7 +73,16 @@ export default function TodayEventsBanner({
               ) : (
                 <Heart className="h-3 w-3 shrink-0 text-pink-600" />
               )}
-              <span className="truncate">{ev.label}</span>
+              <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                <span className="truncate">{ev.label}</span>
+                {ev.person && isTwin(ev.person, people) ? (
+                  <TwinBadge
+                    compact
+                    order={twinOrderInGroup(ev.person, people)}
+                    total={twinGroupSize(ev.person, people)}
+                  />
+                ) : null}
+              </span>
               <span className="shrink-0 text-amber-800/70">
                 {t("tree.eventToday")}
               </span>

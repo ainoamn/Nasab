@@ -167,7 +167,7 @@ export function PrintPersonCard({
       >
         {genLevel != null
           ? genLevel < 0
-            ? `↑${Math.abs(genLevel)}`
+            ? t("printPage.generationUp", { n: Math.abs(genLevel) })
             : `${displayGenerationNumber(genLevel)}`
           : female
             ? t("common.female")

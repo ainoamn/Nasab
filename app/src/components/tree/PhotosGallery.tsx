@@ -4,6 +4,8 @@ import type { Person, Relationship } from "@db/tables";
 import { Image as ImageIcon, Star, House } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { relationToFocus } from "@/lib/relationshipLabel";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -102,7 +104,16 @@ export default function PhotosGallery({
                 )}
               </div>
               <div className="px-2.5 py-2">
-                <p className="truncate text-sm font-semibold">{p.givenName}</p>
+                <p className="flex items-center gap-1 truncate text-sm font-semibold">
+                  {p.givenName}
+                  {isTwin(p, people) ? (
+                    <TwinBadge
+                      compact
+                      order={twinOrderInGroup(p, people)}
+                      total={twinGroupSize(p, people)}
+                    />
+                  ) : null}
+                </p>
                 {rel ? (
                   <p className="truncate text-[11px] font-medium text-sky-800">
                     {rel}

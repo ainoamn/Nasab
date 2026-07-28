@@ -66,7 +66,35 @@ describe("relationShare", () => {
     expect(text).toContain("أحمد ↔ سعيد — أخ");
     expect(text).toContain("• أحمد");
     expect(text).toContain("• سعيد");
+    expect(text).toContain("← ابن");
     expect(text).toContain("https://example.com/p/1");
+  });
+
+  it("uses custom hopViaPrefix when provided", () => {
+    const a = person(1, "أ");
+    const b = person(2, "ب");
+    const text = formatRelationPathText({
+      fromName: "أ",
+      toName: "ب",
+      relationLabel: "أخ",
+      hops: [
+        { personId: 1, via: "start" },
+        { personId: 2, via: "child" },
+      ],
+      peopleById: new Map([
+        [1, a],
+        [2, b],
+      ]),
+      viaLabel: () => "child",
+      url: "https://x",
+      labels: {
+        headline: "{{from}} ↔ {{to}} — {{rel}}",
+        hopsHeader: "Path:",
+        linkHeader: "Link:",
+        hopViaPrefix: "via: ",
+      },
+    });
+    expect(text).toContain("via: child");
   });
 
   it("formats person card with years and kinship", () => {

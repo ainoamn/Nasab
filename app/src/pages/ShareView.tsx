@@ -292,6 +292,7 @@ export default function ShareView() {
         hopsHeader: t("tree.pathTextHops"),
         linkHeader: t("tree.pathTextLink"),
         commonAncestor: t("tree.commonAncestorAt"),
+        hopViaPrefix: t("tree.pathHopPrefix"),
       },
     });
     void navigator.clipboard.writeText(text);
@@ -317,6 +318,7 @@ export default function ShareView() {
         hopsHeader: t("tree.pathTextHops"),
         linkHeader: t("tree.pathTextLink"),
         commonAncestor: t("tree.commonAncestorAt"),
+        hopViaPrefix: t("tree.pathHopPrefix"),
       },
     });
     openWhatsAppShare(text);

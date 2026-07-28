@@ -17,6 +17,8 @@ npm run dev          # http://localhost:5173
 ```bash
 npm run build        # واجهة + dist/boot.js + api/index.js
 npm start            # خادم Node للإنتاج (بعد ضبط .env.production)
+npm run prod:smoke   # دخان حي + بصمة البناء
+npm run deploy:status  # مقارنة SHA المحلي بالحي
 ```
 
 ## البنية

@@ -140,7 +140,8 @@ export default function KinshipCertificateDialog({
                       <li key={`${hop.personId}-${i}`}>
                         {edge && (
                           <p className="ps-3 text-[11px] text-muted-foreground">
-                            ← {edge}
+                            {t("tree.pathHopPrefix")}
+                            {edge}
                           </p>
                         )}
                         <p

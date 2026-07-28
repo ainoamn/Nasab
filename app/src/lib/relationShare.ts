@@ -16,6 +16,8 @@ export function formatRelationPathText(opts: {
     hopsHeader: string;
     linkHeader: string;
     commonAncestor?: string; // "{{name}}"
+    /** بادئة خطوة المسار — افتراضي ← */
+    hopViaPrefix?: string;
   };
   commonAncestorName?: string | null;
 }): string {
@@ -38,7 +40,8 @@ export function formatRelationPathText(opts: {
     const p = opts.peopleById.get(hop.personId);
     if (!p) continue;
     if (hop.via !== "start") {
-      lines.push(`  ← ${opts.viaLabel(hop.via)}`);
+      const prefix = opts.labels.hopViaPrefix ?? "← ";
+      lines.push(`  ${prefix}${opts.viaLabel(hop.via)}`);
     }
     lines.push(`• ${p.givenName}`);
   }

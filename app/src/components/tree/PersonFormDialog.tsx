@@ -105,7 +105,7 @@ function buildLineage(
   anchor: Person,
   kinship: Kinship,
   otherParent?: Person | null,
-  labels: { bin: string; bint: string } = { bin: "بن", bint: "بنت" },
+  labels: { bin: string; bint: string } = { bin: "", bint: "" },
 ): string {
   if (kinship === "son" || kinship === "daughter") {
     const prefix = kinship === "daughter" ? labels.bint : labels.bin;
