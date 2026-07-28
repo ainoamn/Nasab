@@ -155,6 +155,9 @@ export const en = {
     rowOrigins: "ALLOWED_ORIGINS",
     rowAdmin: "Password login configured",
     rowBuild: "Build fingerprint",
+    buildBehind: "Live build {{live}} is behind main {{main}}",
+    buildBehindHint:
+      "Vercel → Deployments → Redeploy (Root Directory = app). Or: npm run deploy:status",
     ready: "Server is ready. You can sign in with the admin account.",
     notReady: "Add Vercel env vars, then redeploy:",
     copyCommands: "Copy commands",

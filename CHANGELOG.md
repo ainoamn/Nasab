@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-07-28 — كشف تأخر النشر + تراث
+
+### تشغيل
+- `npm run deploy:status` يقارن `/api/health` build مع `origin/main`.
+- `/setup` ينبّه إن كان البناء الحي متأخراً عن GitHub `main`.
+- Ops workflow يفحص مزامنة SHA يومياً.
+
+### المنتج
+- شريط نسب قالب التراث يستخدم `personDisplayNameWithTwin`.
+
+### توثيق
+- [`UPGRADE.md`](./UPGRADE.md) المرحلة 15 — خطوات Redeploy عند توقف النشر التلقائي.
+
+---
+
 ## 2026-07-28 — قبيلة/ملصق + اختبار نخلة + بصمة CI
 
 ### المنتج

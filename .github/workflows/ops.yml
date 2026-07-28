@@ -24,6 +24,11 @@ jobs:
         run: npm run prod:smoke
         env:
           PROD_SMOKE_URL: https://nasab-mu.vercel.app
+      - name: Deploy SHA sync
+        continue-on-error: true
+        run: npm run deploy:status
+        env:
+          PROD_SMOKE_URL: https://nasab-mu.vercel.app
 
   neon-backup:
     runs-on: ubuntu-latest

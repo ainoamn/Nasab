@@ -125,6 +125,25 @@ npm run prod:smoke
 
 ---
 
+## المرحلة 15 — كشف تأخر النشر + تراث (منفَّذة)
+
+| البند | الحالة |
+|--------|--------|
+| `npm run deploy:status` (حي vs `origin/main`) | ✅ |
+| تنبيه على `/setup` عند تأخر البناء | ✅ |
+| شريط نسب التراث بعلامات توأم | ✅ |
+| Ops workflow يفحص مزامنة SHA | ✅ |
+
+### إن بقي الحي على SHA قديم
+
+1. Vercel → Project → Settings → **Root Directory = `app`**
+2. Deployments → … → **Redeploy** لآخر commit على `main`
+3. تحقق: `npm run deploy:status` أو [/setup](https://nasab-mu.vercel.app/setup)
+
+لا يوجد workflow ينشر إلى Vercel من GitHub — الاعتماد على تكامل Git في Vercel فقط.
+
+---
+
 ## المرحلة 14 — قبيلة/ملصق + اختبار نخلة + بصمة CI (منفَّذة)
 
 | البند | الحالة |
@@ -229,7 +248,8 @@ npm run prod:smoke
 - [x] نخلة عُمان + اكتشافات توأم + Setup i18n
 - [x] مخطوط/خريطة + ترتيب توأم + توثيق الأمان
 - [x] قبيلة/ملصق + اختبار نخلة + بصمة CI
+- [x] كشف تأخر النشر (`deploy:status` + `/setup`)
 - [ ] `/api/diag` على الإنتاج: `dbConfigured: true` ← **إجراء يدوي على Vercel**
 - [ ] تسجيل دخول ناجح من `/login`
 - [ ] إنشاء شجرة وحفظ شخص في الإنتاج
-- [ ] إن تأخر البناء الحي: Redeploy يدوي من Vercel
+- [ ] إن تأخر البناء الحي: Redeploy يدوي من Vercel (Root Directory = `app`)

@@ -24,6 +24,7 @@
     "db:backup-neon": "node scripts/neon-backup.mjs",
     "prod:smoke": "node scripts/prod-smoke.mjs",
     "launch:status": "node scripts/launch-status.mjs",
+    "deploy:status": "node scripts/deploy-status.mjs",
     "vercel:print-env": "node scripts/print-vercel-env.mjs",
     "vercel:env-check": "node scripts/print-vercel-env.mjs --checklist",
     "assert:fingerprint": "node scripts/assert-build-fingerprint.mjs",

@@ -29,10 +29,14 @@ npm run vercel:print-env
 # paste into Vercel → Environment Variables
 # then Redeploy`;
 
+const GITHUB_MAIN_SHA =
+  "https://api.github.com/repos/ainoamn/Nasab/commits/main";
+
 export default function Setup() {
   const { t } = useTranslation();
   const [diag, setDiag] = useState<Diag | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mainSha, setMainSha] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +55,27 @@ export default function Setup() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(GITHUB_MAIN_SHA, {
+      headers: { Accept: "application/vnd.github+json" },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { sha?: string } | null) => {
+        if (!cancelled && d?.sha) setMainSha(d.sha.slice(0, 7));
+      })
+      .catch(() => {
+        /* optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const buildBehind = Boolean(
+    diag?.build && mainSha && diag.build !== mainSha,
+  );
 
   const rows: Row[] = [
     {
@@ -92,9 +117,11 @@ export default function Setup() {
     {
       id: "build",
       label: t("setup.rowBuild"),
-      ok: diag?.build ? true : loading ? null : false,
+      ok: diag?.build ? (buildBehind ? false : true) : loading ? null : false,
       hint: diag?.build
-        ? `${diag.build}${diag.builtAt ? ` · ${diag.builtAt}` : ""}`
+        ? `${diag.build}${diag.builtAt ? ` · ${diag.builtAt}` : ""}${
+            buildBehind && mainSha ? ` → main ${mainSha}` : ""
+          }`
         : undefined,
     },
   ];
@@ -131,6 +158,23 @@ export default function Setup() {
             <p className="text-sm text-muted-foreground">{t("setup.subtitle")}</p>
           </CardHeader>
           <CardContent className="space-y-4">
+            {buildBehind ? (
+              <div
+                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+                role="status"
+              >
+                <p>
+                  {t("setup.buildBehind", {
+                    live: diag?.build,
+                    main: mainSha,
+                  })}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("setup.buildBehindHint")}
+                </p>
+              </div>
+            ) : null}
+
             <ul className="space-y-3">
               {rows.map((row) => (
                 <li

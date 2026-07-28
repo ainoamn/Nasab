@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
 import {
   buildAscendantChain,
+  personDisplayNameWithTwin,
 } from "@/lib/printData";
 import { PrintMetaFooter, PrintStatsBar } from "./shared";
 import type { PrintTemplateProps } from "./types";
@@ -46,7 +47,7 @@ export default function HeritageBoardPrint(props: PrintTemplateProps) {
     const root = people.find((p) => p.id === rootPersonId);
     if (!root) return tree.name;
     const chain = buildAscendantChain(root.id, people, rels, 6);
-    const names = chain.map((p) => p.givenName);
+    const names = chain.map((p) => personDisplayNameWithTwin(p, people));
     if (tree.tribe) names.push(tree.tribe);
     return names.join(" بن ");
   }, [rootPersonId, people, rels, tree]);

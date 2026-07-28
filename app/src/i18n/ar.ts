@@ -155,6 +155,9 @@ export const ar = {
     rowOrigins: "ALLOWED_ORIGINS",
     rowAdmin: "دخول بالبريد مفعّل",
     rowBuild: "بصمة البناء",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}",
+    buildBehindHint:
+      "من Vercel → Deployments → Redeploy (Root Directory = app). أو: npm run deploy:status",
     ready: "الخادم جاهز. يمكنك تسجيل الدخول بحساب المشرف.",
     notReady: "أضف متغيرات البيئة على Vercel ثم أعد النشر:",
     copyCommands: "نسخ الأوامر",

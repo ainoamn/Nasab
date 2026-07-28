@@ -85,6 +85,7 @@ npm run db:migrate     # تشغيل migrations
 npm run db:verify-neon # فحص Neon المحلي
 npm run prod:smoke     # دخان الإنتاج الحي
 npm run launch:status  # Neon محلي + دخان حي معاً
+npm run deploy:status  # مقارنة SHA الحي مع origin/main
 npm run vercel:print-env  # طباعة متغيرات للصق في Vercel
 ```
 
