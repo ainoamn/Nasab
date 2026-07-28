@@ -37,6 +37,13 @@ export const ar = {
     account: "حسابي",
     admin: "لوحة المشرف",
     logout: "تسجيل الخروج",
+    toggle: "إظهار أو إخفاء القائمة",
+    navigation: "التنقّل",
+  },
+  authLayout: {
+    signInTitle: "سجّل دخولك للمتابعة",
+    signInBody: "الوصول لهذه اللوحة يتطلب تسجيل الدخول.",
+    signIn: "تسجيل الدخول",
   },
   hero: {
     badge: "منصة الأنساب العربية — بهوية عمانية",

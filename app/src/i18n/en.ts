@@ -37,6 +37,13 @@ export const en = {
     account: "My account",
     admin: "Admin panel",
     logout: "Sign out",
+    toggle: "Toggle navigation",
+    navigation: "Navigation",
+  },
+  authLayout: {
+    signInTitle: "Sign in to continue",
+    signInBody: "Access to this dashboard requires authentication.",
+    signIn: "Sign in",
   },
   hero: {
     badge: "The Arab genealogy platform — with Omani identity",

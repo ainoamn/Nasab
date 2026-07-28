@@ -36,8 +36,12 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { localeTag } from "@/i18n";
 
-function formatDate(d: Date | string | null | undefined, locale: string) {
-  if (!d) return "—";
+function formatDate(
+  d: Date | string | null | undefined,
+  locale: string,
+  empty = "—",
+) {
+  if (!d) return empty;
   const date = d instanceof Date ? d : new Date(d);
   return date.toLocaleDateString(locale, {
     year: "numeric",
@@ -51,6 +55,7 @@ export default function AdminUsers() {
   const utils = trpc.useUtils();
   const { t, i18n } = useTranslation();
   const locale = localeTag(i18n.language);
+  const emDash = t("common.emDash");
 
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -187,7 +192,7 @@ export default function AdminUsers() {
                         </Avatar>
                         <div className="min-w-0">
                           <p className="font-medium truncate flex items-center gap-1">
-                            {u.name ?? "—"}
+                            {u.name ?? emDash}
                             {u.isBanned && (
                               <Badge variant="destructive" className="text-[10px]">
                                 {t("admin.users.banned")}
@@ -195,16 +200,16 @@ export default function AdminUsers() {
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {u.email ?? "—"}
+                            {u.email ?? emDash}
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs max-w-[120px] truncate" dir="ltr">
-                      {u.username ?? u.unionId?.slice(0, 12) ?? "—"}
+                      {u.username ?? u.unionId?.slice(0, 12) ?? emDash}
                     </TableCell>
                     <TableCell className="font-mono text-xs" dir="ltr">
-                      {u.lastSignInIp ?? "—"}
+                      {u.lastSignInIp ?? emDash}
                     </TableCell>
                     <TableCell>
                       <Badge variant={u.role === "admin" ? "default" : "secondary"}>
@@ -216,7 +221,7 @@ export default function AdminUsers() {
                     </TableCell>
                     <TableCell>{u.ownedTrees}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(u.createdAt, locale)}
+                      {formatDate(u.createdAt, locale, emDash)}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -331,8 +336,8 @@ export default function AdminUsers() {
               {detailQuery.data?.profile && (
                 <div className="rounded-lg border bg-muted/30 p-3 text-xs font-mono space-y-1" dir="ltr">
                   <p>unionId: {detailQuery.data.profile.unionId}</p>
-                  <p>IP: {detailQuery.data.profile.lastSignInIp ?? "—"}</p>
-                  <p>{t("admin.users.registrationIp")}: {detailQuery.data.profile.registrationIp ?? "—"}</p>
+                  <p>IP: {detailQuery.data.profile.lastSignInIp ?? emDash}</p>
+                  <p>{t("admin.users.registrationIp")}: {detailQuery.data.profile.registrationIp ?? emDash}</p>
                 </div>
               )}
 

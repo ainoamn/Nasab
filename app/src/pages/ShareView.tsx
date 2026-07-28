@@ -25,7 +25,9 @@ import PersonProfilePrintDialog from "@/components/tree/PersonProfilePrintDialog
 import OccasionCardPrintDialog from "@/components/tree/OccasionCardPrintDialog";
 import FamilyBriefPrintDialog from "@/components/tree/FamilyBriefPrintDialog";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { useLabels } from "@/lib/labels";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 import { computeTreeCompleteness } from "@/lib/treeCompleteness";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1033,8 +1035,15 @@ export default function ShareView() {
             return (
               <>
                 <DialogHeader>
-                  <DialogTitle className="font-display text-xl">
+                  <DialogTitle className="font-display text-xl flex flex-wrap items-center gap-2">
                     {detail.givenName}
+                    {isTwin(detail, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(detail, people)}
+                        total={twinGroupSize(detail, people)}
+                      />
+                    ) : null}
                   </DialogTitle>
                   {detail.fatherName && (
                     <DialogDescription className="font-display">

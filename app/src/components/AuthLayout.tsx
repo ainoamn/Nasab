@@ -24,6 +24,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { AuthLayoutSkeleton } from "./AuthLayoutSkeleton";
 import { Button } from "./ui/button";
 
@@ -42,6 +43,7 @@ export default function AuthLayout({
 }: {
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -62,11 +64,10 @@ export default function AuthLayout({
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
             <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
+              {t("authLayout.signInTitle")}
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to
-              launch the login flow.
+              {t("authLayout.signInBody")}
             </p>
           </div>
           <Button
@@ -76,7 +77,7 @@ export default function AuthLayout({
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            Sign in
+            {t("authLayout.signIn")}
           </Button>
         </div>
       </div>
@@ -107,6 +108,7 @@ function AuthLayoutContent({
   children,
   setSidebarWidth,
 }: AuthLayoutContentProps) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -166,14 +168,14 @@ function AuthLayoutContent({
               <button
                 onClick={toggleSidebar}
                 className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                aria-label={t("nav.toggle")}
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <PanelLeft className="h-4 w-4 text-muted-foreground" aria-hidden />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    {t("nav.navigation")}
                   </span>
                 </div>
               ) : null}

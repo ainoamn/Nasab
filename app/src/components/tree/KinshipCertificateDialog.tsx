@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   open: boolean;
@@ -97,8 +99,28 @@ export default function KinshipCertificateDialog({
                 <h1 className="font-display text-2xl font-bold text-sky-950">
                   {t("tree.kinshipCertTitle")}
                 </h1>
-                <p className="text-base font-semibold text-sky-800">
-                  {data.from.givenName} ↔ {data.to.givenName}
+                <p className="text-base font-semibold text-sky-800 inline-flex flex-wrap items-center justify-center gap-1">
+                  <span className="inline-flex items-center gap-0.5">
+                    {data.from.givenName}
+                    {isTwin(data.from, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(data.from, people)}
+                        total={twinGroupSize(data.from, people)}
+                      />
+                    ) : null}
+                  </span>
+                  <span>↔</span>
+                  <span className="inline-flex items-center gap-0.5">
+                    {data.to.givenName}
+                    {isTwin(data.to, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(data.to, people)}
+                        total={twinGroupSize(data.to, people)}
+                      />
+                    ) : null}
+                  </span>
                 </p>
                 <p className="text-lg font-bold text-amber-900">{data.label}</p>
                 {data.mrca && (
@@ -114,8 +136,15 @@ export default function KinshipCertificateDialog({
                     key={p.id}
                     className="rounded-xl border border-sky-100 bg-sky-50/40 px-3 py-3 text-start"
                   >
-                    <p className="font-display text-lg font-semibold">
+                    <p className="font-display text-lg font-semibold inline-flex items-center gap-1">
                       {p.givenName}
+                      {isTwin(p, people) ? (
+                        <TwinBadge
+                          compact
+                          order={twinOrderInGroup(p, people)}
+                          total={twinGroupSize(p, people)}
+                        />
+                      ) : null}
                     </p>
                     {formatBirthYear(p) && (
                       <p className="text-sm text-muted-foreground">
@@ -146,7 +175,7 @@ export default function KinshipCertificateDialog({
                         )}
                         <p
                           className={cn(
-                            "rounded-lg border px-3 py-1.5 text-sm font-medium",
+                            "rounded-lg border px-3 py-1.5 text-sm font-medium inline-flex flex-wrap items-center gap-1",
                             i === 0 && "border-sky-300 bg-sky-50",
                             i === data.hops.length - 1 &&
                               i !== 0 &&
@@ -155,6 +184,13 @@ export default function KinshipCertificateDialog({
                           )}
                         >
                           {person.givenName}
+                          {isTwin(person, people) ? (
+                            <TwinBadge
+                              compact
+                              order={twinOrderInGroup(person, people)}
+                              total={twinGroupSize(person, people)}
+                            />
+                          ) : null}
                           {isMrca ? ` · ${t("tree.commonAncestorTag")}` : ""}
                         </p>
                       </li>

@@ -25,8 +25,8 @@ function formatAmount(amount: number, currency: string, locale: string) {
   }).format(amount / 1000);
 }
 
-function formatDate(d: Date | string | null | undefined, locale: string) {
-  if (!d) return "—";
+function formatDate(d: Date | string | null | undefined, locale: string, empty = "—") {
+  if (!d) return empty;
   const date = d instanceof Date ? d : new Date(d);
   return date.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
 }
@@ -34,8 +34,9 @@ function formatDate(d: Date | string | null | undefined, locale: string) {
 export function InvoiceReceiptDocument({ invoice }: { invoice: InvoiceLike }) {
   const { t, i18n } = useTranslation();
   const locale = localeTag(i18n.language);
-  const issued = formatDate(invoice.issuedAt ?? invoice.createdAt, locale);
-  const paid = formatDate(invoice.paidAt, locale);
+  const empty = t("common.emDash");
+  const issued = formatDate(invoice.issuedAt ?? invoice.createdAt, locale, empty);
+  const paid = formatDate(invoice.paidAt, locale, empty);
 
   return (
     <div className="max-w-lg mx-auto">

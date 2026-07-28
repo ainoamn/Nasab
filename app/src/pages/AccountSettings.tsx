@@ -47,8 +47,12 @@ import {
 import { InvoiceReceiptDocument } from "@/components/InvoiceReceiptDocument";
 import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 
-function formatDate(d: Date | string | null | undefined, locale: string) {
-  if (!d) return "—";
+function formatDate(
+  d: Date | string | null | undefined,
+  locale: string,
+  empty = "—",
+) {
+  if (!d) return empty;
   const date = d instanceof Date ? d : new Date(d);
   return date.toLocaleDateString(locale, {
     year: "numeric",
@@ -207,7 +211,7 @@ export default function AccountSettings() {
             </Avatar>
             <div className="min-w-0">
               <p className="font-bold truncate">{profile?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{profile?.email ?? "—"}</p>
+              <p className="text-xs text-muted-foreground truncate">{profile?.email ?? t("common.emDash")}</p>
               {profile?.userNumberFormatted && (
                 <p className="text-xs font-mono text-muted-foreground">{profile.userNumberFormatted}</p>
               )}
@@ -365,11 +369,11 @@ export default function AccountSettings() {
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-t pt-4">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-4 w-4" />
-                    {t("account.profile.memberSince")}: {formatDate(profile?.createdAt, locale)}
+                    {t("account.profile.memberSince")}: {formatDate(profile?.createdAt, locale, t("common.emDash"))}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-4 w-4" />
-                    {t("account.profile.lastSignIn")}: {formatDate(profile?.lastSignInAt, locale)}
+                    {t("account.profile.lastSignIn")}: {formatDate(profile?.lastSignInAt, locale, t("common.emDash"))}
                   </span>
                 </div>
 
@@ -399,13 +403,13 @@ export default function AccountSettings() {
                     {profile?.planStartedAt && plan !== "free" && (
                       <span className="text-sm text-muted-foreground">
                         {t("account.subscription.started")}:{" "}
-                        {formatDate(profile.planStartedAt, locale)}
+                        {formatDate(profile.planStartedAt, locale, t("common.emDash"))}
                       </span>
                     )}
                     {profile?.planExpiresAt && plan !== "free" && (
                       <span className="text-sm text-muted-foreground">
                         {t("account.subscription.expires")}:{" "}
-                        {formatDate(profile.planExpiresAt, locale)}
+                        {formatDate(profile.planExpiresAt, locale, t("common.emDash"))}
                       </span>
                     )}
                   </div>
@@ -587,7 +591,7 @@ export default function AccountSettings() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
-                                {formatDate(inv.issuedAt, locale)}
+                                {formatDate(inv.issuedAt, locale, t("common.emDash"))}
                               </TableCell>
                               <TableCell>
                                 <Button

@@ -36,8 +36,12 @@ import { localeTag } from "@/i18n";
 import { InvoiceReceiptDocument } from "@/components/InvoiceReceiptDocument";
 import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 
-function formatDate(d: Date | string | null | undefined, locale: string) {
-  if (!d) return "—";
+function formatDate(
+  d: Date | string | null | undefined,
+  locale: string,
+  empty = "—",
+) {
+  if (!d) return empty;
   const date = d instanceof Date ? d : new Date(d);
   return date.toLocaleDateString(locale, {
     year: "numeric",
@@ -210,9 +214,9 @@ export default function AdminInvoices() {
                   <TableRow key={inv.id}>
                     <TableCell className="font-mono text-sm">{inv.number}</TableCell>
                     <TableCell>
-                      <p className="font-medium truncate max-w-[140px]">{inv.userName ?? "—"}</p>
+                      <p className="font-medium truncate max-w-[140px]">{inv.userName ?? t("common.emDash")}</p>
                       <p className="text-xs text-muted-foreground truncate max-w-[140px]">
-                        {inv.userEmail ?? "—"}
+                        {inv.userEmail ?? t("common.emDash")}
                       </p>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">{inv.description}</TableCell>
@@ -223,7 +227,7 @@ export default function AdminInvoices() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(inv.issuedAt, locale)}
+                      {formatDate(inv.issuedAt, locale, t("common.emDash"))}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">

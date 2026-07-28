@@ -348,7 +348,7 @@ export default function Dashboard() {
                 <div className="min-w-0">
                   <p className="font-bold truncate">{accountQuery.data.profile.name}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {accountQuery.data.profile.email ?? "—"}
+                    {accountQuery.data.profile.email ?? t("common.emDash")}
                     {" · "}
                     {t(`account.plans.${accountQuery.data.profile.plan ?? "free"}`)}
                   </p>

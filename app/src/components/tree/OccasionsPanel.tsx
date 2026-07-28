@@ -21,6 +21,8 @@ import {
   groupOccasionsByMonth,
   type TreeOccasion,
 } from "@/lib/treeOccasions";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -149,7 +151,16 @@ export default function OccasionsPanel({
                   className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100/60"
                 >
                   <Icon className={cn("h-3 w-3", meta.chipIcon)} />
-                  <span className="max-w-[8rem] truncate">{ev.label}</span>
+                  <span className="inline-flex max-w-[9rem] items-center gap-0.5 truncate">
+                    <span className="truncate">{ev.label}</span>
+                    {ev.person && isTwin(ev.person, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(ev.person, people)}
+                        total={twinGroupSize(ev.person, people)}
+                      />
+                    ) : null}
+                  </span>
                   <span className="text-amber-800/70">
                     {ev.daysUntil === 0
                       ? t("tree.eventToday")
@@ -191,7 +202,16 @@ export default function OccasionsPanel({
                     <Icon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{ev.label}</p>
+                    <p className="flex items-center gap-1 truncate text-sm font-semibold">
+                      {ev.label}
+                      {ev.person && isTwin(ev.person, people) ? (
+                        <TwinBadge
+                          compact
+                          order={twinOrderInGroup(ev.person, people)}
+                          total={twinGroupSize(ev.person, people)}
+                        />
+                      ) : null}
+                    </p>
                     <p className="text-[11px] text-muted-foreground">
                       {ev.day}/{ev.month}
                       {" · "}

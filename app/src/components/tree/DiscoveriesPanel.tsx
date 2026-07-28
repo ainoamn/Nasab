@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Props = {
   people: Person[];
@@ -149,6 +151,11 @@ export default function DiscoveriesPanel({
             const Icon = iconFor(d.kind);
             const dk = rowKey(d);
             const isHidden = dismissed.has(dk);
+            const person = people.find((p) => p.id === d.personId);
+            const other =
+              d.otherPersonId != null
+                ? people.find((p) => p.id === d.otherPersonId)
+                : undefined;
             return (
               <li
                 key={dk}
@@ -163,10 +170,33 @@ export default function DiscoveriesPanel({
                   className="min-w-0 flex-1 text-start text-sm font-medium underline-offset-2 hover:underline"
                   onClick={() => onOpenPerson(d.personId)}
                 >
-                  {d.personName}
-                  <span className="ms-1 font-normal text-muted-foreground">
-                    — {t(`tree.discovery.${d.kind}`)}
-                    {d.otherPersonName ? ` (${d.otherPersonName})` : ""}
+                  <span className="inline-flex flex-wrap items-center gap-1">
+                    {d.personName}
+                    {person && isTwin(person, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(person, people)}
+                        total={twinGroupSize(person, people)}
+                      />
+                    ) : null}
+                    <span className="font-normal text-muted-foreground">
+                      {t("common.emDash")} {t(`tree.discovery.${d.kind}`)}
+                      {d.otherPersonName ? (
+                        <>
+                          {" ("}
+                          {d.otherPersonName}
+                          {other && isTwin(other, people) ? (
+                            <TwinBadge
+                              compact
+                              className="ms-0.5"
+                              order={twinOrderInGroup(other, people)}
+                              total={twinGroupSize(other, people)}
+                            />
+                          ) : null}
+                          {")"}
+                        </>
+                      ) : null}
+                    </span>
                   </span>
                 </button>
                 {d.kind === "possibleDuplicate" && d.otherPersonId != null && (
