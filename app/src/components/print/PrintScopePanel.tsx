@@ -1,11 +1,19 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/schema";
 import type { TreeBranch } from "@db/tables";
 import type { FemaleDisplay } from "@contracts/constants";
-import type { PrintScope } from "@/lib/printFilter";
-import { personDisplayName, assignGenerationsStable } from "@/lib/printData";
+import type { PrintScope, PrintNameMode, PrintPaperSize } from "@/lib/printFilter";
+import { PRINT_PAPER_SIZES } from "@/lib/printFilter";
+import {
+  personDisplayName,
+  assignGenerationsStable,
+  displayGenerationNumber,
+} from "@/lib/printData";
+import { personMatchesQuery } from "@/lib/personDisplay";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -15,7 +23,21 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMemo } from "react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Props = {
   scope: PrintScope;
@@ -35,16 +57,49 @@ export default function PrintScopePanel({
   treeFemaleDisplay,
 }: Props) {
   const { t } = useTranslation();
+  const [rootOpen, setRootOpen] = useState(false);
+  const [rootQuery, setRootQuery] = useState("");
+
+  const levels = useMemo(
+    () => assignGenerationsStable(people, rels),
+    [people, rels],
+  );
 
   const rootCandidates = useMemo(() => {
-    const levels = assignGenerationsStable(people, rels);
     return [...people].sort((a, b) => {
       const ga = levels.get(a.id) ?? 0;
       const gb = levels.get(b.id) ?? 0;
       if (ga !== gb) return ga - gb;
       return personDisplayName(a).localeCompare(personDisplayName(b), "ar");
     });
-  }, [people, rels]);
+  }, [people, levels]);
+
+  const selectedRoot = useMemo(
+    () =>
+      scope.rootPersonId != null
+        ? (people.find((p) => p.id === scope.rootPersonId) ?? null)
+        : null,
+    [people, scope.rootPersonId],
+  );
+
+  const filteredRoots = useMemo(() => {
+    if (!rootQuery.trim()) return rootCandidates;
+    return rootCandidates.filter((p) => personMatchesQuery(p, rootQuery));
+  }, [rootCandidates, rootQuery]);
+
+  const rootTriggerLabel = selectedRoot
+    ? (() => {
+        const gen = displayGenerationNumber(levels.get(selectedRoot.id) ?? 0);
+        const name = personDisplayName(selectedRoot);
+        const laqab = selectedRoot.laqab?.trim();
+        return laqab ? `${name} — ${laqab}` : name;
+      })()
+    : t("printPage.scopeRootAuto");
+
+  const selectedRootGen =
+    selectedRoot != null
+      ? displayGenerationNumber(levels.get(selectedRoot.id) ?? 0)
+      : null;
 
   return (
     <Card className="no-print mb-6">
@@ -80,25 +135,105 @@ export default function PrintScopePanel({
 
         <div className="space-y-2">
           <Label>{t("printPage.scopeRootLabel")}</Label>
-          <Select
-            value={scope.rootPersonId?.toString() ?? "auto"}
-            onValueChange={(v) =>
-              onChange({ rootPersonId: v === "auto" ? null : parseInt(v, 10) })
-            }
+          <Popover
+            open={rootOpen}
+            onOpenChange={(o) => {
+              setRootOpen(o);
+              if (!o) setRootQuery("");
+            }}
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">{t("printPage.scopeRootAuto")}</SelectItem>
-              {rootCandidates.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {personDisplayName(p)}
-                  {p.laqab ? ` — ${p.laqab}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={rootOpen}
+                className="h-10 w-full justify-between font-normal"
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2 text-start">
+                  <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{rootTriggerLabel}</span>
+                  {selectedRootGen != null && (
+                    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                      {t("printPage.generationLabel", { n: selectedRootGen })}
+                    </span>
+                  )}
+                </span>
+                <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[var(--radix-popover-trigger-width)] p-0"
+              align="start"
+            >
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder={t("printPage.scopeRootSearchPh")}
+                  value={rootQuery}
+                  onValueChange={setRootQuery}
+                />
+                <CommandList>
+                  <CommandEmpty>{t("printPage.scopeRootSearchEmpty")}</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="auto"
+                      onSelect={() => {
+                        onChange({ rootPersonId: null });
+                        setRootOpen(false);
+                        setRootQuery("");
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "me-2 h-4 w-4 shrink-0",
+                          scope.rootPersonId == null ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                      <span className="flex-1 truncate">
+                        {t("printPage.scopeRootAuto")}
+                      </span>
+                    </CommandItem>
+                    {filteredRoots.map((p) => {
+                      const gen = displayGenerationNumber(levels.get(p.id) ?? 0);
+                      const name = personDisplayName(p);
+                      const laqab = p.laqab?.trim();
+                      const selected = scope.rootPersonId === p.id;
+                      return (
+                        <CommandItem
+                          key={p.id}
+                          value={`${p.id}-${name}`}
+                          onSelect={() => {
+                            onChange({ rootPersonId: p.id });
+                            setRootOpen(false);
+                            setRootQuery("");
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "me-2 h-4 w-4 shrink-0",
+                              selected ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            {name}
+                            {laqab ? (
+                              <span className="text-muted-foreground"> — {laqab}</span>
+                            ) : null}
+                          </span>
+                          <span className="ms-2 shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                            {t("printPage.generationLabel", { n: gen })}
+                          </span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <p className="text-xs text-muted-foreground">
+            {t("printPage.scopeRootSearchHint")}
+          </p>
         </div>
 
         <div className="space-y-3 sm:col-span-2">
@@ -109,11 +244,48 @@ export default function PrintScopePanel({
           <Slider
             value={[scope.generationsDown]}
             min={1}
-            max={12}
+            max={16}
             step={1}
-            onValueChange={([v]) => onChange({ generationsDown: v ?? 6 })}
+            onValueChange={([v]) => onChange({ generationsDown: v ?? 10 })}
           />
           <p className="text-xs text-muted-foreground">{t("printPage.scopeGenerationsHint")}</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("printPage.scopeNameModeLabel")}</Label>
+          <Select
+            value={scope.nameMode}
+            onValueChange={(v) => onChange({ nameMode: v as PrintNameMode })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full">{t("printPage.nameModeFull")}</SelectItem>
+              <SelectItem value="firstOnly">{t("printPage.nameModeFirstOnly")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("printPage.scopeNameModeHint")}</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("printPage.scopePaperLabel")}</Label>
+          <Select
+            value={scope.paperSize}
+            onValueChange={(v) => onChange({ paperSize: v as PrintPaperSize })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PRINT_PAPER_SIZES) as PrintPaperSize[]).map((id) => (
+                <SelectItem key={id} value={id}>
+                  {t(PRINT_PAPER_SIZES[id].labelKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("printPage.scopePaperHint")}</p>
         </div>
 
         <div className="space-y-2">

@@ -241,7 +241,65 @@ export function directChildren(
   return childrenOf.get(personId) ?? [];
 }
 
-/** يجمع الأقارب المرتبطين بشخص: آباء، أبناء، أحفاد، وأزواج */
+/**
+ * أبناء الأسرة لشخص: أبناؤه مباشرة + أبناء كل زوج/زوجة
+ * (بما فيهم المسجّلون على طرف واحد فقط — فجوة بيانات شائعة).
+ * لا يخلط أبناء زوجة أخرى عند تعدد الزوجات.
+ */
+export function familyChildrenOf(
+  personId: number,
+  childrenOf: Map<number, number[]>,
+  spousesOf: Map<number, number[]>,
+  rels: Relationship[],
+  byId: Map<number, Person>,
+  opts?: { includeSpouseLineage?: boolean },
+): number[] {
+  const person = byId.get(personId);
+  if (!person) return directChildren(personId, childrenOf);
+
+  const seen = new Set<number>();
+  const out: number[] = [];
+  const add = (id: number) => {
+    if (seen.has(id) || id === personId) return;
+    seen.add(id);
+    out.push(id);
+  };
+
+  for (const kid of directChildren(personId, childrenOf)) add(kid);
+
+  const spouses = oppositeSpouses(person, spousesOf, byId);
+  for (const sp of spouses) {
+    const fatherId =
+      person.gender === "male"
+        ? personId
+        : sp.gender === "male"
+          ? sp.id
+          : null;
+    const motherId =
+      person.gender === "female"
+        ? personId
+        : sp.gender === "female"
+          ? sp.id
+          : null;
+    for (const kid of childrenOfPair(
+      fatherId,
+      motherId,
+      childrenOf,
+      rels,
+      byId,
+      false,
+    )) {
+      add(kid);
+    }
+    if (opts?.includeSpouseLineage) {
+      for (const kid of directChildren(sp.id, childrenOf)) add(kid);
+    }
+  }
+
+  return out;
+}
+
+/** يجمع الأقارب المرتبطين بشخص: آباء، إخوة مسار الأسلاف، أبناء، أحفاد، وأزواج */
 export function collectFocusedSubgraph(
   focusId: number,
   people: Person[],
@@ -255,6 +313,7 @@ export function collectFocusedSubgraph(
   const included = new Set<number>([focusId]);
   const childrenOf = buildChildrenOf(rels);
   const spousesOf = buildSpousesOf(rels);
+  const ancestorPath: number[] = [];
 
   const walkUp = (startId: number) => {
     const queue = [startId];
@@ -267,6 +326,7 @@ export function collectFocusedSubgraph(
       for (const parentId of [fatherId, motherId]) {
         if (parentId == null || !byId.has(parentId) || seen.has(parentId)) continue;
         included.add(parentId);
+        ancestorPath.push(parentId);
         queue.push(parentId);
       }
     }
@@ -290,6 +350,20 @@ export function collectFocusedSubgraph(
 
   walkUp(focusId);
   walkDown(focusId);
+
+  // إخوة على مسار الأسلاف (مثلاً أبناء صالح عند التركيز على مريم)
+  // ثم نسل هؤلاء الإخوة حتى تظهر عائلاتهم تحت الأب في المخطط
+  const collateralSeeds: number[] = [];
+  for (const ancestorId of ancestorPath) {
+    for (const kid of childrenOf.get(ancestorId) ?? []) {
+      if (!byId.has(kid) || included.has(kid)) continue;
+      included.add(kid);
+      collateralSeeds.push(kid);
+    }
+  }
+  for (const seed of collateralSeeds) {
+    walkDown(seed);
+  }
 
   for (const id of [...included]) {
     for (const sid of spousesOf.get(id) ?? []) {

@@ -8,7 +8,7 @@ function BookCover({ tree, accent }: { tree: PrintTemplateProps["tree"]; accent:
   const { t } = useTranslation();
   return (
     <div
-      className="relative mx-auto mb-10 max-w-lg rounded-r-2xl rounded-l-md shadow-2xl overflow-hidden print:break-after-page"
+      className="print-book-cover relative mx-auto mb-10 max-w-lg rounded-r-2xl rounded-l-md shadow-2xl overflow-hidden print:mb-6 print:max-w-md print:break-after-page print:shadow-none"
       style={{
         background: `linear-gradient(135deg, ${accent} 0%, #3d2518 100%)`,
         boxShadow: "8px 8px 24px rgba(0,0,0,0.35), inset -4px 0 12px rgba(0,0,0,0.2)",
@@ -103,6 +103,7 @@ export default function BookPrint(props: PrintTemplateProps) {
         people={people}
         rels={rels}
         levels={levels}
+        rootPersonId={rootPersonId}
         today={today}
         accent={accent}
         scopeSummary={scopeSummary}
@@ -129,7 +130,7 @@ export default function BookPrint(props: PrintTemplateProps) {
         <PrintFamilyChart people={people} rels={rels} rootPersonId={rootPersonId} levels={levels} />
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

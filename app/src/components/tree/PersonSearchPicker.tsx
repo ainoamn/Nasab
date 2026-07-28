@@ -24,9 +24,13 @@ type Props = {
   value: string;
   onChange: (personId: string) => void;
   placeholder?: string;
+  searchPlaceholder?: string;
   excludeId?: number;
   unlinkedIds?: Set<number>;
   disabled?: boolean;
+  /** خيار «بدون» لمسح الاختيار */
+  allowNone?: boolean;
+  noneLabel?: string;
 };
 
 export default function PersonSearchPicker({
@@ -34,9 +38,12 @@ export default function PersonSearchPicker({
   value,
   onChange,
   placeholder,
+  searchPlaceholder,
   excludeId,
   unlinkedIds,
   disabled,
+  allowNone,
+  noneLabel,
 }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -75,9 +82,18 @@ export default function PersonSearchPicker({
     return { text, notInChart, dupes };
   };
 
+  const noneText = noneLabel ?? t("personForm.noParent");
+  const isNone = !value || value === "none";
+
   return (
     <div className="space-y-1">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) setQuery("");
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -90,7 +106,9 @@ export default function PersonSearchPicker({
             <span className="truncate text-start">
               {selected
                 ? labelFor(selected).text
-                : (placeholder ?? t("relation.otherPh"))}
+                : allowNone && isNone
+                  ? noneText
+                  : (placeholder ?? t("relation.otherPh"))}
             </span>
             <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -101,19 +119,37 @@ export default function PersonSearchPicker({
         >
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder={t("relation.searchPh")}
+              placeholder={searchPlaceholder ?? t("relation.searchPh")}
               value={query}
               onValueChange={setQuery}
             />
             <CommandList>
               <CommandEmpty>{t("relation.searchEmpty")}</CommandEmpty>
               <CommandGroup>
+                {allowNone && (
+                  <CommandItem
+                    value="none"
+                    onSelect={() => {
+                      onChange("");
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        isNone ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <span className="truncate">{noneText}</span>
+                  </CommandItem>
+                )}
                 {filtered.map((p) => {
                   const { text, notInChart, dupes } = labelFor(p);
                   return (
                     <CommandItem
                       key={p.id}
-                      value={p.id.toString()}
+                      value={`${p.id}-${text}`}
                       onSelect={() => {
                         onChange(p.id.toString());
                         setOpen(false);

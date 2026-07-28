@@ -1,5 +1,6 @@
 import type { Person, Relationship } from "@db/schema";
 import type { PrintTreeMeta } from "@/lib/printData";
+import type { PrintNameMode } from "@/lib/printFilter";
 
 export type PrintTemplateId =
   | "palm"
@@ -35,4 +36,6 @@ export type PrintTemplateProps = {
   paper: string;
   designName: string;
   today: string;
+  /** أسلوب الاسم من إعدادات الطباعة */
+  nameMode?: PrintNameMode;
 };

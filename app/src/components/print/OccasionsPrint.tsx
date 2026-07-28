@@ -76,6 +76,7 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
           people={people}
           rels={rels}
           levels={levels}
+          rootPersonId={rootPersonId}
           today={today}
           accent={style.border}
           scopeSummary={scopeSummary}
@@ -92,7 +93,7 @@ export default function OccasionsPrint(props: PrintTemplateProps) {
         </p>
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

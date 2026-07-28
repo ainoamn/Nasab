@@ -54,6 +54,7 @@ export default function OrnatePrint(props: PrintTemplateProps) {
           people={people}
           rels={rels}
           levels={levels}
+          rootPersonId={rootPersonId}
           today={today}
           accent={accent}
           scopeSummary={scopeSummary}
@@ -69,7 +70,7 @@ export default function OrnatePrint(props: PrintTemplateProps) {
         </div>
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

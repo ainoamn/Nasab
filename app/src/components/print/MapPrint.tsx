@@ -39,7 +39,7 @@ function placePosition(place: string, index: number): { x: number; y: number } {
 
 function GulfMapSvg() {
   return (
-    <svg viewBox="0 0 400 280" className="w-full h-auto" aria-hidden>
+    <svg viewBox="0 0 400 280" className="absolute inset-0 h-full w-full" aria-hidden>
       <defs>
         <linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#b8d4e8" />
@@ -86,14 +86,18 @@ export default function MapPrint(props: PrintTemplateProps) {
         people={people}
         rels={rels}
         levels={levels}
+        rootPersonId={rootPersonId}
         today={today}
         accent={accent}
         scopeSummary={scopeSummary}
         className="mb-6 text-center pb-4 border-b border-slate-400"
       />
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <div className="relative rounded-xl border overflow-hidden" style={{ borderColor: `${accent}55` }}>
+      <div className="mb-8 grid gap-6 lg:grid-cols-2 print:grid-cols-1">
+        <div
+          className="relative overflow-hidden rounded-xl border print:break-inside-avoid"
+          style={{ borderColor: `${accent}55`, aspectRatio: "400 / 280" }}
+        >
           <GulfMapSvg />
           {clusters.map((c, i) => {
             const pos = placePosition(c.place, i);
@@ -121,6 +125,20 @@ export default function MapPrint(props: PrintTemplateProps) {
           <h3 className="font-display font-bold" style={{ color: accent }}>
             {t("printPage.mapLegend")}
           </h3>
+
+          {/* كلمات مفتاحية لمفتاح الخريطة */}
+          <div
+            className="rounded-lg border bg-white/90 p-3 text-xs text-stone-700 space-y-1.5"
+            style={{ borderColor: `${accent}44` }}
+          >
+            <p className="font-display font-bold text-sm" style={{ color: accent }}>
+              {t("printPage.mapKeyTitle")}
+            </p>
+            <p>{t("printPage.mapKeyDot")}</p>
+            <p>{t("printPage.mapKeyPlace")}</p>
+            <p>{t("printPage.mapKeyList")}</p>
+          </div>
+
           {clusters.length === 0 ? (
             <p className="text-sm text-stone-500">{t("printPage.mapEmpty")}</p>
           ) : (
@@ -150,7 +168,7 @@ export default function MapPrint(props: PrintTemplateProps) {
         <PrintFamilyChart people={people} rels={rels} rootPersonId={rootPersonId} levels={levels} />
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

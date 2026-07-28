@@ -30,6 +30,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
         people={people}
         rels={rels}
         levels={levels}
+        rootPersonId={rootPersonId}
         today={today}
         accent={accent}
         scopeSummary={scopeSummary}
@@ -37,6 +38,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
         titleClass="text-2xl md:text-4xl"
       />
 
+      <div className="print-palm-chart-wrap break-inside-avoid">
       <OmaniPalmChart
         founder={layout.founder}
         fronds={visibleFronds}
@@ -47,6 +49,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
         overflowFronds={hiddenFronds.length}
         overflowNote={t("printPage.palmMoreFronds", { count: hiddenFronds.length })}
       />
+      </div>
 
       {hiddenFronds.length > 0 && (
         <div
@@ -73,7 +76,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
         </div>
       )}
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

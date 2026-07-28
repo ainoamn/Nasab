@@ -24,6 +24,7 @@ export default function PosterPrint(props: PrintTemplateProps) {
         people={people}
         rels={rels}
         levels={levels}
+        rootPersonId={rootPersonId}
         today={today}
         accent={accent}
         scopeSummary={scopeSummary}
@@ -73,7 +74,7 @@ export default function PosterPrint(props: PrintTemplateProps) {
         <PrintFamilyChart people={people} rels={rels} rootPersonId={rootPersonId} levels={levels} />
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

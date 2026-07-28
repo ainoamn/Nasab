@@ -33,7 +33,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Camera, X } from "lucide-react";
+import { Camera, X, Users2 } from "lucide-react";
+import {
+  getTwinGroupMembers,
+  isTwin,
+  twinCandidateSiblings,
+  fullSiblingsOf,
+} from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 
 type Kinship =
   | "father"
@@ -54,6 +61,8 @@ type Props = {
   defaultAnchorId?: number | null;
   /** صلة افتراضية عند الإضافة (أب/أم/ابن…) */
   defaultKinship?: Kinship | null;
+  /** إضافة كتوأم لهذا الشخص */
+  defaultTwinOfId?: number | null;
   onAdded?: () => void;
 };
 
@@ -152,6 +161,7 @@ export default function PersonFormDialog({
   rels,
   defaultAnchorId,
   defaultKinship = null,
+  defaultTwinOfId = null,
   onAdded,
 }: Props) {
   const isEdit = !!person;
@@ -187,6 +197,9 @@ export default function PersonFormDialog({
   const [lineageTouched, setLineageTouched] = useState(false);
   const [linkExistingId, setLinkExistingId] = useState<number | null>(null);
   const [createBranchFromLineage, setCreateBranchFromLineage] = useState(false);
+  const [isTwinMode, setIsTwinMode] = useState(false);
+  const [twinOfId, setTwinOfId] = useState<string>("");
+  const [clearTwinOnSave, setClearTwinOnSave] = useState(false);
 
   const byId = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
@@ -210,6 +223,7 @@ export default function PersonFormDialog({
     [linkOptions, linkPersonId],
   );
 
+  const isSiblingKinship = kinship === "brother" || kinship === "sister";
   const isChildKinship = kinship === "son" || kinship === "daughter";
 
   const otherParentOptions = useMemo(() => {
@@ -226,6 +240,70 @@ export default function PersonFormDialog({
     if (!otherParentId || otherParentId === "other") return null;
     return byId.get(parseInt(otherParentId, 10)) ?? null;
   }, [otherParentId, byId]);
+
+  const twinPickerOptions = useMemo(() => {
+    if (isEdit && person) {
+      return twinCandidateSiblings(person, [], rels, people);
+    }
+
+    const dedupe = (list: Person[]) => {
+      const seen = new Set<number>();
+      return list.filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
+    };
+
+    // توأم لشخص محدد مسبقاً
+    if (twinOfId) {
+      const ref = byId.get(parseInt(twinOfId, 10));
+      if (!ref) return [];
+      return dedupe([ref, ...fullSiblingsOf(ref, rels, people)]);
+    }
+
+    // إضافة كأخ/أخت → أشقاء المرجع فقط
+    if (isSiblingKinship && anchor) {
+      return dedupe([anchor, ...fullSiblingsOf(anchor, rels, people)]);
+    }
+
+    // إضافة كابن/بنت → أبناء نفس الأبوين (anchor + الأم/الأب الآخر)
+    if (isChildKinship && anchor && selectedOtherParent) {
+      const fatherId =
+        anchor.gender === "male" ? anchor.id : selectedOtherParent.id;
+      const motherId =
+        anchor.gender === "female" ? anchor.id : selectedOtherParent.id;
+      return people
+        .filter((p) => {
+          const parents = getParents(p.id, rels, byId);
+          return parents.fatherId === fatherId && parents.motherId === motherId;
+        })
+        .sort((a, b) => a.givenName.localeCompare(b.givenName, "ar"));
+    }
+
+    return [];
+  }, [
+    isEdit,
+    person,
+    twinOfId,
+    anchor,
+    isSiblingKinship,
+    isChildKinship,
+    selectedOtherParent,
+    rels,
+    people,
+    byId,
+  ]);
+
+  const selectedTwin = useMemo(() => {
+    if (!twinOfId) return null;
+    return byId.get(parseInt(twinOfId, 10)) ?? null;
+  }, [twinOfId, byId]);
+
+  const currentTwins = useMemo(() => {
+    if (!isEdit || !person) return [];
+    return getTwinGroupMembers(person, people);
+  }, [isEdit, person, people]);
 
   const addingViaMother =
     !isEdit && isChildKinship && anchor?.gender === "female";
@@ -319,22 +397,45 @@ export default function PersonFormDialog({
     setOtherParentId("");
     setLinkExistingId(null);
     setCreateBranchFromLineage(false);
+    setIsTwinMode(false);
+    setTwinOfId("");
+    setClearTwinOnSave(false);
 
     if (isEdit && person) {
       const { fatherId, motherId } = getParents(person.id, rels, byId);
       setEditFatherId(fatherId ? String(fatherId) : "");
       setEditMotherId(motherId ? String(motherId) : "");
       setLinkPersonId("");
+      const twins = getTwinGroupMembers(person, people);
+      setIsTwinMode(isTwin(person));
+      setTwinOfId(twins[0] ? String(twins[0].id) : "");
       return;
     }
 
     setEditFatherId("");
     setEditMotherId("");
-    setLinkPersonId(pickPreferredAnchor(people, defaultAnchorId));
-    setKinship(defaultKinship && KINSHIPS.includes(defaultKinship) ? defaultKinship : "son");
+    setLinkPersonId(pickPreferredAnchor(people, defaultTwinOfId ?? defaultAnchorId));
+    const twinKinship =
+      defaultTwinOfId != null
+        ? (byId.get(defaultTwinOfId)?.gender === "female" ? "sister" : "brother")
+        : defaultKinship && KINSHIPS.includes(defaultKinship)
+          ? defaultKinship
+          : "son";
+    setKinship(twinKinship);
+    if (defaultTwinOfId != null) {
+      setIsTwinMode(true);
+      setTwinOfId(String(defaultTwinOfId));
+      const twinRef = byId.get(defaultTwinOfId);
+      if (twinRef) {
+        setBirthDay(twinRef.birthDay?.toString() ?? "");
+        setBirthMonth(twinRef.birthMonth?.toString() ?? "");
+        setBirthYear(twinRef.birthYear?.toString() ?? "");
+        setBirthPlace(twinRef.birthPlace ?? "");
+      }
+    }
     // لا تُضَمَّن people/rels — وإلا يُمسَح النموذج عند كل تحديث للشجرة
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, person?.id, defaultAnchorId, defaultKinship, isEdit]);
+  }, [open, person?.id, defaultAnchorId, defaultKinship, defaultTwinOfId, isEdit]);
 
   /** إذا فُتح الحوار قبل تحميل الأشخاص */
   useEffect(() => {
@@ -364,6 +465,23 @@ export default function PersonFormDialog({
       setOtherParentId("");
     }
   }, [isEdit, isChildKinship, otherParentOptions, otherParentId]);
+
+  useEffect(() => {
+    if (!open || isEdit) return;
+    if (isTwinMode && isSiblingKinship && linkPersonId && !twinOfId) {
+      setTwinOfId(linkPersonId);
+    }
+  }, [open, isEdit, isTwinMode, isSiblingKinship, linkPersonId, twinOfId]);
+
+  useEffect(() => {
+    if (!selectedTwin || isEdit) return;
+    setBirthDay(selectedTwin.birthDay?.toString() ?? "");
+    setBirthMonth(selectedTwin.birthMonth?.toString() ?? "");
+    setBirthYear(selectedTwin.birthYear?.toString() ?? "");
+    if (selectedTwin.birthPlace && !birthPlace) {
+      setBirthPlace(selectedTwin.birthPlace);
+    }
+  }, [selectedTwin?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isEdit || !editFatherPerson) return;
@@ -490,6 +608,12 @@ export default function PersonFormDialog({
     if (isEdit && person) {
       const motherIdNum = editMotherId ? parseInt(editMotherId, 10) : null;
       const fatherIdNum = editFatherId ? parseInt(editFatherId, 10) : null;
+      const twinPayload =
+        clearTwinOnSave || (!isTwinMode && isTwin(person))
+          ? { twinOfPersonId: null as number | null }
+          : isTwinMode && twinOfId
+            ? { twinOfPersonId: parseInt(twinOfId, 10) }
+            : {};
       updateMut.mutate({
         id: person.id,
         treeId,
@@ -502,6 +626,7 @@ export default function PersonFormDialog({
           fatherIdNum != null && Number.isFinite(fatherIdNum)
             ? fatherIdNum
             : null,
+        ...twinPayload,
       });
       return;
     }
@@ -535,9 +660,15 @@ export default function PersonFormDialog({
         return;
       }
     }
+    if (isTwinMode && !twinOfId) {
+      toast.error(t("twins.pickRequired"));
+      return;
+    }
     createMut.mutate({
       treeId,
       ...base,
+      twinOfPersonId:
+        isTwinMode && twinOfId ? parseInt(twinOfId, 10) : undefined,
       linkExistingId: linkExistingId ?? undefined,
       createBranchFromLineage:
         !linkExistingId && createBranchFromLineage && lineageSegments > 0
@@ -705,11 +836,17 @@ export default function PersonFormDialog({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm">{t("personForm.pickFather")}</Label>
-                  <Select
-                    value={editFatherId || "none"}
-                    onValueChange={(v) => {
-                      setEditFatherId(v === "none" ? "" : v);
-                      if (v !== "none" && editMotherId) {
+                  <PersonSearchPicker
+                    people={editFatherOptions}
+                    value={editFatherId}
+                    allowNone
+                    noneLabel={t("personForm.noParent")}
+                    placeholder={t("personForm.pickFatherPh")}
+                    searchPlaceholder={t("personForm.searchParentPh")}
+                    excludeId={person?.id}
+                    onChange={(v) => {
+                      setEditFatherId(v);
+                      if (v && editMotherId) {
                         const father = byId.get(parseInt(v, 10));
                         if (father) {
                           const wives = oppositeSpouses(father, spousesOf, byId);
@@ -722,41 +859,21 @@ export default function PersonFormDialog({
                         }
                       }
                     }}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder={t("personForm.pickFatherPh")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t("personForm.noParent")}</SelectItem>
-                      {editFatherOptions.map((p) => (
-                        <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.givenName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm">{t("personForm.pickMother")}</Label>
-                  <Select
-                    value={editMotherId || "none"}
-                    onValueChange={(v) =>
-                      setEditMotherId(v === "none" ? "" : v)
-                    }
+                  <PersonSearchPicker
+                    people={editMotherOptions}
+                    value={editMotherId}
+                    allowNone
+                    noneLabel={t("personForm.noParent")}
+                    placeholder={t("personForm.pickMotherPh")}
+                    searchPlaceholder={t("personForm.searchParentPh")}
+                    excludeId={person?.id}
                     disabled={!editFatherPerson}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder={t("personForm.pickMotherPh")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t("personForm.noParent")}</SelectItem>
-                      {editMotherOptions.map((p) => (
-                        <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.givenName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => setEditMotherId(v)}
+                  />
                   {!editFatherPerson ? (
                     <p className="text-xs text-muted-foreground">
                       {t("personForm.editMotherNeedsFather")}
@@ -958,6 +1075,79 @@ export default function PersonFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* أداة التوأم */}
+          {(isSiblingKinship || isChildKinship || isEdit) && (
+            <div className="md:col-span-2 rounded-2xl border border-violet-200 bg-violet-50/50 p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Users2 className="h-4 w-4 text-violet-700" />
+                  <div>
+                    <p className="font-semibold text-sm text-violet-950">
+                      {t("twins.formTitle")}
+                    </p>
+                    <p className="text-xs text-violet-800/80">
+                      {t("twins.formHint")}
+                    </p>
+                  </div>
+                  {isEdit && isTwin(person) && <TwinBadge />}
+                </div>
+                <Switch
+                  checked={isTwinMode}
+                  onCheckedChange={(v) => {
+                    setIsTwinMode(v);
+                    if (!v && isEdit && person && isTwin(person)) {
+                      setClearTwinOnSave(true);
+                    } else {
+                      setClearTwinOnSave(false);
+                    }
+                  }}
+                />
+              </div>
+
+              {isTwinMode && (
+                <div className="space-y-2">
+                  <Label className="text-sm">{t("twins.twinOf")}</Label>
+                  <Select
+                    value={twinOfId || "none"}
+                    onValueChange={(v) =>
+                      setTwinOfId(v === "none" ? "" : v)
+                    }
+                  >
+                    <SelectTrigger className="h-11 bg-white">
+                      <SelectValue placeholder={t("twins.pickSibling")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("twins.pickSibling")}</SelectItem>
+                      {twinPickerOptions.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.givenName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {twinPickerOptions.length === 0 && (
+                    <p className="text-xs text-amber-800">
+                      {t("twins.needBothParents")}
+                    </p>
+                  )}
+                  {selectedTwin && (
+                    <p className="text-xs text-violet-800">
+                      {t("twins.birthCopied", { name: selectedTwin.givenName })}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {isEdit && currentTwins.length > 0 && isTwinMode && (
+                <p className="text-xs text-muted-foreground">
+                  {t("twins.currentGroup", {
+                    names: currentTwins.map((p) => p.givenName).join("، "),
+                  })}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* تاريخ الميلاد: يوم / شهر / سنة */}
           <div className="md:col-span-2 space-y-2">

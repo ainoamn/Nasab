@@ -90,7 +90,7 @@ export default function HeritageBoardPrint(props: PrintTemplateProps) {
             {t("printPage.heritageBanner", { name: tree.name })}
           </p>
           <div className="mt-2 bg-white/15 rounded-lg px-2 py-2">
-            <PrintStatsBar people={people} levels={levels} rels={rels} today={today} accent="#FFFFFF" />
+            <PrintStatsBar people={people} levels={levels} rels={rels} rootPersonId={rootPersonId} today={today} accent="#FFFFFF" />
           </div>
           {scopeSummary && (
             <p className="text-[10px] opacity-70 mt-1 leading-relaxed">{scopeSummary}</p>
@@ -98,7 +98,7 @@ export default function HeritageBoardPrint(props: PrintTemplateProps) {
         </div>
       </HeritageFrame>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

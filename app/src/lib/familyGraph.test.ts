@@ -38,6 +38,7 @@ function p(
     photoUrl: null,
     notes: null,
     branchId: null,
+    twinGroupId: null,
     createdById: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -117,6 +118,40 @@ describe("familyGraph lineage", () => {
     expect(ids.has(3)).toBe(true);
     expect(ids.has(4)).toBe(true);
     expect(ids.has(5)).toBe(true);
+  });
+
+  it("focus subgraph includes siblings under an ancestor (Saleh/Maryam case)", () => {
+    // صالح + يسرى → مريم / عيسى / محمد — التركيز على مريم يجب أن يُظهر إخوتها
+    const people = [
+      p(102, "صالح"),
+      p(223, "يسرى", "female"),
+      p(104, "مريم", "female"),
+      p(224, "عيسى"),
+      p(225, "محمد"),
+      p(78, "عبد الحميد"),
+    ];
+    const rels = [
+      parent(102, 104),
+      parent(102, 224),
+      parent(223, 224),
+      parent(102, 225),
+      parent(223, 225),
+      spouse(102, 223),
+      spouse(104, 78),
+    ];
+    const sub = collectFocusedSubgraph(104, people, rels);
+    const ids = new Set(sub.people.map((x) => x.id));
+    expect(ids.has(102)).toBe(true);
+    expect(ids.has(223)).toBe(true);
+    expect(ids.has(104)).toBe(true);
+    expect(ids.has(224)).toBe(true);
+    expect(ids.has(225)).toBe(true);
+    expect(ids.has(78)).toBe(true);
+
+    const childRels = sub.rels.filter(
+      (r) => r.type === "parent" && r.fromPersonId === 102,
+    );
+    expect(childRels.map((r) => r.toPersonId).sort()).toEqual([104, 224, 225]);
   });
 
   it("infers spouse link when male and female co-parent a child", () => {

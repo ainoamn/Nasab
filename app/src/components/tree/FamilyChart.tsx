@@ -37,9 +37,11 @@ import {
   VLine,
 } from "@/components/tree/ChartConnectors";
 import { Baby, Minus, Plus, RotateCcw, Move, Maximize, Crosshair, AlertCircle } from "lucide-react";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { displayGenerationNumber, printGenerationLevel } from "@/lib/printData";
+import { buildSpouseNotesMap, preferredParentId } from "@/lib/printLineage";
 import { parseLineageChain } from "@/lib/lineageParser";
 import QuickAddMenu, {
   type QuickKinship,
@@ -55,6 +57,7 @@ import {
 type Labels = ReturnType<typeof useLabels>;
 
 const PrintLevelsContext = createContext<Map<number, number> | null>(null);
+const SpouseNotesContext = createContext<Map<number, string[]> | null>(null);
 
 type PrintChartMeta = {
   levels: Map<number, number>;
@@ -95,6 +98,11 @@ const GapsContext = createContext<{
     kind: PersonGap["kind"],
   ) => void;
 } | null>(null);
+
+/** ترتيب التوائم على المخطط: personId → { order, total } */
+const TwinMetaContext = createContext<
+  Map<number, { order: number; total: number }>
+>(new Map());
 
 type RemotePerson = Person & { linkId: number; forPersonId: number };
 
@@ -624,38 +632,89 @@ export default function FamilyChart({
     return () => window.cancelAnimationFrame(id);
   }, [centerRequest, centerOnPersonId, disablePanZoom]);
 
-  // ضبط حجم الشجرة للطباعة والمعاينة
+  // ضبط حجم الشجرة للطباعة: يلائم العرض والارتفاع معاً
   useEffect(() => {
     if (!disablePanZoom) return;
     const viewport = viewportRef.current;
     const content = contentRef.current;
     if (!viewport || !content) return;
 
-    const fit = () => {
+    const clearFit = () => {
       content.style.transform = "";
-      const available = viewport.clientWidth - 24;
-      const needed = content.scrollWidth;
-      if (needed > available && available > 0) {
-        const scale = Math.max(0.45, available / needed);
-        content.style.transform = `scale(${scale})`;
-        content.style.transformOrigin = "top center";
+      content.style.transformOrigin = "";
+      content.style.marginBottom = "";
+      content.style.marginInlineEnd = "";
+      content.style.marginLeft = "";
+      content.style.marginRight = "";
+      content.style.removeProperty("zoom");
+      viewport.style.minHeight = "";
+      viewport.style.height = "";
+      viewport.style.overflow = "";
+    };
+
+    const fit = () => {
+      clearFit();
+
+      const availableW = Math.max(0, viewport.clientWidth - 8);
+      // حد ارتفاع الطباعة التقريبي (صفحة أفقية بعد الهوامش)
+      const availableH = Math.max(280, Math.min(920, window.innerHeight * 0.72));
+      const neededW = content.scrollWidth;
+      const neededH = content.scrollHeight;
+      if (neededW <= 0 || neededH <= 0) return;
+
+      const scaleW = availableW > 0 ? availableW / neededW : 1;
+      const scaleH = availableH / neededH;
+      const scale = Math.max(0.22, Math.min(1, Math.min(scaleW, scaleH)));
+
+      if (scale < 0.999) {
+        const supportsZoom =
+          typeof CSS !== "undefined" &&
+          typeof CSS.supports === "function" &&
+          CSS.supports("zoom", "1");
+        if (supportsZoom) {
+          content.style.setProperty("zoom", String(scale));
+          viewport.style.minHeight = `${Math.ceil(neededH * scale) + 24}px`;
+          viewport.style.overflow = "hidden";
+        } else {
+          content.style.transform = `scale(${scale})`;
+          content.style.transformOrigin = "top center";
+          content.style.marginBottom = `${-Math.ceil(neededH * (1 - scale))}px`;
+          content.style.marginInlineEnd = `${-Math.ceil(neededW * (1 - scale))}px`;
+          viewport.style.minHeight = `${Math.ceil(neededH * scale) + 24}px`;
+          viewport.style.height = `${Math.ceil(neededH * scale) + 24}px`;
+          viewport.style.overflow = "hidden";
+        }
       } else {
-        content.style.transform = "";
+        viewport.style.minHeight = `${neededH + 16}px`;
       }
     };
 
-    fit();
-    const id = window.requestAnimationFrame(fit);
-    const onBeforePrint = () => fit();
-    window.addEventListener("resize", fit);
+    const schedule = () => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(fit);
+      });
+    };
+
+    schedule();
+    const onBeforePrint = () => {
+      fit();
+      window.setTimeout(fit, 30);
+      window.setTimeout(fit, 120);
+    };
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => schedule())
+        : null;
+    ro?.observe(viewport);
+    window.addEventListener("resize", schedule);
     window.addEventListener("beforeprint", onBeforePrint);
     return () => {
-      window.cancelAnimationFrame(id);
-      window.removeEventListener("resize", fit);
+      ro?.disconnect();
+      window.removeEventListener("resize", schedule);
       window.removeEventListener("beforeprint", onBeforePrint);
-      content.style.transform = "";
+      clearFit();
     };
-  }, [disablePanZoom, people, rels, branches, compact]);
+  }, [disablePanZoom, people, rels, branches, compact, printLevels]);
 
   const onPointerDown = useCallback(
     (e: REPointerEvent<HTMLDivElement>) => {
@@ -710,8 +769,35 @@ export default function FamilyChart({
 
   const hasRels = rels.length > 0;
 
+  const twinMeta = useMemo(() => {
+    const map = new Map<number, { order: number; total: number }>();
+    const byGroup = new Map<number, Person[]>();
+    for (const p of people) {
+      if (p.twinGroupId == null) continue;
+      const arr = byGroup.get(p.twinGroupId) ?? [];
+      arr.push(p);
+      byGroup.set(p.twinGroupId, arr);
+    }
+    for (const group of byGroup.values()) {
+      if (group.length < 2) continue;
+      const sorted = [...group].sort(
+        (a, b) => birthSortKey(a) - birthSortKey(b),
+      );
+      sorted.forEach((p, i) => {
+        map.set(p.id, { order: i + 1, total: sorted.length });
+      });
+    }
+    return map;
+  }, [people]);
+
+  const printSpouseNotes = useMemo(
+    () => (printLevels ? buildSpouseNotesMap(people, rels) : null),
+    [printLevels, people, rels],
+  );
+
   return (
     <PrintLevelsContext.Provider value={printLevels ?? null}>
+    <SpouseNotesContext.Provider value={printSpouseNotes}>
     <PrintChartContext.Provider
       value={
         printLevels
@@ -719,6 +805,7 @@ export default function FamilyChart({
           : null
       }
     >
+    <TwinMetaContext.Provider value={twinMeta}>
     <SideTreeContext.Provider value={sideTreeCtx}>
     <MarriedIdsContext.Provider value={marriedIds}>
     <SelectedPersonContext.Provider value={selectedPersonId ?? null}>
@@ -823,7 +910,7 @@ export default function FamilyChart({
           !disablePanZoom &&
             "h-[min(70vh,720px)] sm:h-[min(75vh,780px)] cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[#ececec]",
           disablePanZoom &&
-            "min-h-[320px] py-4 overflow-visible print:overflow-visible print:border-0 print:bg-transparent bg-stone-100",
+            "chart-print-viewport min-h-[320px] overflow-hidden py-4 print:border-0 print:bg-transparent bg-stone-100",
         )}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -839,13 +926,13 @@ export default function FamilyChart({
         <div
           className={cn(
             "flex h-full w-full items-start justify-center pt-5",
-            disablePanZoom ? "overflow-visible print:overflow-visible" : "overflow-hidden",
+            disablePanZoom ? "overflow-hidden" : "overflow-hidden",
           )}
           dir="ltr"
         >
           <div
             ref={contentRef}
-            className="shrink-0"
+            className={cn("shrink-0", disablePanZoom && "chart-print-content")}
             style={{
               transform: disablePanZoom
                 ? undefined
@@ -929,7 +1016,9 @@ export default function FamilyChart({
     </SelectedPersonContext.Provider>
     </MarriedIdsContext.Provider>
     </SideTreeContext.Provider>
+    </TwinMetaContext.Provider>
     </PrintChartContext.Provider>
+    </SpouseNotesContext.Provider>
     </PrintLevelsContext.Provider>
   );
 }
@@ -1042,6 +1131,8 @@ function PersonCard({
 }) {
   const printLevels = useContext(PrintLevelsContext);
   const printChart = useContext(PrintChartContext);
+  const spouseNotesCtx = useContext(SpouseNotesContext);
+  const spouseNotes = spouseNotesCtx?.get(person.id) ?? [];
   const sideTree = useContext(SideTreeContext);
   const printLevel =
     printChart != null
@@ -1058,6 +1149,7 @@ function PersonCard({
   const chartActions = useContext(ChartActionsContext);
   const onQuickAdd = useContext(QuickAddContext);
   const gapsCtx = useContext(GapsContext);
+  const twinInfo = useContext(TwinMetaContext).get(person.id);
   const isMarried = marriedIds.has(person.id);
   const isSelected = selectedId === person.id;
   const female = isFemale(person.gender);
@@ -1127,14 +1219,17 @@ function PersonCard({
               "relative z-[1] flex shrink-0 cursor-pointer flex-col items-center text-center transition",
               "rounded-2xl border shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md hover:-translate-y-0.5",
               theme.bg,
-              !living
-                ? "border-stone-800 border-[2px]"
-                : isMarried
-                  ? "border-amber-400 border-[2px]"
-                  : cn("border", theme.border),
+              twinInfo
+                ? "border-violet-500 border-[2.5px] ring-2 ring-violet-300/70 print:border-violet-700 print:ring-violet-400"
+                : !living
+                  ? "border-stone-800 border-[2px]"
+                  : isMarried
+                    ? "border-amber-400 border-[2px]"
+                    : cn("border", theme.border),
               isSelected && "ring-2 ring-sky-500 ring-offset-2 ring-offset-[#ececec]",
               onPath &&
                 !isSelected &&
+                !twinInfo &&
                 "ring-2 ring-violet-500 ring-offset-2 ring-offset-[#ececec] shadow-[0_0_0_3px_rgba(139,92,246,0.25)]",
               compact
                 ? "w-[6.75rem] px-2 pb-2.5 pt-2"
@@ -1150,6 +1245,15 @@ function PersonCard({
                 {personGaps.length === 1 && (
                   <AlertCircle className="h-2.5 w-2.5" />
                 )}
+              </span>
+            )}
+            {twinInfo && (
+              <span className="absolute -start-1.5 -top-1.5 z-[3]">
+                <TwinBadge
+                  compact
+                  order={twinInfo.order}
+                  total={twinInfo.total}
+                />
               </span>
             )}
             <span
@@ -1200,6 +1304,12 @@ function PersonCard({
                 {person.givenName}
               </span>
             </p>
+
+            {printLevels && spouseNotes.length > 0 && (
+              <p className="mt-0.5 w-full line-clamp-2 text-[8px] font-medium leading-tight text-amber-800/90">
+                {spouseNotes.join(" · ")}
+              </p>
+            )}
 
             {!compact && person.fatherName && (
               <p className="mt-0.5 w-full truncate text-[9px] leading-tight text-stone-500 font-display">
@@ -1419,9 +1529,9 @@ function ChildrenRow({
 }
 
 /**
- * صف الزوجية متمركز على الشخص المحوري:
- * عمودان جانبيان بعرض متساوٍ (1fr) حتى يبقى المحور في منتصف العمود لخط الإخوة،
- * مع حجز مساحة حقيقية للزوجات حتى لا تتداخل الأعمدة.
+ * صف الزوجية متمركز على الشخص المحوري.
+ * عند وجود زوجين على الجانبين: عمودان متساويان ليبقى المحور تحت خط الإخوة.
+ * عند وجود زوج على جانب واحد فقط: لا نحجز مساحة فارغة معاكسة (كانت تباعد فروع الزوجات).
  */
 function SiblingHub({
   hub,
@@ -1434,16 +1544,41 @@ function SiblingHub({
   /** جهة inline-end (يسار في RTL) */
   endSide?: ReactNode;
 }) {
-  return (
-    <div
-      className="mx-auto grid w-max max-w-none grid-cols-[1fr_auto_1fr] items-center"
-      dir="rtl"
-    >
-      <div className="flex items-center justify-end">{startSide}</div>
-      <div className="relative z-[1] shrink-0">{hub}</div>
-      <div className="flex items-center justify-start">{endSide}</div>
-    </div>
-  );
+  const hasStart = startSide != null;
+  const hasEnd = endSide != null;
+
+  if (hasStart && hasEnd) {
+    return (
+      <div
+        className="mx-auto grid w-max max-w-none grid-cols-[1fr_auto_1fr] items-center"
+        dir="rtl"
+      >
+        <div className="flex items-center justify-end">{startSide}</div>
+        <div className="relative z-[1] shrink-0">{hub}</div>
+        <div className="flex items-center justify-start">{endSide}</div>
+      </div>
+    );
+  }
+
+  if (hasStart) {
+    return (
+      <div className="mx-auto flex w-max max-w-none items-center" dir="rtl">
+        <div className="flex items-center">{startSide}</div>
+        <div className="relative z-[1] shrink-0">{hub}</div>
+      </div>
+    );
+  }
+
+  if (hasEnd) {
+    return (
+      <div className="mx-auto flex w-max max-w-none items-center" dir="rtl">
+        <div className="relative z-[1] shrink-0">{hub}</div>
+        <div className="flex items-center">{endSide}</div>
+      </div>
+    );
+  }
+
+  return <div className="relative z-[1] mx-auto w-max shrink-0">{hub}</div>;
 }
 
 /** غلاف الأبناء — عرض طبيعي حتى لا تتداخل الفروع */
@@ -1742,8 +1877,9 @@ function MultiSpouseBranch({
         t={t}
         activeSpouseId={activeSpouseId === "all" ? null : activeSpouseId}
       />
+      {!compact && (
       <div
-        className="mt-1.5 mb-0.5 flex flex-wrap items-center justify-center gap-1"
+        className="mt-1.5 mb-0.5 flex flex-wrap items-center justify-center gap-1 print:hidden"
         data-no-pan
       >
         <button
@@ -1777,18 +1913,29 @@ function MultiSpouseBranch({
           </button>
         ))}
       </div>
+      )}
       <DescendantsOverflow>
+        {/* كل زيجة تحت الأخرى — يمنع التمدد الأفقي الهائل بين فرعي الزوجات */}
         <div
-          className="flex flex-nowrap items-start justify-center gap-4 pt-1"
+          className={cn(
+            "flex items-center pt-1",
+            activeSpouseId === "all" && visible.filter((v) => v.kids.length > 0).length + (showOrphans ? 1 : 0) > 1
+              ? "flex-col gap-5"
+              : "flex-nowrap justify-center gap-4",
+          )}
           dir="rtl"
         >
           {visible.map(({ spouse, kids }) =>
             kids.length > 0 ? (
               <div key={spouse.id} className="flex flex-col items-center">
                 {activeSpouseId === "all" && (
-                  <p className="mb-0.5 max-w-[7rem] truncate text-center text-[9px] text-stone-500">
-                    {spouse.givenName}
-                  </p>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="h-px w-6 bg-stone-300" aria-hidden />
+                    <p className="max-w-[8rem] truncate text-center text-[10px] font-medium text-stone-600">
+                      {t("chart.motherBranch", { name: spouse.givenName })}
+                    </p>
+                    <span className="h-px w-6 bg-stone-300" aria-hidden />
+                  </div>
                 )}
                 <ChildrenRow
                   kidIds={kids}
@@ -1865,6 +2012,7 @@ function CoupleNode({
   L: Labels;
   t: (k: string, o?: Record<string, unknown>) => string;
 }) {
+  const printLevels = useContext(PrintLevelsContext);
   const focus = byId.get(focusId);
   if (!focus) return null;
 
@@ -2008,7 +2156,13 @@ function CoupleNode({
     rels,
     byId,
     false,
-  ).sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
+  )
+    .filter((kidId) => {
+      if (!printLevels) return true;
+      // الطباعة: الأبناء عند الأب إن وُجد في الشجرة، وإلا عند الأم (focus إن كانت الأم)
+      return preferredParentId(kidId, rels, byId) === focus.id;
+    })
+    .sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
 
   const spouseRel =
     father && mother ? findSpouseRel(rels, father.id, mother.id) : undefined;

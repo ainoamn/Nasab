@@ -16,6 +16,7 @@ import DiscoveriesPanel from "@/components/tree/DiscoveriesPanel";
 import PersonGapsStrip from "@/components/tree/PersonGapsStrip";
 import ImmediateFamilyStrip from "@/components/tree/ImmediateFamilyStrip";
 import BirthOrderStrip from "@/components/tree/BirthOrderStrip";
+import TwinFamilyPanel from "@/components/tree/TwinFamilyPanel";
 import PersonShareQrDialog from "@/components/tree/PersonShareQrDialog";
 import PathToHomeStrip from "@/components/tree/PathToHomeStrip";
 import PlacesBrowser from "@/components/tree/PlacesBrowser";
@@ -255,6 +256,7 @@ export default function TreeWorkspace() {
   const [addKinship, setAddKinship] = useState<
     "father" | "mother" | "son" | "daughter" | "spouse" | "brother" | "sister" | null
   >(null);
+  const [addTwinOfId, setAddTwinOfId] = useState<number | null>(null);
   const [editPerson, setEditPerson] = useState<Person | null>(null);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [deletePerson, setDeletePerson] = useState<Person | null>(null);
@@ -788,6 +790,16 @@ export default function TreeWorkspace() {
   ) => {
     setAddAnchorId(anchorId);
     setAddKinship(kinship);
+    setAddTwinOfId(null);
+    setDetailPerson(null);
+    setAddOpen(true);
+  };
+
+  const openAddTwin = (personId: number) => {
+    const p = peopleById.get(personId);
+    setAddAnchorId(personId);
+    setAddKinship(p?.gender === "female" ? "sister" : "brother");
+    setAddTwinOfId(personId);
     setDetailPerson(null);
     setAddOpen(true);
   };
@@ -2443,12 +2455,14 @@ export default function TreeWorkspace() {
           if (!o) {
             setAddAnchorId(null);
             setAddKinship(null);
+            setAddTwinOfId(null);
           }
         }}
         people={people}
         rels={rels}
         defaultAnchorId={addAnchorId}
         defaultKinship={addKinship}
+        defaultTwinOfId={addTwinOfId}
         onAdded={refreshChart}
       />
       <PersonFormDialog
@@ -3170,6 +3184,21 @@ export default function TreeWorkspace() {
                   setChartFocusId(p.id);
                   requestCenterOn(p.id);
                 }}
+              />
+              <TwinFamilyPanel
+                treeId={treeId}
+                person={detailPerson}
+                siblings={fullSiblings}
+                people={people}
+                rels={rels}
+                canWrite={canWrite}
+                onAddTwin={() => openAddTwin(detailPerson.id)}
+                onSelectTwin={(p) => {
+                  setDetailPerson(p);
+                  setChartFocusId(p.id);
+                  requestCenterOn(p.id);
+                }}
+                onChanged={refreshChart}
               />
               <PersonGapsStrip
                 person={detailPerson}

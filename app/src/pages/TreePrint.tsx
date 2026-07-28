@@ -8,7 +8,18 @@ import { localeTag } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Printer,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Download,
+  FileImage,
+  FileText,
+  Loader2,
   ArrowRight,
   TreePalm,
   ScrollText,
@@ -24,13 +35,18 @@ import {
   Network,
   ListTree,
   Award,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Person, Relationship } from "@db/schema";
 import type { TreeBranch } from "@db/tables";
 import type { FemaleDisplay } from "@contracts/constants";
 import { PRINT_TEMPLATES, getPrintTemplate } from "@/components/print/registry";
-import PrintTemplateBody, { printPageCss } from "@/components/print/PrintTemplateBody";
+import PrintTemplateBody, {
+  defaultPaperForTemplate,
+  printOrient,
+  printPageCss,
+} from "@/components/print/PrintTemplateBody";
 import { TemplatePreviewThumb } from "@/components/print/TemplatePreviewThumb";
 import PrintScopePanel from "@/components/print/PrintScopePanel";
 import type { PrintTemplateId } from "@/components/print/types";
@@ -40,8 +56,11 @@ import {
   scopeSummaryLabel,
   type PrintScope,
 } from "@/lib/printFilter";
+import { fitPrintSheetToPage } from "@/lib/printFit";
+import { downloadPrintPdf, downloadPrintPng } from "@/lib/printExport";
 import { parsePersonIdParam } from "@/lib/treeUrl";
 import { getHomePersonId } from "@/lib/homePerson";
+import { toast } from "sonner";
 
 const TPL_ICONS: Record<PrintTemplateId, typeof TreePalm> = {
   palm: TreePalm,
@@ -71,6 +90,7 @@ export default function TreePrint() {
   const [scope, setScope] = useState<PrintScope>(DEFAULT_PRINT_SCOPE);
   const [rootBootstrapped, setRootBootstrapped] = useState(false);
   const [templateBootstrapped, setTemplateBootstrapped] = useState(false);
+  const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
 
   const treeQuery = trpc.tree.get.useQuery(
     { id: treeId },
@@ -139,6 +159,11 @@ export default function TreePrint() {
     }
   }, [treeQuery.data?.femaleDisplay]);
 
+  // عند تغيير القالب: اقترح حجم ورقة مناسب إن لم يغيّره المستخدم يدوياً بعد
+  useEffect(() => {
+    setScope((s) => ({ ...s, paperSize: defaultPaperForTemplate(template) }));
+  }, [template]);
+
   useEffect(() => {
     document.title = treeQuery.data
       ? t("printPage.title", { name: treeQuery.data.name })
@@ -152,6 +177,27 @@ export default function TreePrint() {
     () => buildPrintSubgraph(allPeople, allRels, branches, scope),
     [allPeople, allRels, branches, scope],
   );
+
+  /** ضغط المحتوى لصفحة واحدة + استعادة بعده */
+  useEffect(() => {
+    if (step !== "preview") return;
+    let restore: (() => void) | undefined;
+    const onBefore = () => {
+      restore?.();
+      restore = fitPrintSheetToPage(scope.paperSize);
+    };
+    const onAfter = () => {
+      restore?.();
+      restore = undefined;
+    };
+    window.addEventListener("beforeprint", onBefore);
+    window.addEventListener("afterprint", onAfter);
+    return () => {
+      window.removeEventListener("beforeprint", onBefore);
+      window.removeEventListener("afterprint", onAfter);
+      restore?.();
+    };
+  }, [step, scope.paperSize, template, subgraph.people.length]);
 
   const scopeSummary = useMemo(() => {
     const root = allPeople.find((p) => p.id === subgraph.rootPersonId);
@@ -181,6 +227,34 @@ export default function TreePrint() {
     setScope((s) => ({ ...s, ...patch }));
   };
 
+  const exportTitle = `${tree?.name ?? "nasab"}-${designName}`;
+
+  const runExport = async (kind: "pdf" | "png") => {
+    if (exporting) return;
+    setExporting(kind);
+    toast.message(t("printPage.downloadWorking"));
+    try {
+      if (kind === "pdf") {
+        await downloadPrintPdf({
+          title: exportTitle,
+          paperSize: scope.paperSize,
+          pixelRatio: 4,
+        });
+      } else {
+        await downloadPrintPng({
+          title: exportTitle,
+          pixelRatio: 4,
+        });
+      }
+      toast.success(t("printPage.downloadDone"));
+    } catch (err) {
+      console.error(err);
+      toast.error(t("printPage.downloadFailed"));
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/40">
       <div className="no-print sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -201,10 +275,41 @@ export default function TreePrint() {
           <div className="flex items-center gap-2 shrink-0">
             <LanguageSwitcher variant="outline" />
             {step === "preview" && (
-              <Button size="sm" onClick={() => window.print()} className="gap-2">
-                <Printer className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("printPage.print")}</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="gap-2" disabled={!!exporting}>
+                    {exporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">{t("printPage.download")}</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground leading-snug">
+                    {t("printPage.downloadHint")}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!!exporting}
+                    onClick={() => void runExport("pdf")}
+                    className="gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {t("printPage.downloadPdf")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!!exporting}
+                    onClick={() => void runExport("png")}
+                    className="gap-2"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    {t("printPage.downloadPng")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
@@ -263,7 +368,7 @@ export default function TreePrint() {
 
           <div className="mt-8 flex justify-center">
             <Button size="lg" className="px-10 gap-2" onClick={() => setStep("preview")}>
-              <Printer className="h-4 w-4" />
+              <Download className="h-4 w-4" />
               {t("printPage.previewTemplate")}
             </Button>
           </div>
@@ -281,10 +386,14 @@ export default function TreePrint() {
 
           <p className="no-print text-xs text-muted-foreground text-center mb-4">
             {scopeSummary}
+            <span className="mt-1 block text-[11px] text-amber-800/90">
+              {t("printPage.downloadHint")}
+            </span>
           </p>
 
           <div
-            className="print-sheet relative mx-auto max-w-none px-4 py-8 md:px-8 print:max-w-none print:px-0"
+            className="print-sheet relative mx-auto max-w-none overflow-visible px-4 py-8 md:px-8 print:max-w-none print:overflow-visible print:px-0 print:py-0"
+            data-print-orient={printOrient(scope.paperSize)}
             style={{ backgroundColor: selected.paper, color: "#1c1917" }}
           >
             {subgraph.people.length === 0 ? (
@@ -307,13 +416,14 @@ export default function TreePrint() {
                 paper={selected.paper}
                 designName={designName}
                 today={today}
+                nameMode={scope.nameMode}
               />
             )}
           </div>
         </div>
       ) : null}
 
-      <style>{printPageCss(template)}</style>
+      <style>{printPageCss(template, scope.paperSize)}</style>
     </div>
   );
 }

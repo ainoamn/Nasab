@@ -244,7 +244,7 @@ export default function OmaniPalmChart({
                   key={child.id}
                   x={pt.x + off.dx}
                   y={pt.y + off.dy}
-                  text={personDisplayName(child)}
+                  text={child.givenName}
                   variant="leaf"
                   accent={accent}
                 />
@@ -268,7 +268,7 @@ export default function OmaniPalmChart({
                   key={gc.id}
                   x={pt.x + (gi === 0 ? -28 : 28)}
                   y={pt.y - 28 - gi * 10}
-                  text={personDisplayName(gc)}
+                  text={gc.givenName}
                   variant="tip"
                   accent={accent}
                 />

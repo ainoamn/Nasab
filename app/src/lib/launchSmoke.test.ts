@@ -40,6 +40,7 @@ function person(
     photoUrl: null,
     notes: null,
     branchId: null,
+    twinGroupId: null,
     createdById: 1,
     createdAt: new Date(),
     updatedAt: new Date(),

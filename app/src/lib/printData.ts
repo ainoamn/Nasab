@@ -5,9 +5,14 @@ import {
   buildSpousesOf,
   childrenOfPair,
   directChildren,
+  familyChildrenOf,
   getParents,
   oppositeSpouses,
 } from "@/lib/familyGraph";
+import { preferredParentId } from "@/lib/printLineage";
+import { birthSortKey } from "@/lib/birthOrder";
+import { sortSpouses } from "@/lib/spouseMeta";
+import { twinGroupSize } from "@/lib/twins";
 
 export type PrintTreeMeta = {
   name: string;
@@ -223,13 +228,16 @@ function alignSpouseGenerations(
 function markDescendantsFromRoot(
   rootPersonId: number,
   childrenOf: Map<number, number[]>,
+  spousesOf: Map<number, number[]>,
+  rels: Relationship[],
+  byId: Map<number, Person>,
   ids: Set<number>,
 ): Set<number> {
   const fromRoot = new Set<number>([rootPersonId]);
   const queue = [rootPersonId];
   while (queue.length > 0) {
     const id = queue.shift()!;
-    for (const kid of childrenOf.get(id) ?? []) {
+    for (const kid of familyChildrenOf(id, childrenOf, spousesOf, rels, byId)) {
       if (!ids.has(kid) || fromRoot.has(kid)) continue;
       fromRoot.add(kid);
       queue.push(kid);
@@ -251,11 +259,19 @@ export function assignGenerationsFromPrintRoot(
   const byId = new Map(people.map((p) => [p.id, p]));
   const ids = new Set(people.map((p) => p.id));
   const childrenOf = buildChildrenOf(rels);
+  const spousesOf = buildSpousesOf(rels);
   const levels = new Map<number, number>();
 
   if (!ids.has(rootPersonId)) return levels;
 
-  const fromRoot = markDescendantsFromRoot(rootPersonId, childrenOf, ids);
+  const fromRoot = markDescendantsFromRoot(
+    rootPersonId,
+    childrenOf,
+    spousesOf,
+    rels,
+    byId,
+    ids,
+  );
   levels.set(rootPersonId, 0);
 
   for (const r of rels) {
@@ -269,7 +285,7 @@ export function assignGenerationsFromPrintRoot(
   while (queue.length > 0) {
     const id = queue.shift()!;
     const gen = levels.get(id)!;
-    for (const kid of childrenOf.get(id) ?? []) {
+    for (const kid of familyChildrenOf(id, childrenOf, spousesOf, rels, byId)) {
       if (!ids.has(kid)) continue;
       const childGen = gen + 1;
       const prev = levels.get(kid);
@@ -311,7 +327,6 @@ export function assignGenerationsFromPrintRoot(
     if (!changed) break;
   }
 
-  const spousesOf = buildSpousesOf(rels);
   for (const p of people) {
     if (levels.has(p.id)) continue;
     for (const sid of spousesOf.get(p.id) ?? []) {
@@ -461,16 +476,41 @@ export function buildClanHierarchy(
   return levels;
 }
 
+export function stripNasabPrefix(s: string): string {
+  return s.trim().replace(/^(بن|بنت)\s+/u, "");
+}
+
 export function personDisplayName(p: Person): string {
-  return [p.givenName, p.fatherName].filter(Boolean).join(" ");
+  if (!p.fatherName?.trim()) return p.givenName;
+  return `${p.givenName} ${stripNasabPrefix(p.fatherName)}`;
+}
+
+/** أول مقطع من الاسم الشخصي (قبل بن/بنت أو المسافة) */
+export function firstGivenName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.split(/\s+/)[0]!;
 }
 
 export function fullNasabName(p: Person, laqabFallback?: string | null): string {
   const parts = [p.givenName];
-  if (p.fatherName) parts.push(`بن ${p.fatherName}`);
+  if (p.fatherName?.trim()) {
+    const f = stripNasabPrefix(p.fatherName);
+    parts.push(p.gender === "female" ? `بنت ${f}` : `بن ${f}`);
+  }
   const laqab = p.laqab?.trim() || laqabFallback?.trim();
   if (laqab) parts.push(laqab);
   return parts.join(" ");
+}
+
+/** اسم العرض حسب إعداد الطباعة — دون اختصار حسب الحلقة */
+export function formatPrintChartName(
+  p: Person,
+  nameMode: "full" | "firstOnly",
+  laqabFallback?: string | null,
+): string {
+  if (nameMode === "firstOnly") return firstGivenName(p.givenName);
+  return fullNasabName(p, laqabFallback);
 }
 
 export function formatBirthYear(p: Person): string | null {
@@ -546,8 +586,8 @@ export function computeFanLayout(
       const angleDeg = startAngle + t * span;
       const rad = (angleDeg * Math.PI) / 180;
       positions.set(p.id, {
-        x: cx + radius * Math.cos(rad),
-        y: cy + radius * Math.sin(rad),
+        x: Math.min(96, Math.max(4, cx + radius * Math.cos(rad))),
+        y: Math.min(90, Math.max(6, cy + radius * Math.sin(rad))),
         angle: angleDeg,
       });
     });
@@ -562,28 +602,37 @@ export type SunPosition = {
   /** زاوية من محور الشرق بالدرجات (عكس عقارب الساعة) */
   angle: number;
   ring: number;
+  /** زوج/زوجة من خارج خط النسب — قمر صناعي بجانب الأصل */
   isSpouse?: boolean;
+  /** إزاحة شعاعية نسبية (− للداخل، + للخارج) عن محيط الحلقة */
+  radiusBias?: number;
+  /** فهرس الزوج حول الأصل (لتعدد الزوجات) */
+  spouseIndex?: number;
+  /**
+   * رابط زواج بين فردين كلاهما في خط النسب (مثل أبناء العم)
+   * — يُرسَم بخط خفيف دون نقل أحدهما من فرعه
+   */
+  crossBranchSpouse?: boolean;
 };
 
 export type SunEdge = { fromId: number; toId: number };
 
 export type SunLayout = {
   positions: Map<number, SunPosition>;
-  /** روابط أب/أم ← ابن */
+  /** روابط نسب: أصل العائلة ← ابن/ابنة (خط واحد فقط) */
   edges: SunEdge[];
-  /** روابط الزوج ↔ الزوجة على نفس الحلقة */
+  /** روابط زواج: أصل ↔ زوج/زوجة من خارج النسب */
   spouseEdges: SunEdge[];
   ringCount: number;
+  /** جذر خط النسب فقط (بدون الأزواج) */
   rootIds: number[];
 };
 
 /**
- * تخطيط شمس النسب بنمط MyHeritage:
- * الجذر وزوجته في المركز، الأبناء حلقات متحدة المركز،
- * والزوج/الزوجة متلاصقان على نفس الحلقة، والروابط من منتصف الزوجين.
- *
- * يحجز زاوية حسب حجم الفرع ويفرض مسافة دنيا بين العقد على كل حلقة
- * حتى لا تتداخل الأسماء الطويلة.
+ * تخطيط شمس النسب:
+ * - حلقة النسب = أبناء الدم من الجذر فقط
+ * - الزوج/الزوجة من خارج العائلة = قمر صناعي متصل بزوجه (لا يُحسب في خط النسب)
+ * - خط الأبناء يخرج من الأصل فقط (ليس من منتصف الزوجين)
  */
 export function computeSunLayout(
   people: Person[],
@@ -605,80 +654,234 @@ export function computeSunLayout(
   const cy = 50;
   const rootLevel = levels.get(rootPersonId) ?? 0;
 
-  // نصف قطر خارجي يتسع مع كثافة الشجرة
   const density = Math.max(1, people.length);
   const outerRadius = Math.min(47.5, 38 + Math.min(9, Math.log2(density + 1) * 2.2));
 
-  const placeAt = (id: number, angleDeg: number, ring: number, isSpouse = false) => {
-    positions.set(id, { x: cx, y: cy, angle: angleDeg, ring, isSpouse });
+  const placeAt = (
+    id: number,
+    angleDeg: number,
+    ring: number,
+    opts?: { isSpouse?: boolean; radiusBias?: number; spouseIndex?: number },
+  ) => {
+    positions.set(id, {
+      x: cx,
+      y: cy,
+      angle: angleDeg,
+      ring,
+      isSpouse: opts?.isSpouse,
+      radiusBias: opts?.radiusBias,
+      spouseIndex: opts?.spouseIndex,
+    });
   };
 
   const kidsOf = (id: number): number[] =>
-    directChildren(id, childrenOf)
+    familyChildrenOf(id, childrenOf, spousesOf, rels, byId)
       .filter((cid) => byId.has(cid))
-      .sort((a, b) =>
-        personDisplayName(byId.get(a)!).localeCompare(personDisplayName(byId.get(b)!), "ar"),
-      );
+      .sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
 
-  /** أبناء الدم لشخص + أزواجه داخل الشجرة المطبوعة */
+  /** نسل الدم من شخص (يتجاهل جيل الأزواج الدخلاء) */
   const bloodKids = (id: number): number[] => {
-    const person = byId.get(id);
-    if (!person) return [];
-    const spouseIds = oppositeSpouses(person, spousesOf, byId).map((s) => s.id);
+    const parentLvl = levels.get(id) ?? rootLevel;
     const seen = new Set<number>();
     const out: number[] = [];
-    for (const pid of [id, ...spouseIds]) {
-      for (const cid of kidsOf(pid)) {
-        if (seen.has(cid)) continue;
-        const childLvl = levels.get(cid) ?? 0;
-        const parentLvl = levels.get(pid) ?? rootLevel;
-        if (childLvl <= parentLvl) continue;
-        seen.add(cid);
-        out.push(cid);
-      }
+    for (const cid of kidsOf(id)) {
+      if (seen.has(cid)) continue;
+      const childLvl = levels.get(cid);
+      if (childLvl !== undefined && childLvl < parentLvl) continue;
+      seen.add(cid);
+      out.push(cid);
     }
     return out;
+  };
+
+  // خط النسب من الجذر (قبل ترتيب الأبناء حتى نفضّل الوالد من الدم)
+  const bloodline = new Set<number>([rootPersonId]);
+  {
+    const q = [rootPersonId];
+    while (q.length > 0) {
+      const id = q.shift()!;
+      for (const kid of bloodKids(id)) {
+        if (bloodline.has(kid)) continue;
+        bloodline.add(kid);
+        q.push(kid);
+      }
+    }
+  }
+
+  /**
+   * الوالد المعتمد في مخطط الشمس:
+   * الأب من خط النسب أولاً، وإلا الأم من النسب — حتى يبقى أبناء وداد تحت وداد لا تحت الزوج الدخيل.
+   */
+  const layoutPreferredParent = (childId: number): number | null => {
+    const { fatherId, motherId } = getParents(childId, rels, byId);
+    if (fatherId != null && bloodline.has(fatherId)) return fatherId;
+    if (motherId != null && bloodline.has(motherId)) return motherId;
+    if (fatherId != null && byId.has(fatherId)) return fatherId;
+    if (motherId != null && byId.has(motherId)) return motherId;
+    return fatherId ?? motherId;
+  };
+
+  /**
+   * ترتيب الأبناء: مجموعات حسب الزوج/الزوجة الآخر (أبناء وداد ثم أبناء عبلة…)،
+   * وداخل كل مجموعة حسب تاريخ الميلاد — دون خلط أبجدي بين الأمهات.
+   */
+  const orderKidsByOtherParent = (parentId: number, kids: number[]): number[] => {
+    if (kids.length <= 1) return kids;
+    const parent = byId.get(parentId);
+    if (!parent) return kids;
+
+    const groupKey = (childId: number): number | "none" => {
+      const { fatherId, motherId } = getParents(childId, rels, byId);
+      const other =
+        parent.gender === "male"
+          ? motherId
+          : parent.gender === "female"
+            ? fatherId
+            : motherId ?? fatherId;
+      return other ?? "none";
+    };
+
+    const groups = new Map<number | "none", number[]>();
+    for (const kid of kids) {
+      const key = groupKey(kid);
+      const list = groups.get(key) ?? [];
+      list.push(kid);
+      groups.set(key, list);
+    }
+    for (const list of groups.values()) {
+      list.sort((a, b) => birthSortKey(byId.get(a)!) - birthSortKey(byId.get(b)!));
+    }
+
+    const spouseOrder = sortSpouses(
+      oppositeSpouses(parent, spousesOf, byId),
+      rels,
+      parentId,
+    ).map((s) => s.id);
+
+    const keys = [...groups.keys()].sort((a, b) => {
+      if (a === "none") return 1;
+      if (b === "none") return -1;
+      const ia = spouseOrder.indexOf(a);
+      const ib = spouseOrder.indexOf(b);
+      if (ia >= 0 && ib >= 0) return ia - ib;
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      const pa = byId.get(a);
+      const pb = byId.get(b);
+      if (pa && pb) {
+        return personDisplayName(pa).localeCompare(personDisplayName(pb), "ar");
+      }
+      return a - b;
+    });
+
+    return keys.flatMap((k) => groups.get(k) ?? []);
+  };
+
+  /** أبناء يُعرضون تحت هذا الشخص فقط — مجمّعون حسب الأم/الأب الآخر */
+  const layoutKids = (id: number): number[] => {
+    const kids = bloodKids(id).filter((cid) => layoutPreferredParent(cid) === id);
+    return orderKidsByOtherParent(id, kids);
+  };
+
+  const inLawSpousesOf = (id: number): Person[] => {
+    const person = byId.get(id);
+    if (!person) return [];
+    const seen = new Set<number>();
+    const out: Person[] = [];
+    const add = (p: Person | undefined) => {
+      if (!p || p.id === id || bloodline.has(p.id) || seen.has(p.id)) return;
+      if (!byId.has(p.id)) return;
+      seen.add(p.id);
+      out.push(p);
+    };
+
+    // روابط الزوجية المسجّلة
+    for (const s of oppositeSpouses(person, spousesOf, byId)) add(s);
+
+    // أمهات/آباء الأبناء غير المسجّلين كزوج — شائع مع تعدد الزوجات
+    for (const kid of bloodKids(id)) {
+      const { fatherId, motherId } = getParents(kid, rels, byId);
+      for (const pid of [fatherId, motherId]) {
+        if (pid == null || pid === id) continue;
+        add(byId.get(pid));
+      }
+    }
+
+    return out.sort((a, b) =>
+      personDisplayName(a).localeCompare(personDisplayName(b), "ar"),
+    );
   };
 
   const weightMemo = new Map<number, number>();
   const subtreeWeight = (id: number, depth = 0): number => {
     if (weightMemo.has(id)) return weightMemo.get(id)!;
     if (depth > 40) return 1;
-    const person = byId.get(id);
-    if (!person) return 1;
-    const kids = bloodKids(id);
-    const spouses = oppositeSpouses(person, spousesOf, byId).length;
-    const w =
-      1 +
-      spouses * 0.35 +
-      kids.reduce((sum, kid) => sum + subtreeWeight(kid, depth + 1), 0);
+    const kids = layoutKids(id).filter((k) => bloodline.has(k));
+    const w = 1.15 + kids.reduce((sum, kid) => sum + subtreeWeight(kid, depth + 1), 0);
     weightMemo.set(id, w);
     return w;
   };
 
-  const rootPerson = byId.get(rootPersonId)!;
-  const rootSpouseIds = oppositeSpouses(rootPerson, spousesOf, byId).map((s) => s.id);
-  const rootIds = [rootPersonId, ...rootSpouseIds];
+  const estMaxRing = Math.max(
+    2,
+    ...[...levels.values()].map((v) => Math.max(1, v - rootLevel)),
+  );
 
-  placeAt(rootPersonId, 180, 0);
-  rootSpouseIds.forEach((sid) => placeAt(sid, 0, 0, true));
-  if (rootSpouseIds.length > 0) {
-    spouseEdges.push({ fromId: rootPersonId, toId: rootSpouseIds[0]! });
-  }
+  /** فجوة زاوية تضمن فصل أيقونات الزوجات (~4.5% قوس) */
+  const spouseFanDeg = (ring: number, count: number): number => {
+    if (count <= 1) return 0;
+    const radiusPct = Math.max(8, ((ring - 0.35) / estMaxRing) * outerRadius);
+    const desiredArc = 4.6;
+    return Math.min(28, Math.max(9, (desiredArc / radiusPct) * (180 / Math.PI)));
+  };
+
+  /** إرفاق كل الزوجات كأقمار منفصلة بجانب الأصل */
+  const attachInLawSpouses = (bloodId: number, angle: number, ring: number) => {
+    const spouses = inLawSpousesOf(bloodId).filter((s) => !positions.has(s.id));
+    if (spouses.length === 0) return;
+    const fan = spouseFanDeg(Math.max(1, ring), spouses.length);
+    spouses.forEach((sp, i) => {
+      const nudge = (i - (spouses.length - 1) / 2) * fan;
+      placeAt(sp.id, angle + nudge, ring, {
+        isSpouse: true,
+        radiusBias: ring === 0 ? 0 : -0.4,
+        spouseIndex: i,
+      });
+      spouseEdges.push({ fromId: bloodId, toId: sp.id });
+    });
+  };
+
+  placeAt(rootPersonId, 0, 0);
+  attachInLawSpouses(rootPersonId, 0, 0);
 
   type Slot = { id: number; start: number; end: number; ring: number; parentId: number };
   const queue: Slot[] = [];
-  const placed = new Set<number>(rootIds);
+  const placedBlood = new Set<number>([rootPersonId]);
 
-  const rootKids = bloodKids(rootPersonId);
+  const rootKids = layoutKids(rootPersonId).filter((k) => bloodline.has(k));
   if (rootKids.length === 0) {
-    const gap = 3.8;
-    rootIds.forEach((id, i) => {
-      const pos = positions.get(id)!;
-      const x = cx - ((rootIds.length - 1) * gap) / 2 + i * gap;
-      positions.set(id, { ...pos, x, y: cy, angle: i === 0 ? 180 : 0 });
+    // جذر فقط (+ أزواج)
+    const rootSpouses = inLawSpousesOf(rootPersonId);
+    positions.set(rootPersonId, {
+      ...positions.get(rootPersonId)!,
+      x: cx,
+      y: cy,
+      angle: 0,
+      ring: 0,
     });
-    return { positions, edges, spouseEdges, ringCount: 1, rootIds };
+    rootSpouses.forEach((sp, i) => {
+      const gap = 5.5;
+      const x = cx + (i - (rootSpouses.length - 1) / 2) * gap;
+      const pos = positions.get(sp.id)!;
+      positions.set(sp.id, { ...pos, x, y: cy + 4.2, angle: 0, ring: 0, isSpouse: true });
+    });
+    return {
+      positions,
+      edges,
+      spouseEdges,
+      ringCount: 1,
+      rootIds: [rootPersonId],
+    };
   }
 
   const totalRootW = rootKids.reduce((s, id) => s + subtreeWeight(id), 0) || rootKids.length;
@@ -691,33 +894,42 @@ export function computeSunLayout(
 
   while (queue.length > 0) {
     const slot = queue.shift()!;
-    if (placed.has(slot.id) || !byId.has(slot.id)) continue;
+    if (placedBlood.has(slot.id) || !byId.has(slot.id)) continue;
 
     const span = slot.end - slot.start;
     const mid = (slot.start + slot.end) / 2;
     placeAt(slot.id, mid, slot.ring);
-    placed.add(slot.id);
+    placedBlood.add(slot.id);
     edges.push({ fromId: slot.parentId, toId: slot.id });
+    attachInLawSpouses(slot.id, mid, slot.ring);
 
-    const person = byId.get(slot.id)!;
-    const spouses = oppositeSpouses(person, spousesOf, byId).filter((s) => !placed.has(s.id));
-    // فجوة زوجية صغيرة داخل نفس الشريحة — لا تسرق زاوية الأبناء
-    const spouseGap = Math.min(2.4, Math.max(1.1, span * 0.06));
-    spouses.forEach((sp, i) => {
-      const dir = i % 2 === 0 ? 1 : -1;
-      const spouseAngle = mid + dir * spouseGap * (Math.floor(i / 2) + 1);
-      placeAt(sp.id, spouseAngle, slot.ring, true);
-      placed.add(sp.id);
-      spouseEdges.push({ fromId: slot.id, toId: sp.id });
-    });
-
-    const kids = bloodKids(slot.id).filter((k) => !placed.has(k));
+    const kids = layoutKids(slot.id).filter((k) => bloodline.has(k) && !placedBlood.has(k));
     if (kids.length === 0) continue;
 
-    const usable = span * 0.92;
+    // فواصل زاوية بين مجموعات الأمهات (أبناء وداد | فراغ | أبناء عبلة)
+    const otherKey = (childId: number): number | "none" => {
+      const parent = byId.get(slot.id);
+      const { fatherId, motherId } = getParents(childId, rels, byId);
+      const other =
+        parent?.gender === "male"
+          ? motherId
+          : parent?.gender === "female"
+            ? fatherId
+            : motherId ?? fatherId;
+      return other ?? "none";
+    };
+    const groupBreakAfter = new Set<number>();
+    for (let i = 0; i < kids.length - 1; i++) {
+      if (otherKey(kids[i]!) !== otherKey(kids[i + 1]!)) groupBreakAfter.add(i);
+    }
+    const gutterCount = groupBreakAfter.size;
+    // فواصل خفيفة بين مجموعات الأمهات دون تقليص القطاع (يحافظ على شكل الشمس)
+    const gutterShare = Math.min(0.1, gutterCount * 0.028);
+    const usable = span * (0.94 - gutterShare);
     const pad = (span - usable) / 2;
     const kidWeights = kids.map((id) => subtreeWeight(id));
     const tw = kidWeights.reduce((a, b) => a + b, 0) || kids.length;
+    const gutterUnit = gutterCount > 0 ? (span * gutterShare) / gutterCount : 0;
     let kCursor = slot.start + pad;
     kids.forEach((cid, i) => {
       const childSpan = (usable * kidWeights[i]!) / tw;
@@ -729,53 +941,99 @@ export function computeSunLayout(
         parentId: slot.id,
       });
       kCursor += childSpan;
+      if (groupBreakAfter.has(i)) kCursor += gutterUnit;
     });
   }
 
-  // متبقون — وزّعهم بانتظام على حلقتهم بدل الزوايا العشوائية
-  const leftovers = people.filter((p) => !placed.has(p.id));
-  if (leftovers.length > 0) {
-    const byRing = new Map<number, Person[]>();
-    for (const p of leftovers) {
-      const ring = Math.max(1, (levels.get(p.id) ?? rootLevel) - rootLevel);
-      const list = byRing.get(ring) ?? [];
-      list.push(p);
-      byRing.set(ring, list);
-    }
-    for (const [ring, list] of byRing) {
-      list.forEach((p, i) => {
-        const angle = -90 + (360 * (i + 0.5)) / list.length;
-        placeAt(p.id, angle, ring);
-        placed.add(p.id);
-      });
+  // متبقون من خط النسب — قرب الوالد من الدم (الترتيب النهائي على الحلقة لاحقاً)
+  for (const p of people) {
+    if (positions.has(p.id)) continue;
+    if (!bloodline.has(p.id)) continue;
+    const pref = layoutPreferredParent(p.id);
+    const parentId =
+      pref != null && positions.has(pref)
+        ? pref
+        : (() => {
+            const { fatherId, motherId } = getParents(p.id, rels, byId);
+            if (fatherId != null && bloodline.has(fatherId) && positions.has(fatherId))
+              return fatherId;
+            if (motherId != null && bloodline.has(motherId) && positions.has(motherId))
+              return motherId;
+            if (fatherId != null && positions.has(fatherId)) return fatherId;
+            if (motherId != null && positions.has(motherId)) return motherId;
+            return null;
+          })();
+    const parentPos = parentId != null ? positions.get(parentId) : undefined;
+    if (parentPos && parentId != null) {
+      const ring = Math.max(
+        parentPos.ring + 1,
+        Math.max(1, (levels.get(p.id) ?? rootLevel) - rootLevel),
+      );
+      placeAt(p.id, parentPos.angle, ring);
+      edges.push({ fromId: parentId, toId: p.id });
+      attachInLawSpouses(p.id, parentPos.angle, ring);
     }
   }
 
-  const maxRing = Math.max(1, ...[...positions.values()].map((p) => p.ring));
+  // أزواج لم يُربطوا بعد (مثلاً زوج لشخص متبقٍ)
+  for (const id of [...bloodline]) {
+    if (!positions.has(id)) continue;
+    const pos = positions.get(id)!;
+    attachInLawSpouses(id, pos.angle, pos.ring);
+  }
+
+  // أي شخص متبقٍ غير موضوع — قرب الوالد المعتمد
+  let orphanIdx = 0;
+  for (const p of people) {
+    if (positions.has(p.id)) continue;
+    const pref = layoutPreferredParent(p.id);
+    const { fatherId, motherId } = getParents(p.id, rels, byId);
+    const parentId =
+      (pref != null && positions.has(pref) ? pref : null) ??
+      (fatherId != null && positions.has(fatherId) ? fatherId : null) ??
+      (motherId != null && positions.has(motherId) ? motherId : null);
+    const parentPos = parentId != null ? positions.get(parentId) : undefined;
+    if (parentPos && parentId != null) {
+      const ring = Math.max(parentPos.ring + 1, 1);
+      placeAt(p.id, parentPos.angle + 4, ring, {
+        isSpouse: !bloodline.has(p.id),
+        radiusBias: bloodline.has(p.id) ? 0 : -0.35,
+      });
+      if (bloodline.has(p.id)) edges.push({ fromId: parentId, toId: p.id });
+      else spouseEdges.push({ fromId: parentId, toId: p.id });
+    } else {
+      const ring = Math.max(1, (levels.get(p.id) ?? rootLevel) - rootLevel);
+      placeAt(p.id, -90 + (360 * (orphanIdx + 0.5)) / Math.max(people.length, 1), ring);
+      orphanIdx++;
+    }
+  }
+
+  const maxRing = Math.max(
+    1,
+    ...[...positions.values()].filter((p) => !p.isSpouse).map((p) => p.ring),
+  );
 
   /** مسافة زاوية دنيا على الحلقة — تقل مع اتساع المحيط */
   const minGapForRing = (ring: number, count: number): number => {
     if (count <= 1) return 0;
     const radiusPct = (ring / maxRing) * outerRadius;
-    // قوس أدنى ≈ 2.8 وحدة نسبية على المحيط (حوالي عرض اسم قصير)
     const arcMin = ring <= 1 ? 4.2 : ring === 2 ? 3.4 : 2.8;
     const fromArc = (arcMin / Math.max(radiusPct, 8)) * (180 / Math.PI);
     const even = 360 / count;
     return Math.min(even, Math.max(2.2, fromArc));
   };
 
-  // إعادة توزيع كل حلقة لفرض فجوة دنيا مع الحفاظ على الترتيب الزاوي
+  // إعادة توزيع كل حلقة على كامل الدائرة مع الحفاظ على الترتيب (شكل الشمس)
   for (let ring = 1; ring <= maxRing; ring++) {
     const nodes = [...positions.entries()]
       .filter(([, p]) => p.ring === ring && !p.isSpouse)
-      .map(([id, p]) => ({ id, angle: p.angle, pos: p }))
+      .map(([id, p]) => ({ id, angle: p.angle }))
       .sort((a, b) => a.angle - b.angle);
     if (nodes.length <= 1) continue;
 
     const minGap = minGapForRing(ring, nodes.length);
     const angles = nodes.map((n) => n.angle);
 
-    // مرّتان لكفاية الالتفاف حول الدائرة
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < angles.length; i++) {
         const next = (i + 1) % angles.length;
@@ -786,14 +1044,12 @@ export function computeSunLayout(
         angles[next] = angles[next]! + need / 2;
         angles[i] = angles[i]! - need / 2;
       }
-      // طبّع داخل [-180, 540) ثم أعد الترتيب النسبي
       for (let i = 0; i < angles.length; i++) {
         while (angles[i]! < -180) angles[i]! += 360;
         while (angles[i]! >= 540) angles[i]! -= 360;
       }
     }
 
-    // إن بقي تداخل شديد: توزيع منتظم مع الحفاظ على الترتيب
     let tight = false;
     for (let i = 0; i < angles.length; i++) {
       const next = (i + 1) % angles.length;
@@ -806,54 +1062,101 @@ export function computeSunLayout(
     }
     if (tight || nodes.length * minGap > 360) {
       const start = angles[0]!;
-      const step = 360 / nodes.length;
-      for (let i = 0; i < angles.length; i++) angles[i] = start + i * step;
+      const evenStep = 360 / nodes.length;
+      for (let i = 0; i < angles.length; i++) angles[i] = start + i * evenStep;
     }
 
     nodes.forEach((n, i) => {
       const pos = positions.get(n.id)!;
-      positions.set(n.id, { ...pos, angle: angles[i]! });
-      // حرّك الأزواج مع المحور
-      for (const e of spouseEdges) {
-        if (e.fromId !== n.id && e.toId !== n.id) continue;
-        const spouseId = e.fromId === n.id ? e.toId : e.fromId;
-        const sp = positions.get(spouseId);
-        if (!sp || sp.ring !== ring) continue;
-        const side = sp.angle >= n.angle ? 1 : -1;
+      const ang = angles[i]!;
+      positions.set(n.id, { ...pos, angle: ang });
+      const spouseIds = spouseEdges
+        .filter((e) => e.fromId === n.id || e.toId === n.id)
+        .map((e) => (e.fromId === n.id ? e.toId : e.fromId))
+        .filter((sid) => {
+          const sp = positions.get(sid);
+          return sp?.isSpouse && sp.ring === ring;
+        });
+      const fan = spouseFanDeg(ring, spouseIds.length);
+      spouseIds.forEach((spouseId, si) => {
+        const sp = positions.get(spouseId)!;
         positions.set(spouseId, {
           ...sp,
-          angle: angles[i]! + side * Math.min(2.2, minGap * 0.35),
+          angle: ang + (si - (spouseIds.length - 1) / 2) * fan,
+          radiusBias: -0.4,
+          spouseIndex: si,
+          ring,
         });
-      }
+      });
     });
   }
 
   const step = outerRadius / maxRing;
 
-  // المركز: الزوجان جنباً إلى جنب أفقياً
-  const gap = 3.6;
-  const orderedRoot = [...rootIds].sort((a, b) => {
-    const pa = byId.get(a)!;
-    const pb = byId.get(b)!;
-    if (pa.gender !== pb.gender) return pa.gender === "male" ? -1 : 1;
-    return a - b;
+  // المركز: الأصل في المنتصف، والزوجات على قوس واضح أسفله
+  const rootPos = positions.get(rootPersonId)!;
+  positions.set(rootPersonId, {
+    ...rootPos,
+    x: cx,
+    y: cy,
+    angle: 0,
+    ring: 0,
+    isSpouse: false,
+    radiusBias: 0,
   });
-  orderedRoot.forEach((id, i) => {
-    const pos = positions.get(id);
-    if (!pos) return;
-    const x = cx - ((orderedRoot.length - 1) * gap) / 2 + i * gap;
-    positions.set(id, {
-      ...pos,
-      x,
-      y: cy,
-      angle: i < orderedRoot.length / 2 ? 180 : 0,
-      ring: 0,
+  const rootSpouseIds = [
+    ...new Set(
+      spouseEdges
+        .filter((e) => e.fromId === rootPersonId || e.toId === rootPersonId)
+        .map((e) => (e.fromId === rootPersonId ? e.toId : e.fromId)),
+    ),
+  ].filter((sid) => byId.has(sid));
+
+  // زوجات عبر الأبناء دون رابط مسجّل مسبقاً في الحواف
+  for (const sp of inLawSpousesOf(rootPersonId)) {
+    if (rootSpouseIds.includes(sp.id)) continue;
+    if (!positions.has(sp.id)) {
+      placeAt(sp.id, 90, 0, { isSpouse: true, spouseIndex: rootSpouseIds.length });
+      spouseEdges.push({ fromId: rootPersonId, toId: sp.id });
+    } else if (!positions.get(sp.id)!.isSpouse && bloodline.has(sp.id)) {
+      // موجودة كدم — لا نُحوّلها؛ تُحسب زوجة عبر الخط فقط
+      continue;
+    } else {
+      positions.set(sp.id, { ...positions.get(sp.id)!, isSpouse: true });
+      if (!spouseEdges.some((e) => (e.fromId === rootPersonId && e.toId === sp.id) || (e.toId === rootPersonId && e.fromId === sp.id))) {
+        spouseEdges.push({ fromId: rootPersonId, toId: sp.id });
+      }
+    }
+    rootSpouseIds.push(sp.id);
+  }
+
+  {
+    const n = rootSpouseIds.length;
+    const spreadDeg = Math.min(110, Math.max(40, n * 30));
+    const radiusPct = Math.min(15, 10 + n * 0.9);
+    rootSpouseIds.forEach((sid, i) => {
+      const sp = positions.get(sid);
+      if (!sp) return;
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      const deg = 90 - spreadDeg / 2 + t * spreadDeg;
+      const rad = (deg * Math.PI) / 180;
+      positions.set(sid, {
+        ...sp,
+        x: cx + radiusPct * Math.cos(rad),
+        y: cy + radiusPct * Math.sin(rad),
+        angle: deg,
+        ring: 0,
+        isSpouse: true,
+        radiusBias: 0,
+        spouseIndex: i,
+      });
     });
-  });
+  }
 
   for (const [id, pos] of positions) {
     if (pos.ring === 0) continue;
-    const radius = pos.ring * step;
+    const bias = pos.radiusBias ?? 0;
+    const radius = Math.max(4, (pos.ring + bias) * step);
     const rad = (pos.angle * Math.PI) / 180;
     positions.set(id, {
       ...pos,
@@ -862,7 +1165,84 @@ export function computeSunLayout(
     });
   }
 
-  return { positions, edges, spouseEdges, ringCount: maxRing + 1, rootIds: orderedRoot };
+  // ضمان فصل إحداثي نهائي بين زوجات نفس الأصل على الحلقات
+  const bloodIds = [...positions.entries()]
+    .filter(([, p]) => !p.isSpouse)
+    .map(([id]) => id);
+  for (const bloodId of bloodIds) {
+    if (bloodId === rootPersonId) continue;
+    const blood = positions.get(bloodId)!;
+    const spouseIds = spouseEdges
+      .filter((e) => e.fromId === bloodId || e.toId === bloodId)
+      .map((e) => (e.fromId === bloodId ? e.toId : e.fromId))
+      .filter((sid) => positions.get(sid)?.isSpouse);
+    if (spouseIds.length <= 1) continue;
+
+    const br = Math.hypot(blood.x - cx, blood.y - cy);
+    const spouseR = Math.max(4, br * 0.78);
+    const baseAng = Math.atan2(blood.y - cy, blood.x - cx);
+    const sep = Math.max(0.14, (4.8 / Math.max(spouseR, 6)) ); // راديان تقريباً من قوس 4.8%
+    spouseIds.forEach((sid, i) => {
+      const sp = positions.get(sid)!;
+      const a = baseAng + (i - (spouseIds.length - 1) / 2) * sep;
+      positions.set(sid, {
+        ...sp,
+        x: cx + spouseR * Math.cos(a),
+        y: cy + spouseR * Math.sin(a),
+        angle: (a * 180) / Math.PI,
+        spouseIndex: i,
+        isSpouse: true,
+        radiusBias: -0.4,
+      });
+    });
+  }
+
+  // روابط زواج بين فردين ظاهرين في الشجرة (مثل أبناء العم) — خط خفيف دون نقل أحدهما
+  const linkedPairs = new Set(
+    spouseEdges.map((e) => {
+      const a = Math.min(e.fromId, e.toId);
+      const b = Math.max(e.fromId, e.toId);
+      return `${a}:${b}`;
+    }),
+  );
+  const addMarriageLink = (idA: number, idB: number) => {
+    if (idA === idB) return;
+    if (!positions.has(idA) || !positions.has(idB)) return;
+    const a = Math.min(idA, idB);
+    const b = Math.max(idA, idB);
+    const key = `${a}:${b}`;
+    if (linkedPairs.has(key)) return;
+    linkedPairs.add(key);
+    spouseEdges.push({ fromId: a, toId: b });
+    // علّم الطرفين إن كانا أصلي نسب (ليس قمراً صناعياً)
+    for (const id of [a, b]) {
+      const pos = positions.get(id)!;
+      if (!pos.isSpouse) {
+        positions.set(id, { ...pos, crossBranchSpouse: true });
+      }
+    }
+  };
+  for (const p of people) {
+    if (!positions.has(p.id)) continue;
+    for (const s of oppositeSpouses(p, spousesOf, byId)) {
+      addMarriageLink(p.id, s.id);
+    }
+    // استنتاج من أبناء مشترَكين إن نقص رابط الزوجية
+    for (const kid of bloodKids(p.id)) {
+      const { fatherId, motherId } = getParents(kid, rels, byId);
+      if (fatherId == null || motherId == null) continue;
+      if (fatherId !== p.id && motherId !== p.id) continue;
+      addMarriageLink(fatherId, motherId);
+    }
+  }
+
+  return {
+    positions,
+    edges,
+    spouseEdges,
+    ringCount: maxRing + 1,
+    rootIds: [rootPersonId],
+  };
 }
 
 export function pedigreeColumns(
@@ -929,22 +1309,27 @@ export function buildPalmTreeLayout(
     const head = byId.get(headId)!;
     let father: Person | null = null;
     let mother: Person | null = null;
+    const spouses = oppositeSpouses(head, spousesOf, byId);
 
     if (head.gender === "male") {
       father = head;
-      mother = oppositeSpouses(head, spousesOf, byId)[0] ?? null;
+      mother = spouses[0] ?? null;
     } else {
       mother = head;
-      father = oppositeSpouses(head, spousesOf, byId)[0] ?? null;
+      father = spouses[0] ?? null;
     }
 
-    const childIds = childrenOfPair(
-      father?.id ?? null,
-      mother?.id ?? null,
-      childrenOf,
-      rels,
-      byId,
-    ).filter((id) => byId.has(id));
+    // الأبناء تحت رأس الفرع إن كان الوالد المعتمد (الأب إن وُجد وإلا الأم)
+    const childIds = [
+      ...new Set([
+        ...(father ? childrenOf.get(father.id) ?? [] : []),
+        ...(mother ? childrenOf.get(mother.id) ?? [] : []),
+        ...spouses.flatMap((s) => childrenOf.get(s.id) ?? []),
+      ]),
+    ].filter((id) => {
+      if (!byId.has(id)) return false;
+      return preferredParentId(id, rels, byId) === headId;
+    });
 
     const headLevel = levels.get(headId) ?? founderLevel + 1;
     const children = childIds
@@ -957,7 +1342,11 @@ export function buildPalmTreeLayout(
       const childLevel = levels.get(child.id) ?? 0;
       for (const gid of directChildren(child.id, childrenOf)) {
         if (!byId.has(gid) || grandchildIds.has(gid)) continue;
-        if ((levels.get(gid) ?? 0) > childLevel) grandchildIds.add(gid);
+        if ((levels.get(gid) ?? 0) > childLevel) {
+          if (preferredParentId(gid, rels, byId) === child.id) {
+            grandchildIds.add(gid);
+          }
+        }
       }
     }
     const grandchildren = [...grandchildIds]
@@ -975,6 +1364,15 @@ export function formatPalmCouple(father: Person | null, mother: Person | null): 
   if (father) parts.push(personDisplayName(father));
   if (mother) parts.push(personDisplayName(mother));
   return parts.length > 0 ? parts.join(" · ") : "—";
+}
+
+/** تسمية سعف النخلة مع كل الزوجات */
+export function formatPalmCoupleAll(
+  head: Person,
+  spouses: Person[],
+): string {
+  const parts = [personDisplayName(head), ...spouses.map(personDisplayName)];
+  return parts.join(" · ");
 }
 
 export function isPersonLiving(p: Person): boolean {
@@ -997,13 +1395,60 @@ export type PrintStats = {
   living: number;
   deceased: number;
   generationCount: number;
+  /** أزواج/زوجات من خارج خط النسب */
+  inLawSpouses: number;
+  /** أفراد مسجّلون كتوأم (مجموعة ≥ 2) */
+  twins: number;
   byGeneration: PrintGenerationStats[];
 };
+
+/** نسل الدم من الجذر عبر روابط الأبناء فقط */
+export function collectBloodlineIds(
+  rootPersonId: number,
+  people: Person[],
+  rels: Relationship[],
+  levels: Map<number, number>,
+): Set<number> {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const bloodline = new Set<number>();
+  if (!byId.has(rootPersonId)) return bloodline;
+
+  const childrenOf = buildChildrenOf(rels);
+  const spousesOf = buildSpousesOf(rels);
+  const rootLevel = levels.get(rootPersonId) ?? 0;
+
+  const bloodKids = (id: number): number[] => {
+    const parentLvl = levels.get(id) ?? rootLevel;
+    const seen = new Set<number>();
+    const out: number[] = [];
+    for (const cid of familyChildrenOf(id, childrenOf, spousesOf, rels, byId)) {
+      if (!byId.has(cid) || seen.has(cid)) continue;
+      const childLvl = levels.get(cid);
+      if (childLvl !== undefined && childLvl < parentLvl) continue;
+      seen.add(cid);
+      out.push(cid);
+    }
+    return out;
+  };
+
+  bloodline.add(rootPersonId);
+  const q = [rootPersonId];
+  while (q.length > 0) {
+    const id = q.shift()!;
+    for (const kid of bloodKids(id)) {
+      if (bloodline.has(kid)) continue;
+      bloodline.add(kid);
+      q.push(kid);
+    }
+  }
+  return bloodline;
+}
 
 export function computePrintStats(
   people: Person[],
   levels: Map<number, number>,
   rels?: Relationship[],
+  opts?: { rootPersonId?: number },
 ): PrintStats {
   const byId = new Map(people.map((p) => [p.id, p]));
   const effectiveLevels = new Map(levels);
@@ -1018,12 +1463,46 @@ export function computePrintStats(
   let females = 0;
   let living = 0;
   let deceased = 0;
+  let twins = 0;
 
   for (const p of people) {
     if (p.gender === "female") females++;
     else males++;
     if (isPersonLiving(p)) living++;
     else deceased++;
+    if (twinGroupSize(p, people) >= 2) twins++;
+  }
+
+  let inLawSpouses = 0;
+  if (rels && opts?.rootPersonId != null && byId.has(opts.rootPersonId)) {
+    const bloodline = collectBloodlineIds(
+      opts.rootPersonId,
+      people,
+      rels,
+      effectiveLevels,
+    );
+    const spousesOf = buildSpousesOf(rels);
+    const counted = new Set<number>();
+    for (const bloodId of bloodline) {
+      for (const sid of spousesOf.get(bloodId) ?? []) {
+        if (!byId.has(sid) || bloodline.has(sid) || counted.has(sid)) continue;
+        counted.add(sid);
+        inLawSpouses++;
+      }
+    }
+    // آباء/أمهات أبناء الدم من خارج النسب دون رابط زوجية مسجّل
+    for (const kid of bloodline) {
+      const { fatherId, motherId } = getParents(kid, rels, byId);
+      for (const pid of [fatherId, motherId]) {
+        if (pid == null || !byId.has(pid) || bloodline.has(pid) || counted.has(pid))
+          continue;
+        const other = fatherId === pid ? motherId : fatherId;
+        if (other != null && bloodline.has(other)) {
+          counted.add(pid);
+          inLawSpouses++;
+        }
+      }
+    }
   }
 
   const byGeneration = groupByGeneration(people, effectiveLevels).map(({ level, people: group }) => {
@@ -1054,6 +1533,8 @@ export function computePrintStats(
     living,
     deceased,
     generationCount: generationSpan(effectiveLevels).count,
+    inLawSpouses,
+    twins,
     byGeneration,
   };
 }

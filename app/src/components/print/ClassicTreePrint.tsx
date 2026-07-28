@@ -26,7 +26,7 @@ export default function ClassicTreePrint(props: PrintTemplateProps) {
           </p>
         </div>
         <div className="bg-white px-4 py-3 border-t">
-          <PrintStatsBar people={people} levels={levels} rels={rels} today={today} accent={accent} />
+          <PrintStatsBar people={people} levels={levels} rels={rels} rootPersonId={rootPersonId} today={today} accent={accent} />
         </div>
         {scopeSummary && (
           <p className="bg-stone-50 px-4 py-2 text-[10px] text-stone-400 text-center border-t">
@@ -42,7 +42,7 @@ export default function ClassicTreePrint(props: PrintTemplateProps) {
         <PrintFamilyChart people={people} rels={rels} rootPersonId={rootPersonId} levels={levels} />
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

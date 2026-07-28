@@ -183,11 +183,31 @@ export function formatAgeOrLifespan(
   return String(age);
 }
 
-/** ترتيب مختصر بين الإخوة: «٢/٥» */
+/** ترتيب مختصر بين الإخوة: «٢/٥» — أو تمييز التوأم */
 export function formatSiblingOrdinal(
   ranks: Pick<PersonRanks, "amongSiblings" | "siblingsTotal">,
 ): string | null {
   if (!ranks.amongSiblings || ranks.siblingsTotal < 2) return null;
   return `${ranks.amongSiblings}/${ranks.siblingsTotal}`;
+}
+
+/** ترتيب مع تمييز التوأم — يُستخدم في الواجهة */
+export function formatSiblingLabel(
+  person: Person,
+  people: Person[],
+  ranks: Pick<PersonRanks, "amongSiblings" | "siblingsTotal">,
+  twinLabel: string,
+): string | null {
+  if (person.twinGroupId != null) {
+    const group = people.filter((p) => p.twinGroupId === person.twinGroupId);
+    if (group.length >= 2) {
+      const sorted = [...group].sort((a, b) => birthSortKey(a) - birthSortKey(b));
+      const idx = sorted.findIndex((p) => p.id === person.id);
+      if (idx >= 0) {
+        return `${twinLabel} ${idx + 1}/${group.length}`;
+      }
+    }
+  }
+  return formatSiblingOrdinal(ranks);
 }
 

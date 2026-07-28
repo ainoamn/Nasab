@@ -117,6 +117,8 @@ export const persons = sqliteTable(
       .notNull(),
     photoUrl: text("photoUrl"),
     notes: text("notes"),
+    /** مجموعة التوأم — يشترك فيها كل التوائم في نفس الشجرة */
+    twinGroupId: integer("twinGroupId"),
     /** فرع نسب خارجي (عائلة الأم مثلاً) */
     branchId: integer("branchId"),
     createdById: integer("createdById").notNull(),

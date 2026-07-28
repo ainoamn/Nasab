@@ -2,10 +2,10 @@ import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { Children, isValidElement } from "react";
 
-/** خطوط نسب بأسلوب MyHeritage: رمادي فاتح رفيع، بلا أسهم */
-export const LINE_BG = "bg-stone-400/90 print:bg-stone-600";
-export const LINE_H = "h-px";
-export const LINE_W = "w-px";
+/** خطوط نسب بأسلوب MyHeritage: أوضح عند الطباعة حتى لا تختفي بعد التصغير */
+export const LINE_BG = "bg-stone-500 print:bg-stone-800";
+export const LINE_H = "h-[1.5px] print:h-[2.5px]";
+export const LINE_W = "w-[1.5px] print:w-[2.5px]";
 
 /** خط عمودي متصل بلا فجوات */
 export function VLine({

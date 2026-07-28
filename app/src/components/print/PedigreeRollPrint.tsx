@@ -6,6 +6,8 @@ import {
   pedigreeColumns,
   sortPeopleByGeneration,
 } from "@/lib/printData";
+import { buildSpouseNotesMap } from "@/lib/printLineage";
+import { twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 import { PrintPersonCard } from "./PrintPersonCard";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
@@ -19,13 +21,17 @@ function generationListLabel(
 }
 
 export default function PedigreeRollPrint(props: PrintTemplateProps) {
-  const { tree, people, rels, levels, scopeSummary, accent, designName, today } = props;
+  const { tree, people, rels, rootPersonId, levels, scopeSummary, accent, designName, today } = props;
   const { t } = useTranslation();
 
   const columns = useMemo(() => pedigreeColumns(people, levels), [people, levels]);
   const sortedPeople = useMemo(
     () => sortPeopleByGeneration(people, levels),
     [people, levels],
+  );
+  const spouseNotes = useMemo(
+    () => buildSpouseNotesMap(people, rels),
+    [people, rels],
   );
 
   return (
@@ -36,6 +42,7 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
         people={people}
         rels={rels}
         levels={levels}
+        rootPersonId={rootPersonId}
         today={today}
         accent={accent}
         scopeSummary={scopeSummary}
@@ -62,6 +69,11 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
                   {generationListLabel(level, t)}
                 </span>
                 {fullNasabName(p, tree.tribe)}
+                {(spouseNotes.get(p.id) ?? []).length > 0 && (
+                  <span className="text-amber-800/80 text-xs ms-1">
+                    ({(spouseNotes.get(p.id) ?? []).join(" · ")})
+                  </span>
+                )}
                 {p.birthYear && (
                   <span className="text-stone-400 text-xs ms-1">
                     ({p.isLiving ? p.birthYear : `${p.birthYear}${p.deathYear ? `–${p.deathYear}` : ""}`})
@@ -73,8 +85,8 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-4 print:overflow-visible">
-        <div className="flex flex-wrap print:flex-wrap gap-3 sm:gap-4 min-w-max print:min-w-0 px-2 print:justify-center">
+      <div className="mb-8 overflow-x-auto pb-4 print:overflow-visible">
+        <div className="flex min-w-max flex-wrap gap-3 px-2 sm:gap-4 print:min-w-0 print:flex-wrap print:justify-center">
           {columns.map((col) => (
             <div key={col.level} className="flex flex-col gap-2 min-w-[10rem] max-w-[12rem] print:break-inside-avoid">
               <div
@@ -92,6 +104,9 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
                   laqabFallback={tree.tribe}
                   genLevel={col.level}
                   variant="pedigree"
+                  twinOrder={twinOrderInGroup(p, people)}
+                  twinTotal={twinGroupSize(p, people)}
+                  spouseNotes={spouseNotes.get(p.id)}
                 />
               ))}
             </div>
@@ -99,7 +114,7 @@ export default function PedigreeRollPrint(props: PrintTemplateProps) {
         </div>
       </div>
 
-      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} today={today} />
+      <PrintMetaFooter designName={designName} accent={accent} people={people} rels={rels} levels={levels} rootPersonId={rootPersonId} today={today} />
     </div>
   );
 }

@@ -2,12 +2,25 @@ import type { Person, Relationship } from "@db/schema";
 import type { TreeBranch } from "@db/tables";
 import type { FemaleDisplay } from "@contracts/constants";
 import {
-  assignGenerationsStable,
   assignGenerationsFromPrintRoot,
+  firstGivenName,
   personDisplayName,
 } from "@/lib/printData";
+import {
+  buildChildrenOf,
+  buildSpousesOf,
+  familyChildrenOf,
+} from "@/lib/familyGraph";
 
 /** خيارات نطاق الطباعة */
+export type PrintPaperSize =
+  | "A4-landscape"
+  | "A3-landscape"
+  | "A4-portrait"
+  | "A3-portrait";
+
+export type PrintNameMode = "full" | "firstOnly";
+
 export type PrintScope = {
   /** الجد الأعلى للمخرَج — الجيل 0 */
   rootPersonId: number | null;
@@ -23,16 +36,67 @@ export type PrintScope = {
   includeSpouseLineage: boolean;
   /** عرض الإناث */
   femaleDisplay: FemaleDisplay;
+  /** أسلوب الاسم للجميع في المخطط */
+  nameMode: PrintNameMode;
+  /** حجم ورقة الطباعة */
+  paperSize: PrintPaperSize;
 };
 
 export const DEFAULT_PRINT_SCOPE: PrintScope = {
   rootPersonId: null,
   branchId: null,
-  generationsDown: 6,
+  generationsDown: 10,
   includeParents: false,
   includeSpouses: true,
   includeSpouseLineage: false,
   femaleDisplay: "full",
+  nameMode: "full",
+  paperSize: "A4-landscape",
+};
+
+export const PRINT_PAPER_SIZES: Record<
+  PrintPaperSize,
+  {
+    css: string;
+    margin: string;
+    chartMax: string;
+    labelKey: string;
+    widthMm: number;
+    heightMm: number;
+  }
+> = {
+  "A4-landscape": {
+    css: "297mm 210mm",
+    margin: "5mm",
+    chartMax: "188mm",
+    labelKey: "printPage.paperA4Landscape",
+    widthMm: 297,
+    heightMm: 210,
+  },
+  "A3-landscape": {
+    css: "420mm 297mm",
+    margin: "6mm",
+    chartMax: "270mm",
+    labelKey: "printPage.paperA3Landscape",
+    widthMm: 420,
+    heightMm: 297,
+  },
+  "A4-portrait": {
+    css: "210mm 297mm",
+    margin: "6mm",
+    chartMax: "185mm",
+    labelKey: "printPage.paperA4Portrait",
+    widthMm: 210,
+    heightMm: 297,
+  },
+  "A3-portrait": {
+    css: "297mm 420mm",
+    margin: "6mm",
+    chartMax: "270mm",
+    labelKey: "printPage.paperA3Portrait",
+    widthMm: 297,
+    heightMm: 420,
+  },
 };
 
 export type PrintSubgraph = {
@@ -86,6 +150,18 @@ function applyFemaleDisplay(people: Person[], mode: FemaleDisplay): Person[] {
   );
 }
 
+/** الاسم الأول فقط للجميع — يزيل النسب واللقب ويُبقي المقطع الأول من الاسم */
+export function applyNameMode(people: Person[], mode: PrintNameMode): Person[] {
+  if (mode === "full") return people;
+  return people.map((p) => ({
+    ...p,
+    givenName: firstGivenName(p.givenName),
+    fatherName: null,
+    kunya: null,
+    laqab: null,
+  }));
+}
+
 /** بناء subgraph للطباعة مع جيل 0 عند الجذر المختار */
 export function buildPrintSubgraph(
   allPeople: Person[],
@@ -130,10 +206,9 @@ export function buildPrintSubgraph(
     return { people: [], rels: [], levels: new Map(), rootPersonId: rootId ?? 0 };
   }
 
-  const stableLevels = assignGenerationsStable(allPeople, allRels);
-  const rootStableGen = stableLevels.get(rootId) ?? 0;
-
   const included = new Set<number>([rootId]);
+  const depthOf = new Map<number, number>([[rootId, 0]]);
+  const byIdLocal = byId;
 
   // آباء الجذر مباشرة (جيل واحد للأعلى) — اختياري
   if (scope.includeParents) {
@@ -146,35 +221,96 @@ export function buildPrintSubgraph(
     }
   }
 
-  // أحفاد حتى generationsDown
-  const maxRelativeGen = scope.generationsDown - 1;
-  const walkDown = (id: number) => {
-    for (const kid of childrenOf.get(id) ?? []) {
-      if (!byId.has(kid) || included.has(kid)) continue;
-      if (!personMatchesBranch(kid, scope.branchId, branches, byId, childrenOf)) continue;
-      const relGen = (stableLevels.get(kid) ?? 0) - rootStableGen;
-      if (relGen > maxRelativeGen) continue;
-      included.add(kid);
-      walkDown(kid);
-    }
-  };
-  walkDown(rootId);
+  // نسل الجذر بعمق BFS (لا بمستوى الشجرة الكلية — كان يقطع فروعاً)
+  const maxDepth = Math.max(0, scope.generationsDown - 1);
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    const depth = depthOf.get(id) ?? 0;
+    if (depth >= maxDepth) continue;
 
-  // أزواج
+    const kids = familyChildrenOf(
+      id,
+      childrenOf,
+      spousesOf,
+      allRels,
+      byIdLocal,
+      { includeSpouseLineage: scope.includeSpouseLineage },
+    );
+
+    for (const kid of kids) {
+      if (!byId.has(kid)) continue;
+      if (!personMatchesBranch(kid, scope.branchId, branches, byId, childrenOf)) {
+        continue;
+      }
+      const nextDepth = depth + 1;
+      const prev = depthOf.get(kid);
+      if (prev !== undefined && prev <= nextDepth) continue;
+      included.add(kid);
+      depthOf.set(kid, nextDepth);
+      queue.push(kid);
+    }
+  }
+
+  // أزواج المشمولين (+ عائلة الزوج إن طُلب)
   if (scope.includeSpouses) {
     for (const id of [...included]) {
       for (const sid of spousesOf.get(id) ?? []) {
         if (!byId.has(sid)) continue;
         included.add(sid);
-        if (scope.includeSpouseLineage) {
-          for (const r of allRels) {
-            if (r.type !== "parent" || r.toPersonId !== sid) continue;
-            const pid = r.fromPersonId;
-            if (byId.has(pid) && personMatchesBranch(pid, scope.branchId, branches, byId, childrenOf)) {
-              included.add(pid);
-            }
+        if (!scope.includeSpouseLineage) continue;
+
+        for (const r of allRels) {
+          if (r.type !== "parent" || r.toPersonId !== sid) continue;
+          const pid = r.fromPersonId;
+          if (
+            byId.has(pid) &&
+            personMatchesBranch(pid, scope.branchId, branches, byId, childrenOf)
+          ) {
+            included.add(pid);
           }
-          walkDown(sid);
+        }
+
+        // أبناء إضافيون من نسب الزوج خارج الخط — بعمق محدود
+        const baseDepth = depthOf.get(id) ?? 0;
+        const spouseQueue: number[] = [];
+        for (const kid of childrenOf.get(sid) ?? []) {
+          if (!byId.has(kid) || included.has(kid)) continue;
+          if (!personMatchesBranch(kid, scope.branchId, branches, byId, childrenOf)) {
+            continue;
+          }
+          const nextDepth = baseDepth + 1;
+          if (nextDepth > maxDepth) continue;
+          included.add(kid);
+          depthOf.set(kid, nextDepth);
+          spouseQueue.push(kid);
+        }
+        while (spouseQueue.length > 0) {
+          const qid = spouseQueue.shift()!;
+          const depth = depthOf.get(qid) ?? 0;
+          if (depth >= maxDepth) continue;
+          for (const kid of familyChildrenOf(
+            qid,
+            childrenOf,
+            spousesOf,
+            allRels,
+            byIdLocal,
+            { includeSpouseLineage: true },
+          )) {
+            if (!byId.has(kid)) continue;
+            if (
+              !personMatchesBranch(kid, scope.branchId, branches, byId, childrenOf)
+            ) {
+              continue;
+            }
+            const nextDepth = depth + 1;
+            if (nextDepth > maxDepth) continue;
+            const prev = depthOf.get(kid);
+            if (prev !== undefined && prev <= nextDepth) continue;
+            included.add(kid);
+            depthOf.set(kid, nextDepth);
+            spouseQueue.push(kid);
+          }
         }
       }
     }
@@ -182,6 +318,7 @@ export function buildPrintSubgraph(
 
   let people = allPeople.filter((p) => included.has(p.id));
   people = applyFemaleDisplay(people, scope.femaleDisplay);
+  people = applyNameMode(people, scope.nameMode);
   const ids = new Set(people.map((p) => p.id));
   const rels = allRels.filter(
     (r) => ids.has(r.fromPersonId) && ids.has(r.toPersonId),

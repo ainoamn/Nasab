@@ -5,8 +5,10 @@ import {
   birthSortKey,
   computePersonRanks,
   formatAgeOrLifespan,
-  formatSiblingOrdinal,
+  formatSiblingLabel,
 } from "@/lib/birthOrder";
+import { isTwin, twinOrderInGroup, twinGroupSize } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -37,7 +39,7 @@ export default function BirthOrderStrip({
   const chips = useMemo(() => {
     return ordered.map((p) => {
       const ranks = computePersonRanks(p, people, rels);
-      const ord = formatSiblingOrdinal(ranks);
+      const ord = formatSiblingLabel(p, people, ranks, t("twins.badge"));
       const age = formatAgeOrLifespan(p);
       const metaParts: string[] = [];
       if (ord) metaParts.push(ord);
@@ -48,6 +50,9 @@ export default function BirthOrderStrip({
         person: p,
         meta: metaParts.join(" · ") || null,
         focused: p.id === focusId,
+        twin: isTwin(p, people),
+        twinOrder: twinOrderInGroup(p, people),
+        twinTotal: twinGroupSize(p, people),
       };
     });
   }, [ordered, people, rels, focusId, t]);
@@ -63,7 +68,7 @@ export default function BirthOrderStrip({
         </span>
       </p>
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
-        {chips.map(({ person, meta, focused }) => {
+        {chips.map(({ person, meta, focused, twin, twinOrder, twinTotal }) => {
           const female = person.gender === "female";
           return (
             <button
@@ -76,12 +81,18 @@ export default function BirthOrderStrip({
                   : person.givenName
               }
               className={cn(
-                "group flex w-[4.75rem] shrink-0 flex-col items-center gap-1 rounded-xl p-1.5 transition",
+                "group relative flex w-[4.75rem] shrink-0 flex-col items-center gap-1 rounded-xl p-1.5 transition",
                 focused
                   ? "bg-sky-100/90 ring-1 ring-sky-300"
                   : "hover:bg-white/80",
+                twin && "ring-2 ring-violet-400 bg-violet-50/80",
               )}
             >
+              {twin && (
+                <span className="absolute -top-0.5 start-0.5 z-[2]">
+                  <TwinBadge compact order={twinOrder} total={twinTotal} />
+                </span>
+              )}
               <span
                 className={cn(
                   "flex h-12 w-12 overflow-hidden rounded-full bg-white ring-2 shadow-sm transition group-hover:scale-105",

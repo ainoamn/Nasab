@@ -9,13 +9,15 @@ export default function PrintFamilyChart({
   levels,
 }: Pick<PrintTemplateProps, "people" | "rels" | "rootPersonId" | "levels">) {
   return (
-    <FamilyChart
-      people={people}
-      rels={rels}
-      compact
-      disablePanZoom
-      rootPersonId={rootPersonId}
-      printLevels={levels}
-    />
+    <div className="print-family-chart w-full min-w-0 overflow-hidden print:overflow-hidden">
+      <FamilyChart
+        people={people}
+        rels={rels}
+        compact
+        disablePanZoom
+        rootPersonId={rootPersonId}
+        printLevels={levels}
+      />
+    </div>
   );
 }

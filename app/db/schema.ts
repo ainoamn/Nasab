@@ -118,6 +118,8 @@ export const persons = mysqlTable(
       .notNull(),
     photoUrl: text("photoUrl"),
     notes: text("notes"),
+    /** مجموعة التوأم — يشترك فيها كل التوائم */
+    twinGroupId: int("twinGroupId"),
     branchId: bigint("branchId", { mode: "number", unsigned: true }),
     createdById: bigint("createdById", {
       mode: "number",

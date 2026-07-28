@@ -19,6 +19,7 @@ import {
   resolveFatherForMotherChild,
   searchSimilarPersons,
 } from "./lineageHelpers";
+import { assignTwinOf, clearTwinGroup } from "./twinLink";
 
 const spouseDateFields = {
   marriageDay: z.number().int().min(1).max(31).nullish(),
@@ -596,6 +597,8 @@ export const personRouter = createRouter({
           .nullish(),
         /** ربط شخص موجود بدل إنشاء جديد (مثلاً زوج/زوجة) */
         linkExistingId: z.number().int().positive().optional(),
+        /** توأم لشخص موجود (إخوة من نفس الأب) */
+        twinOfPersonId: z.number().int().positive().optional(),
         /** إنشاء فرع نسب تلقائياً من حقل النسب */
         createBranchFromLineage: z.boolean().optional(),
       }),
@@ -613,7 +616,7 @@ export const personRouter = createRouter({
       }
       await assertCanAddPerson(treeRow.ownerId, input.treeId, 1);
 
-      const { treeId, link, linkExistingId, createBranchFromLineage, ...fields } =
+      const { treeId, link, linkExistingId, createBranchFromLineage, twinOfPersonId, ...fields } =
         input;
 
       // إن وُجدت شجرة فيها أشخاص، الربط إلزامي من الواجهة — نتحقق أيضاً هنا
@@ -690,6 +693,27 @@ export const personRouter = createRouter({
         autoParentId = branch.directFatherId;
       }
 
+      // ورّث فرع النسب من الأب/الأم عند إضافة ابن/بنت/أخ/أخت
+      if (
+        !branchId &&
+        link &&
+        (link.kinship === "son" ||
+          link.kinship === "daughter" ||
+          link.kinship === "brother" ||
+          link.kinship === "sister" ||
+          link.kinship === "father" ||
+          link.kinship === "mother")
+      ) {
+        const anchor = await db.query.persons.findFirst({
+          where: and(
+            eq(persons.id, link.personId),
+            eq(persons.treeId, treeId),
+            isNull(persons.deletedAt),
+          ),
+        });
+        if (anchor?.branchId) branchId = anchor.branchId;
+      }
+
       const id = await insertReturningId(persons, {
         ...fields,
         treeId,
@@ -724,6 +748,25 @@ export const personRouter = createRouter({
             createBranchFromLineage,
           });
         }
+
+        if (twinOfPersonId) {
+          const allPeople = await db
+            .select()
+            .from(persons)
+            .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)));
+          const allRels = await db
+            .select()
+            .from(relationships)
+            .where(eq(relationships.treeId, treeId));
+          await assignTwinOf(
+            db,
+            treeId,
+            id,
+            twinOfPersonId,
+            allRels,
+            allPeople,
+          );
+        }
       } catch (err) {
         await db
           .update(persons)
@@ -753,12 +796,14 @@ export const personRouter = createRouter({
         /** تحديث الأم/الأب (اختياري) */
         motherId: z.number().int().positive().nullable().optional(),
         fatherId: z.number().int().positive().nullable().optional(),
+        /** ربط/فك توأم — null يزيل من المجموعة */
+        twinOfPersonId: z.number().int().positive().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       await requireTreeRole(ctx.user.id, input.treeId, "editor");
-      const { id, treeId, motherId, fatherId, ...fields } = input;
+      const { id, treeId, motherId, fatherId, twinOfPersonId, ...fields } = input;
 
       const existing = await db.query.persons.findFirst({
         where: and(eq(persons.id, id), eq(persons.treeId, treeId)),
@@ -859,12 +904,98 @@ export const personRouter = createRouter({
       await syncParent("female", motherId);
       await syncParent("male", fatherId);
 
+      if (twinOfPersonId !== undefined) {
+        if (twinOfPersonId === null) {
+          await clearTwinGroup(db, treeId, id);
+        } else {
+          const allPeople = await db
+            .select()
+            .from(persons)
+            .where(and(eq(persons.treeId, treeId), isNull(persons.deletedAt)));
+          const allRels = await db
+            .select()
+            .from(relationships)
+            .where(eq(relationships.treeId, treeId));
+          await assignTwinOf(
+            db,
+            treeId,
+            id,
+            twinOfPersonId,
+            allRels,
+            allPeople,
+          );
+        }
+      }
+
       await logChange({
         treeId,
         userId: ctx.user.id,
         personId: id,
         action: "update_person",
         details: `عدّل "${input.givenName}"`,
+      });
+      return { ok: true };
+    }),
+
+  /** ربط شخصين موجودين كتوأم */
+  linkTwin: authedQuery
+    .input(
+      z.object({
+        treeId: z.number().int().positive(),
+        personId: z.number().int().positive(),
+        twinOfPersonId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await requireTreeRole(ctx.user.id, input.treeId, "editor");
+      const allPeople = await db
+        .select()
+        .from(persons)
+        .where(
+          and(eq(persons.treeId, input.treeId), isNull(persons.deletedAt)),
+        );
+      const allRels = await db
+        .select()
+        .from(relationships)
+        .where(eq(relationships.treeId, input.treeId));
+      await assignTwinOf(
+        db,
+        input.treeId,
+        input.personId,
+        input.twinOfPersonId,
+        allRels,
+        allPeople,
+      );
+      const person = allPeople.find((p) => p.id === input.personId);
+      await logChange({
+        treeId: input.treeId,
+        userId: ctx.user.id,
+        personId: input.personId,
+        action: "link_twin",
+        details: `ربط توأم: ${person?.givenName ?? input.personId}`,
+      });
+      return { ok: true };
+    }),
+
+  /** فك توأم عن شخص */
+  unlinkTwin: authedQuery
+    .input(
+      z.object({
+        treeId: z.number().int().positive(),
+        personId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await requireTreeRole(ctx.user.id, input.treeId, "editor");
+      await clearTwinGroup(db, input.treeId, input.personId);
+      await logChange({
+        treeId: input.treeId,
+        userId: ctx.user.id,
+        personId: input.personId,
+        action: "unlink_twin",
+        details: "فك توأم",
       });
       return { ok: true };
     }),
