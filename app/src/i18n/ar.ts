@@ -538,6 +538,10 @@ export const ar = {
     subtitle: "بياناتك الشخصية، اشتراكك، والفواتير",
     backToDashboard: "العودة لأشجاري",
     saved: "تم حفظ بيانات الحساب",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
     tabs: {
       profile: "الملف الشخصي",
       subscription: "الاشتراك",
@@ -906,6 +910,8 @@ export const ar = {
     givenNamePh: "عبد الحميد",
     fatherName: "النسب المتسلسل",
     fatherNamePh: "بن حمود بن حمدان بن حمود",
+    bin: "بن",
+    bint: "بنت",
     kunya: "الكنية",
     kunyaPh: "ابو صمود",
     laqab: "اللقب / الشهرة",
@@ -1198,6 +1204,7 @@ export const ar = {
     spouseHusband: "زوج",
     basmala: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ",
     nasabJoin: " بن ",
+    listJoin: " و ",
     palmAriaLabel: "شجرة النسب على نخلة عمانية",
     generationLabel: "الجيل {{n}}",
     generationsCount: "الأجيال: {{count}}",

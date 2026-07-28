@@ -538,6 +538,10 @@ export const en = {
     subtitle: "Your profile, subscription, and invoices",
     backToDashboard: "Back to my trees",
     saved: "Account details saved",
+    dbNotConfigured:
+      "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup checklist",
     tabs: {
       profile: "Profile",
       subscription: "Subscription",
@@ -907,6 +911,8 @@ export const en = {
     givenNamePh: "Abdul Hamid",
     fatherName: "Lineage chain",
     fatherNamePh: "bin Humood bin Hamdan bin Humood",
+    bin: "bin",
+    bint: "bint",
     kunya: "Kunya",
     kunyaPh: "Abu Sumood",
     laqab: "Laqab / nickname",
@@ -1200,6 +1206,7 @@ export const en = {
     spouseHusband: "husband",
     basmala: "In the name of God, the Most Gracious, the Most Merciful",
     nasabJoin: " ibn ",
+    listJoin: " & ",
     palmAriaLabel: "Family tree on an Omani palm",
     generationLabel: "Gen {{n}}",
     generationsCount: "Generations: {{count}}",

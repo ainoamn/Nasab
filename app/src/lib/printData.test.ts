@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Person, Relationship } from "@db/tables";
-import { assignGenerationsStable, groupByGeneration, buildPalmTreeLayout, formatPalmCouple, computePrintStats, assignGenerationsFromPrintRoot } from "@/lib/printData";
+import { assignGenerationsStable, groupByGeneration, buildPalmTreeLayout, formatPalmCouple, computePrintStats, assignGenerationsFromPrintRoot, formatBirthYear } from "@/lib/printData";
 import { buildPrintSubgraph, DEFAULT_PRINT_SCOPE } from "@/lib/printFilter";
 
 function person(
@@ -772,5 +772,26 @@ describe("computeSunLayout", () => {
     expect(edges.some((e) => e.fromId === 2 && e.toId === 5)).toBe(true);
     expect(edges.some((e) => e.fromId === 3 && e.toId === 4)).toBe(false);
     expect(positions.get(3)?.isSpouse).toBe(true);
+  });
+});
+
+describe("formatBirthYear", () => {
+  it("returns year for living", () => {
+    const p = person(1, "حي");
+    p.birthYear = 1990;
+    p.isLiving = true;
+    expect(formatBirthYear(p)).toBe("1990");
+  });
+
+  it("returns lifespan for deceased", () => {
+    const p = person(1, "متوفى");
+    p.birthYear = 1950;
+    p.deathYear = 2020;
+    p.isLiving = false;
+    expect(formatBirthYear(p)).toBe("1950 – 2020");
+  });
+
+  it("returns null without birth year", () => {
+    expect(formatBirthYear(person(1, "بلا"))).toBeNull();
   });
 });

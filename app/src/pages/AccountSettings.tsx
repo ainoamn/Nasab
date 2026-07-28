@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { useAccountProfile, useAccountUsage, useAccountInvoices } from "@/hooks/useAccount";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
@@ -83,6 +84,7 @@ export default function AccountSettings() {
   const utils = trpc.useUtils();
   const { t, i18n } = useTranslation();
   const locale = localeTag(i18n.language);
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
   const [activeTab, setActiveTab] = useState("profile");
   const [couponCode, setCouponCode] = useState("");
   const [referralInput, setReferralInput] = useState("");
@@ -215,6 +217,31 @@ export default function AccountSettings() {
             </div>
           </div>
         </div>
+
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("account.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("account.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("account.openSetup")}
+            </Link>
+          </div>
+        ) : null}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 h-auto">

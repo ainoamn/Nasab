@@ -105,9 +105,10 @@ function buildLineage(
   anchor: Person,
   kinship: Kinship,
   otherParent?: Person | null,
+  labels: { bin: string; bint: string } = { bin: "بن", bint: "بنت" },
 ): string {
   if (kinship === "son" || kinship === "daughter") {
-    const prefix = kinship === "daughter" ? "بنت" : "بن";
+    const prefix = kinship === "daughter" ? labels.bint : labels.bin;
     if (anchor.gender === "female") {
       const father = otherParent;
       if (father) {
@@ -512,16 +513,20 @@ export default function PersonFormDialog({
     setGender(genderForKinship(kinship, anchor));
 
     if (!lineageTouched) {
+      const lineageLabels = {
+        bin: t("personForm.bin"),
+        bint: t("personForm.bint"),
+      };
       if (addingViaMother) {
         if (otherParentId === "other") {
           /* يُترك للمستخدم */
         } else {
           const father =
             selectedOtherParent ?? otherParentOptions[0] ?? null;
-          setFatherName(buildLineage(anchor, kinship, father));
+          setFatherName(buildLineage(anchor, kinship, father, lineageLabels));
         }
       } else {
-        setFatherName(buildLineage(anchor, kinship));
+        setFatherName(buildLineage(anchor, kinship, null, lineageLabels));
       }
     }
 

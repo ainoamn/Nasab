@@ -548,8 +548,8 @@ export default function SunRingPrint(props: PrintTemplateProps) {
           ? formatPrintChartName(p, "firstOnly")
           : formatPrintChartName(p, "full", tree.tribe),
       )
-      .join(" و ");
-  }, [rootIds, people, tree.name, tree.tribe, nameMode]);
+      .join(t("printPage.listJoin"));
+  }, [rootIds, people, tree.name, tree.tribe, nameMode, t]);
 
   const titleText = t("printPage.sunTitle", { names: titleNames });
   const docTitle = t("printPage.sunFamilyDocTitle");

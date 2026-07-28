@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
-import { sortPeopleByGeneration, personDisplayName } from "@/lib/printData";
+import {
+  formatBirthYear,
+  sortPeopleByGeneration,
+  personDisplayName,
+} from "@/lib/printData";
 import { twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
@@ -54,6 +58,9 @@ function BookPage({
   const twinOrder = twinOrderInGroup(person, people);
   const twinTotal = twinGroupSize(person, people);
   const isTwin = twinOrder != null && twinTotal >= 2;
+  const lifeYears = formatBirthYear(person);
+  const living =
+    person.isLiving === true || (person.isLiving as unknown) === 1;
 
   return (
     <div
@@ -91,6 +98,16 @@ function BookPage({
               {[person.laqab, person.clan].filter(Boolean).join(" · ")}
             </p>
           )}
+          {lifeYears ? (
+            <p
+              className={`mt-1 text-xs tabular-nums ${
+                living ? "text-stone-500" : "text-stone-400"
+              }`}
+            >
+              {lifeYears}
+              {!living ? ` · ${t("common.deceased")}` : ""}
+            </p>
+          ) : null}
         </div>
       </div>
       {person.notes ? (

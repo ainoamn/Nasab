@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { PrintTemplateId } from "./types";
 
 export function TemplatePreviewThumb({
@@ -9,6 +10,7 @@ export function TemplatePreviewThumb({
   accent: string;
   paper: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className="relative h-24 rounded-xl border overflow-hidden"
@@ -114,11 +116,11 @@ export function TemplatePreviewThumb({
       )}
       {id === "clan" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-[8px] font-bold" style={{ color: accent }}>
-          <span className="px-3 py-0.5 border rounded" style={{ borderColor: accent }}>قبيلة</span>
+          <span className="px-3 py-0.5 border rounded" style={{ borderColor: accent }}>{t("printPage.clanTribe")}</span>
           <span>↓</span>
-          <span className="px-4 py-0.5 border rounded" style={{ borderColor: accent }}>بطن</span>
+          <span className="px-4 py-0.5 border rounded" style={{ borderColor: accent }}>{t("printPage.clanBatn")}</span>
           <span>↓</span>
-          <span className="px-5 py-0.5 border rounded" style={{ borderColor: accent }}>عائلة</span>
+          <span className="px-5 py-0.5 border rounded" style={{ borderColor: accent }}>{t("printPage.clanFamily")}</span>
         </div>
       )}
       {id === "occasions" && (
@@ -143,6 +145,18 @@ export function TemplatePreviewThumb({
           {[18, 28, 40, 52, 62].map((x, i) => (
             <circle key={i} cx={x} cy={55 - i * 4} r="2.5" fill={accent} opacity={0.7 + i * 0.05} />
           ))}
+          <circle cx={28} cy={47} r="4.5" fill="#7c3aed" />
+          <text
+            x={28}
+            y={48}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="5"
+            fontWeight="700"
+            fill="#fff"
+          >
+            {t("twins.mark", { order: 1 })}
+          </text>
         </svg>
       )}
       {id === "sun" && (
@@ -174,6 +188,18 @@ export function TemplatePreviewThumb({
               </g>
             );
           })}
+          <circle cx="58" cy="22" r="5" fill="#7c3aed" />
+          <text
+            x={58}
+            y={23}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="5"
+            fontWeight="700"
+            fill="#fff"
+          >
+            {t("twins.mark", { order: 1 })}
+          </text>
         </svg>
       )}
       {id === "classic" && (

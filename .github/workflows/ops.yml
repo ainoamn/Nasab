@@ -24,12 +24,14 @@ jobs:
         run: npm run prod:smoke
         env:
           PROD_SMOKE_URL: https://nasab-mu.vercel.app
+      # Deploy SHA often lags auto-deploy; fail soft so Ops still reports smoke/health.
       - name: Deploy SHA sync
         continue-on-error: true
         run: npm run deploy:status
         env:
           PROD_SMOKE_URL: https://nasab-mu.vercel.app
 
+  # Needs repository secret DATABASE_URL (Neon pooled). Skips cleanly if missing.
   neon-backup:
     runs-on: ubuntu-latest
     defaults:

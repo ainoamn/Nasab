@@ -246,11 +246,12 @@ npm start
 ```bash
 cd app
 npm run db:backup-neon   # → .data/backups/neon-*.json (محلي)
-npm run prod:smoke       # دخان حي
-npm run launch:status    # Neon محلي + دخان حي
+npm run prod:smoke       # دخان حي — يفشل إن تعطلت الصفحات أو headers أو ردّ الدخول
+npm run deploy:status    # مقارنة SHA (غالباً BEHIND حتى Redeploy يدوي)
+npm run launch:status    # Neon محلي استشاري + دخان حي
 ```
 
-على GitHub: workflow [`Ops`](../.github/workflows/ops.yml) يعمل يومياً (دخان الإنتاج + نسخ Neon إن وُجد السر `DATABASE_URL`).
+على GitHub: workflow [`Ops`](../.github/workflows/ops.yml) يعمل يومياً (دخان الإنتاج + نسخ Neon إن وُجد السر `DATABASE_URL`). خطوة مزامنة SHA تبقى `continue-on-error` لأن النشر التلقائي قد يتأخر.
 
 ### GEDCOM والتوائم
 

@@ -97,27 +97,36 @@ const liveBuild = health?.json?.build || diag?.build || null;
 const originMain = await fetchOriginMainSha();
 const deployInSync = Boolean(liveBuild && originMain && liveBuild === originMain);
 
-console.log("\nVERDICT");
-console.log({
-  base,
-  healthOk,
-  liveBuild,
-  originMain,
-  deployInSync,
-  dbConfigured: Boolean(diag?.dbConfigured),
-  hasAppSecret: Boolean(diag?.hasAppSecret),
-  sidecar: Boolean(diag?.sidecar),
-  loginResponds: Boolean(login && login.status !== 0 && login.ms < 14000),
-  loginStatus: login?.status,
-  loginError: login?.json?.error,
-  setupOk: results.find((r) => r.path === "/setup")?.status === 200,
-  homeOk: results.find((r) => r.path === "/")?.status === 200,
-  securityHeadersOk: headersOk,
-  nextStep: !deployInSync
-    ? "Live SHA behind GitHub main → Vercel Deployments → Redeploy (Root Directory = app)"
-    : diag?.dbConfigured
-      ? "Try /login with admin credentials"
-      : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",
-});
+  const pagesOk =
+    results.find((r) => r.path === "/")?.status === 200 &&
+    results.find((r) => r.path === "/login")?.status === 200 &&
+    results.find((r) => r.path === "/setup")?.status === 200;
+  const loginResponds = Boolean(login && login.status !== 0 && login.ms < 14000);
+  const smokeOk = healthOk && pagesOk && loginResponds && headersOk;
 
-process.exit(healthOk ? 0 : 1);
+  console.log("\nVERDICT");
+  console.log({
+    base,
+    healthOk,
+    liveBuild,
+    originMain,
+    deployInSync,
+    dbConfigured: Boolean(diag?.dbConfigured),
+    hasAppSecret: Boolean(diag?.hasAppSecret),
+    sidecar: Boolean(diag?.sidecar),
+    loginResponds,
+    loginStatus: login?.status,
+    loginError: login?.json?.error,
+    setupOk: results.find((r) => r.path === "/setup")?.status === 200,
+    homeOk: results.find((r) => r.path === "/")?.status === 200,
+    loginPageOk: results.find((r) => r.path === "/login")?.status === 200,
+    securityHeadersOk: headersOk,
+    smokeOk,
+    nextStep: !deployInSync
+      ? "Live SHA behind GitHub main → Vercel Deployments → Redeploy (Root Directory = app)"
+      : diag?.dbConfigured
+        ? "Try /login with admin credentials"
+        : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",
+  });
+
+  process.exit(smokeOk ? 0 : 1);
