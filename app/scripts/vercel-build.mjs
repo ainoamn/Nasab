@@ -100,7 +100,9 @@ writeFileSync(
       runtime: "nodejs20.x",
       handler: "index.js",
       launcherType: "Nodejs",
-      shouldAddHelpers: true,
+      // false: getRequestListener owns the Node req stream; Vercel body helpers
+      // previously left POST bodies hanging (tRPC .input / c.req.json).
+      shouldAddHelpers: false,
       maxDuration: 30,
       memory: 1024,
     },

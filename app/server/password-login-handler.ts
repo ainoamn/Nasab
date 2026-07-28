@@ -14,12 +14,45 @@ import type { Context } from "hono";
 
 type LoginBody = { username?: string; password?: string };
 
+async function readLoginBody(c: Context): Promise<LoginBody> {
+  const ct = (c.req.header("content-type") || "").toLowerCase();
+
+  if (ct.includes("application/x-www-form-urlencoded")) {
+    const form = await Promise.race([
+      c.req.parseBody(),
+      new Promise<Record<string, never>>((_, reject) => {
+        setTimeout(() => reject(new Error("body-timeout")), 5000);
+      }),
+    ]);
+    return {
+      username: String(form.username ?? ""),
+      password: String(form.password ?? ""),
+    };
+  }
+
+  const raw = await Promise.race([
+    c.req.text(),
+    new Promise<string>((_, reject) => {
+      setTimeout(() => reject(new Error("body-timeout")), 5000);
+    }),
+  ]);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as LoginBody;
+  } catch {
+    // Fallback: treat as querystring
+    const params = new URLSearchParams(raw);
+    return {
+      username: params.get("username") ?? undefined,
+      password: params.get("password") ?? undefined,
+    };
+  }
+}
+
 /**
- * Direct Hono password login — bypasses tRPC `.input()` which hangs on
- * Vercel Build Output for procedures with Zod input schemas.
+ * Direct Hono password login — bypasses tRPC `.input()` issues on Vercel.
  */
 export async function passwordLoginHandler(c: Context) {
-  // Fail closed immediately when Neon is not configured on Vercel.
   if (!/^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL || env.databaseUrl || "")) {
     return c.json(
       {
@@ -33,16 +66,9 @@ export async function passwordLoginHandler(c: Context) {
 
   let body: LoginBody = {};
   try {
-    // Prefer text()+JSON.parse — c.req.json() has hung on this Vercel setup.
-    const raw = await Promise.race([
-      c.req.text(),
-      new Promise<string>((_, reject) => {
-        setTimeout(() => reject(new Error("body-timeout")), 5000);
-      }),
-    ]);
-    body = raw ? (JSON.parse(raw) as LoginBody) : {};
+    body = await readLoginBody(c);
   } catch {
-    return c.json({ error: "invalid_json" }, 400);
+    return c.json({ error: "invalid_body", message: "تعذر قراءة بيانات الدخول" }, 400);
   }
 
   const usernameRaw = String(body.username ?? "").trim();
@@ -94,7 +120,10 @@ export async function passwordLoginHandler(c: Context) {
   } else if (devOk) {
     // keep defaults
   } else {
-    return c.json({ error: "unauthorized", message: "البريد أو كلمة المرور غير صحيحة" }, 401);
+    return c.json(
+      { error: "unauthorized", message: "البريد أو كلمة المرور غير صحيحة" },
+      401,
+    );
   }
 
   try {

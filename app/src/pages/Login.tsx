@@ -60,12 +60,12 @@ export default function Login() {
   async function signInWithPassword() {
     setSigningIn(true);
     try {
-      // Direct Hono route — tRPC mutations with Zod `.input()` hang on Vercel.
+      // Prefer form-urlencoded — more reliable than JSON body on Vercel Node listener.
       const res = await fetch("/api/auth/password-login", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/x-www-form-urlencoded" },
         credentials: "include",
-        body: JSON.stringify({
+        body: new URLSearchParams({
           username: username.trim(),
           password,
         }),
