@@ -128,10 +128,18 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 
 ### حساب المشرف (دخول بالبريد)
 
-| الحقل | القيمة |
+كلمة المرور الافتراضية للتمهيد فقط — بعد الإطلاق نفّذ:
+
+```bash
+cd app
+npm run admin:rotate -- --write-env
+# ثم انسخ PASSWORD_LOGIN_PASSWORD إلى Vercel → Redeploy
+```
+
+| الحقل | القيمة الافتراضية (تمهيد) |
 |--------|--------|
 | البريد | `admin@bhd.om` |
-| كلمة المرور | `Admin@1234` |
+| كلمة المرور | انظر `PASSWORD_LOGIN_PASSWORD` / `npm run admin:rotate` |
 | اتحاد المالك | `password:admin@bhd.om` |
 
 متغيرات Vercel المطلوبة لنفس الحساب:

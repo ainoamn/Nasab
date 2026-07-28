@@ -1343,6 +1343,7 @@ export const ar = {
       missingMother: "الأم غير مسجّلة",
       missingBothParents: "الأبوان غير مسجّلين",
       childNoSpouseLink: "لديه أبناء بلا زوج/ة مسجّل",
+      possibleTwin: "أخ شقيق بنفس سنة الميلاد — هل هما توأم؟",
     },
     prevSibling: "الأخ/الأخت السابق: {{name}}",
     nextSibling: "الأخ/الأخت التالي: {{name}}",

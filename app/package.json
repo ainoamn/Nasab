@@ -17,6 +17,7 @@
     "launch:configure": "node scripts/configure-launch.mjs",
     "admin:promote": "node scripts/promote-admin.mjs",
     "admin:ensure": "node scripts/ensure-admin.mjs",
+    "admin:rotate": "node scripts/rotate-admin-password.mjs",
     "vercel:env": "node scripts/push-vercel-env.mjs",
     "db:verify-neon": "node scripts/verify-neon.mjs",
     "db:seed-neon": "node scripts/seed-neon.mjs",

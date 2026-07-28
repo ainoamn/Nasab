@@ -1,5 +1,6 @@
 import type { Person, Relationship } from "@db/tables";
 import { buildChildrenOf, buildSpousesOf, getParents } from "@/lib/familyGraph";
+import { isFullSibling } from "@/lib/twins";
 
 export type PersonGapKind =
   | "noPhoto"
@@ -7,11 +8,24 @@ export type PersonGapKind =
   | "missingFather"
   | "missingMother"
   | "missingBothParents"
-  | "childNoSpouseLink";
+  | "childNoSpouseLink"
+  | "possibleTwin";
 
 export type PersonGap = {
   kind: PersonGapKind;
 };
+
+function sameBirthHint(a: Person, b: Person): boolean {
+  if (a.birthYear == null || b.birthYear == null) return false;
+  if (a.birthYear !== b.birthYear) return false;
+  if (a.birthMonth != null && b.birthMonth != null && a.birthMonth !== b.birthMonth) {
+    return false;
+  }
+  if (a.birthDay != null && b.birthDay != null && a.birthDay !== b.birthDay) {
+    return false;
+  }
+  return true;
+}
 
 /** نواقص ملف شخص واحد — للوحة التفاصيل */
 export function findPersonGaps(
@@ -43,6 +57,17 @@ export function findPersonGaps(
     person.gender === "male"
   ) {
     gaps.push({ kind: "childNoSpouseLink" });
+  }
+
+  if (person.twinGroupId == null && person.birthYear != null) {
+    const twinHint = people.some(
+      (other) =>
+        other.id !== person.id &&
+        other.twinGroupId == null &&
+        sameBirthHint(person, other) &&
+        isFullSibling(person.id, other.id, rels, byId),
+    );
+    if (twinHint) gaps.push({ kind: "possibleTwin" });
   }
 
   return gaps;

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import { findPersonGaps, type PersonGapKind } from "@/lib/personGaps";
 import { Button } from "@/components/ui/button";
-import { Camera, Calendar, UserRoundPlus, Heart, MessageCircle } from "lucide-react";
+import { Camera, Calendar, UserRoundPlus, Heart, MessageCircle, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -22,6 +22,7 @@ function iconFor(kind: PersonGapKind) {
   if (kind === "noPhoto") return Camera;
   if (kind === "noBirthYear") return Calendar;
   if (kind === "childNoSpouseLink") return Heart;
+  if (kind === "possibleTwin") return Users2;
   return UserRoundPlus;
 }
 
@@ -84,7 +85,11 @@ export default function PersonGapsStrip({
               <span className="min-w-0 flex-1 text-sky-950">
                 {t(`detail.gap.${g.kind}`)}
               </span>
-              {canWrite && (g.kind === "noPhoto" || g.kind === "noBirthYear") && onEdit && (
+              {canWrite &&
+                (g.kind === "noPhoto" ||
+                  g.kind === "noBirthYear" ||
+                  g.kind === "possibleTwin") &&
+                onEdit && (
                 <Button
                   size="sm"
                   variant="outline"

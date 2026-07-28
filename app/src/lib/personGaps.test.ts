@@ -62,4 +62,52 @@ describe("findPersonGaps", () => {
     expect(gaps.some((g) => g.kind === "missingFather")).toBe(true);
     expect(gaps.some((g) => g.kind === "missingMother")).toBe(false);
   });
+
+  it("flags possible twins among full siblings with same birth year", () => {
+    const father = person(1, { givenName: "أب", birthYear: 1970, photoUrl: "/f" });
+    const mother = person(2, {
+      givenName: "أم",
+      gender: "female",
+      birthYear: 1972,
+      photoUrl: "/m",
+    });
+    const a = person(3, { givenName: "أ", birthYear: 2000, photoUrl: "/a" });
+    const b = person(4, { givenName: "ب", birthYear: 2000, photoUrl: "/b" });
+    const rels = [
+      parent(1, 3),
+      parent(2, 3),
+      parent(1, 4),
+      parent(2, 4),
+    ];
+    const gaps = findPersonGaps(a, [father, mother, a, b], rels);
+    expect(gaps.some((g) => g.kind === "possibleTwin")).toBe(true);
+  });
+
+  it("does not flag possibleTwin when already linked", () => {
+    const father = person(1, { givenName: "أب", birthYear: 1970, photoUrl: "/f" });
+    const mother = person(2, {
+      givenName: "أم",
+      gender: "female",
+      birthYear: 1972,
+      photoUrl: "/m",
+    });
+    const a = person(3, { givenName: "أ", birthYear: 2000, photoUrl: "/a" });
+    a.twinGroupId = 9;
+    const b = person(4, { givenName: "ب", birthYear: 2000, photoUrl: "/b" });
+    b.twinGroupId = 9;
+    const rels = [parent(1, 3), parent(2, 3), parent(1, 4), parent(2, 4)];
+    const gaps = findPersonGaps(a, [father, mother, a, b], rels);
+    expect(gaps.some((g) => g.kind === "possibleTwin")).toBe(false);
+  });
 });
+
+function parent(from: number, to: number): Relationship {
+  return {
+    id: from * 100 + to,
+    treeId: 1,
+    fromPersonId: from,
+    toPersonId: to,
+    type: "parent",
+    createdAt: new Date(),
+  } as Relationship;
+}

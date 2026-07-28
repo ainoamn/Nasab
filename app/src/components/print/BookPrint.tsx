@@ -1,8 +1,11 @@
 import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { sortPeopleByGeneration, personDisplayName } from "@/lib/printData";
+import { twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
+import type { Person } from "@db/schema";
 
 function BookCover({ tree, accent }: { tree: PrintTemplateProps["tree"]; accent: string }) {
   const { t } = useTranslation();
@@ -38,18 +41,24 @@ function BookCover({ tree, accent }: { tree: PrintTemplateProps["tree"]; accent:
 
 function BookPage({
   person,
+  people,
   accent,
   pageNum,
 }: {
-  person: PrintTemplateProps["people"][0];
+  person: Person;
+  people: Person[];
   accent: string;
   pageNum: number;
 }) {
   const { t } = useTranslation();
+  const twinOrder = twinOrderInGroup(person, people);
+  const twinTotal = twinGroupSize(person, people);
+  const isTwin = twinOrder != null && twinTotal >= 2;
+
   return (
     <div
       className="mb-8 rounded-xl border bg-white/90 p-6 shadow-sm print:break-inside-avoid"
-      style={{ borderColor: `${accent}44` }}
+      style={{ borderColor: isTwin ? "#7c3aed88" : `${accent}44` }}
     >
       <div className="flex items-start gap-4">
         <span
@@ -65,8 +74,14 @@ function BookPage({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-xl font-bold" style={{ color: accent }}>
-            {personDisplayName(person)}
+          <h3
+            className="flex flex-wrap items-center gap-2 font-display text-xl font-bold"
+            style={{ color: accent }}
+          >
+            <span>{personDisplayName(person)}</span>
+            {isTwin ? (
+              <TwinBadge compact order={twinOrder} total={twinTotal} />
+            ) : null}
           </h3>
           {person.fatherName && (
             <p className="text-sm text-stone-500 font-display">{person.fatherName}</p>
@@ -116,7 +131,7 @@ export default function BookPrint(props: PrintTemplateProps) {
 
       <div className="columns-1 sm:columns-2 gap-6">
         {sortedPeople.map((p, i) => (
-          <BookPage key={p.id} person={p} accent={accent} pageNum={i + 1} />
+          <BookPage key={p.id} person={p} people={people} accent={accent} pageNum={i + 1} />
         ))}
       </div>
 

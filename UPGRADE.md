@@ -60,7 +60,7 @@ npm run db:seed-neon
 | `DATABASE_URL` | رابط Neon **pooled** من `.env.production` |
 | `APP_SECRET` | ≥ 32 حرفاً (يُولَّد تلقائياً عبر `vercel:env`) |
 | `PASSWORD_LOGIN_EMAIL` | `admin@bhd.om` |
-| `PASSWORD_LOGIN_PASSWORD` | `Admin@1234` |
+| `PASSWORD_LOGIN_PASSWORD` | كلمة قوية — أو `npm run admin:rotate` |
 | `OWNER_UNION_ID` | `password:admin@bhd.om` |
 | `APP_PUBLIC_URL` | `https://nasab-mu.vercel.app` |
 | `ALLOWED_ORIGINS` | `https://nasab-mu.vercel.app` |
@@ -125,6 +125,16 @@ npm run prod:smoke
 
 ---
 
+## المرحلة 11 — نواقص توأم + تدوير كلمة المرور (منفَّذة)
+
+| البند | الحالة |
+|--------|--------|
+| فجوة `possibleTwin` للإخوة الأشقاء بنفس سنة الميلاد | ✅ |
+| شارة توأم في قالب الكتاب | ✅ |
+| `npm run admin:rotate` لتوليد/كتابة كلمة مرور الدخول | ✅ |
+
+---
+
 ## المرحلة 10 — ترتيب مخطط مستقر + Ops مجدول (منفَّذة)
 
 | البند | الحالة |
@@ -164,7 +174,7 @@ npm run prod:smoke
 
 | الأولوية | البند | الحالة |
 |----------|--------|--------|
-| عالية | تدوير كلمة مرور المشرف بعد أول دخول ناجح | معلّق على Vercel DB |
+| عالية | تدوير كلمة مرور المشرف بعد أول دخول ناجح | ✅ `npm run admin:rotate` (ثم حدّث Vercel) |
 | عالية | إنشاء شجرة تجريبية والتحقق من الحفظ على الإنتاج | معلّق على Vercel DB |
 | متوسطة | نسخ Neon مجدول | ✅ `ops.yml` |
 | متوسطة | نطاق مخصص + شهادة HTTPS | لاحقاً |
@@ -180,6 +190,7 @@ npm run prod:smoke
 - [x] ترتيب توائم مستقر + صقل الدخول/التشخيص
 - [x] دورة توائم GEDCOM (تصدير/استيراد)
 - [x] ترتيب مخطط/طباعة مستقر + Ops مجدول
+- [x] اقتراح توأم محتمل + تدوير كلمة مرور المشرف
 - [ ] `/api/diag` على الإنتاج: `dbConfigured: true` ← **إجراء يدوي على Vercel**
 - [ ] تسجيل دخول ناجح من `/login`
 - [ ] إنشاء شجرة وحفظ شخص في الإنتاج

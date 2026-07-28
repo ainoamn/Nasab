@@ -1345,6 +1345,7 @@ export const en = {
       missingMother: "Mother not recorded",
       missingBothParents: "Parents not recorded",
       childNoSpouseLink: "Has children but no spouse link",
+      possibleTwin: "Full sibling with the same birth year — are they twins?",
     },
     prevSibling: "Previous sibling: {{name}}",
     nextSibling: "Next sibling: {{name}}",
