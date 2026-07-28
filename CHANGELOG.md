@@ -20,6 +20,34 @@
 
 ---
 
+## 2026-07-28 — دخول مباشر عبر Hono + تشخيص Vercel
+
+### اكتشاف
+- `/api/diag` أظهر أن **Production على Vercel بلا `DATABASE_URL` ولا `APP_SECRET`**.
+- إجراءات tRPC ذات `.input(zod)` تعلق على Vercel Build Output (بدون رد)، بينما الإجراءات بلا input تعمل.
+
+### الإصلاح
+- مسار جديد: `POST /api/auth/password-login` (Hono) يتجاوز tRPC.
+- صفحة `/login` تستدعي هذا المسار مباشرة.
+- الإبقاء على sidecar `db-pg.cjs` (Neon HTTP) لتسجيل الدخول بعد ضبط `DATABASE_URL`.
+
+### مطلوب منك على Vercel (إلزامي)
+في Project → Settings → Environment Variables (Production) ثم **Redeploy**:
+
+```
+DATABASE_URL=postgresql://...-pooler.../neondb?sslmode=require
+APP_SECRET=<32+ حرفاً عشوائياً>
+PASSWORD_LOGIN_EMAIL=admin@bhd.om
+PASSWORD_LOGIN_PASSWORD=Admin@1234
+OWNER_UNION_ID=password:admin@bhd.om
+APP_PUBLIC_URL=https://nasab-mu.vercel.app
+ALLOWED_ORIGINS=https://nasab-mu.vercel.app
+```
+
+تحقق: `GET /api/diag` → `dbConfigured: true` ثم دخول من `/login`.
+
+---
+
 ## 2026-07-28 — Postgres sidecar لـ Vercel بدون كسر Cold Start
 
 ### الإصلاح
