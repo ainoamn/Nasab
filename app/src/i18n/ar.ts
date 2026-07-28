@@ -1263,6 +1263,7 @@ export const ar = {
     badge: "توأم",
     identical: "توأم متطابق",
     fraternal: "توأم غير متطابق",
+    mixed: "توأم مختلط",
     panelTitle: "التوائم",
     addNew: "إضافة توأم جديد",
     linkExisting: "ربط أخ/أخت موجود كتوأم",

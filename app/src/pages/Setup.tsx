@@ -5,6 +5,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TreePalm, CheckCircle2, XCircle, CircleDashed } from "lucide-react";
+import { toast } from "sonner";
 
 type Diag = {
   ok?: boolean;
@@ -13,13 +14,20 @@ type Diag = {
   dbHost?: string | null;
   sidecar?: boolean;
   hasAppSecret?: boolean;
-  passwordLoginEmail?: string;
+  passwordLoginConfigured?: boolean;
+  hasAppPublicUrl?: boolean;
+  hasAllowedOrigins?: boolean;
   vercel?: boolean;
   build?: string | null;
   builtAt?: string | null;
 };
 
 type Row = { id: string; label: string; ok: boolean | null; hint?: string };
+
+const ENV_SNIPPET = `cd app
+npm run vercel:print-env
+# paste into Vercel → Environment Variables
+# then Redeploy`;
 
 export default function Setup() {
   const { t, i18n } = useTranslation();
@@ -68,10 +76,19 @@ export default function Setup() {
       ok: diag ? Boolean(diag.hasAppSecret) : null,
     },
     {
+      id: "publicUrl",
+      label: ar ? "APP_PUBLIC_URL" : "APP_PUBLIC_URL",
+      ok: diag ? Boolean(diag.hasAppPublicUrl) : null,
+    },
+    {
+      id: "origins",
+      label: ar ? "ALLOWED_ORIGINS" : "ALLOWED_ORIGINS",
+      ok: diag ? Boolean(diag.hasAllowedOrigins) : null,
+    },
+    {
       id: "admin",
-      label: ar ? "بريد المشرف الافتراضي" : "Default admin email",
-      ok: diag?.passwordLoginEmail ? true : null,
-      hint: diag?.passwordLoginEmail,
+      label: ar ? "دخول بالبريد مفعّل" : "Password login configured",
+      ok: diag ? Boolean(diag.passwordLoginConfigured) : null,
     },
     {
       id: "build",
@@ -83,7 +100,18 @@ export default function Setup() {
     },
   ];
 
-  const ready = Boolean(diag?.dbConfigured && diag?.hasAppSecret && diag?.sidecar);
+  const ready = Boolean(
+    diag?.dbConfigured && diag?.hasAppSecret && diag?.sidecar,
+  );
+
+  async function copyEnvHelp() {
+    try {
+      await navigator.clipboard.writeText(ENV_SNIPPET);
+      toast.success(ar ? "تم النسخ" : "Copied");
+    } catch {
+      toast.error(ar ? "تعذّر النسخ" : "Copy failed");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -148,14 +176,19 @@ export default function Setup() {
                     ? "أضف متغيرات البيئة على Vercel ثم أعد النشر:"
                     : "Add Vercel env vars, then redeploy:"}
                 </p>
-                <pre className="overflow-x-auto rounded bg-background/80 p-2 text-xs" dir="ltr">
-{`cd app
-npm run vercel:print-env
-# paste into Vercel → Environment Variables
-# then Redeploy`}
+                <pre
+                  className="overflow-x-auto rounded bg-background/80 p-2 text-xs"
+                  dir="ltr"
+                >
+                  {ENV_SNIPPET}
                 </pre>
+                <Button type="button" size="sm" variant="secondary" onClick={() => void copyEnvHelp()}>
+                  {ar ? "نسخ الأوامر" : "Copy commands"}
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  {ar ? "التفاصيل في UPGRADE.md — المرحلة 2." : "Details in UPGRADE.md — phase 2."}
+                  {ar
+                    ? "التفاصيل في UPGRADE.md — المرحلة 2."
+                    : "Details in UPGRADE.md — phase 2."}
                 </p>
               </div>
             )}
@@ -179,3 +212,4 @@ npm run vercel:print-env
     </div>
   );
 }
+

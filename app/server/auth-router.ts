@@ -18,6 +18,7 @@ import { passwordLoginUnionId } from "./lib/password-login";
 export const authRouter = createRouter({
   config: publicQuery.query(() => ({
     googleEnabled: isGoogleAuthEnabled(),
+    kimiEnabled: Boolean(env.kimiAuthUrl),
     devLocalAuth: env.devLocalAuthEnabled,
     passwordLogin: env.passwordLoginEnabled,
   })),

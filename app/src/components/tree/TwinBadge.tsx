@@ -27,7 +27,9 @@ export default function TwinBadge({
       ? t("twins.fraternal")
       : kind === "identical"
         ? t("twins.identical")
-        : t("twins.badge");
+        : kind === "mixed"
+          ? t("twins.mixed")
+          : t("twins.badge");
   const mark =
     order != null && total != null && total >= 2
       ? t("twins.markOrder", { order, total })

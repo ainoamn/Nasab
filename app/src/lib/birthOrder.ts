@@ -14,6 +14,18 @@ export function birthSortKey(p: BirthParts): number {
   return y * 10000 + m * 100 + d;
 }
 
+type BirthSortable = BirthParts & { id?: number | string | null };
+
+/**
+ * ترتيب مستقر بالميلاد ثم بالمعرّف — يمنع تقلب ترتيب التوائم
+ * الذين يشتركون في نفس تاريخ الميلاد.
+ */
+export function comparePeopleByBirth(a: BirthSortable, b: BirthSortable): number {
+  const byBirth = birthSortKey(a) - birthSortKey(b);
+  if (byBirth !== 0) return byBirth;
+  return Number(a.id ?? 0) - Number(b.id ?? 0);
+}
+
 export function formatBirthDate(
   p: BirthParts,
   locale = "ar-OM",
@@ -73,7 +85,7 @@ function childrenOf(
 
 function rankInList(list: Person[], id: number): { rank: number; total: number } | null {
   if (list.length === 0) return null;
-  const sorted = [...list].sort((a, b) => birthSortKey(a) - birthSortKey(b));
+  const sorted = [...list].sort(comparePeopleByBirth);
   const idx = sorted.findIndex((p) => p.id === id);
   if (idx < 0) return null;
   return { rank: idx + 1, total: sorted.length };
@@ -201,7 +213,7 @@ export function formatSiblingLabel(
   if (person.twinGroupId != null) {
     const group = people.filter((p) => p.twinGroupId === person.twinGroupId);
     if (group.length >= 2) {
-      const sorted = [...group].sort((a, b) => birthSortKey(a) - birthSortKey(b));
+      const sorted = [...group].sort(comparePeopleByBirth);
       const idx = sorted.findIndex((p) => p.id === person.id);
       if (idx >= 0) {
         return `${twinLabel} ${idx + 1}/${group.length}`;

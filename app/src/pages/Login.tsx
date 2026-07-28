@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,10 @@ export default function Login() {
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
 
   const authConfig = trpc.auth.config.useQuery();
-  const showPasswordForm = true;
-  const passwordMode = true;
+  const showPasswordForm = authConfig.data?.passwordLogin !== false;
+  const passwordMode = !authConfig.data?.devLocalAuth;
+  const showKimi = authConfig.data?.kimiEnabled !== false;
+  const dbBlocked = dbConfigured === false;
 
   useEffect(() => {
     if (params.get("error") === "google") {
@@ -57,7 +59,9 @@ export default function Login() {
     };
   }, []);
 
-  async function signInWithPassword() {
+  async function signInWithPassword(e?: FormEvent) {
+    e?.preventDefault();
+    if (dbBlocked) return;
     setSigningIn(true);
     try {
       // Prefer form-urlencoded — more reliable than JSON body on Vercel Node listener.
@@ -104,7 +108,7 @@ export default function Login() {
             <p className="text-sm text-muted-foreground mt-1">{t("login.subtitle")}</p>
           </CardHeader>
           <CardContent className="space-y-3">
-            {dbConfigured === false ? (
+            {dbBlocked ? (
               <div
                 className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
                 role="status"
@@ -124,6 +128,7 @@ export default function Login() {
                   className="w-full gap-2"
                   size="lg"
                   variant="outline"
+                  disabled={dbBlocked}
                   onClick={() => {
                     window.location.href = "/api/oauth/google";
                   }}
@@ -140,7 +145,7 @@ export default function Login() {
             )}
             {showPasswordForm ? (
               <>
-                <div className="space-y-3">
+                <form className="space-y-3" onSubmit={(e) => void signInWithPassword(e)}>
                   <div className="space-y-2">
                     <Label htmlFor="username">
                       {passwordMode ? t("login.email") : t("login.localUser")}
@@ -152,6 +157,7 @@ export default function Login() {
                       onChange={(e) => setUsername(e.target.value)}
                       autoComplete={passwordMode ? "email" : "username"}
                       placeholder={passwordMode ? "admin@example.com" : undefined}
+                      disabled={dbBlocked}
                     />
                   </div>
                   <div className="space-y-2">
@@ -162,13 +168,16 @@ export default function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="current-password"
+                      disabled={dbBlocked}
                     />
                   </div>
                   <Button
+                    type="submit"
                     className="w-full"
                     size="lg"
-                    onClick={() => void signInWithPassword()}
-                    disabled={!username.trim() || !password || signingIn}
+                    disabled={
+                      dbBlocked || !username.trim() || !password || signingIn
+                    }
                   >
                     {signingIn
                       ? t("login.localSigningIn")
@@ -181,33 +190,40 @@ export default function Login() {
                       {t("login.localNote")}
                     </p>
                   ) : null}
-                </div>
-                <div className="flex items-center gap-3">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground">
-                    {t("login.or")}
-                  </span>
-                  <Separator className="flex-1" />
-                </div>
+                </form>
+                {showKimi ? (
+                  <div className="flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <span className="text-xs text-muted-foreground">
+                      {t("login.or")}
+                    </span>
+                    <Separator className="flex-1" />
+                  </div>
+                ) : null}
               </>
             ) : null}
-            <Button
-              className="w-full"
-              size="lg"
-              variant={
-                showPasswordForm || authConfig.data?.googleEnabled
-                  ? "outline"
-                  : "default"
-              }
-              onClick={() => {
-                window.location.href = "/api/oauth/kimi/start";
-              }}
-            >
-              {t("login.button")}
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              {t("login.note")}
-            </p>
+            {showKimi ? (
+              <>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  variant={
+                    showPasswordForm || authConfig.data?.googleEnabled
+                      ? "outline"
+                      : "default"
+                  }
+                  disabled={dbBlocked}
+                  onClick={() => {
+                    window.location.href = "/api/oauth/kimi/start";
+                  }}
+                >
+                  {t("login.button")}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  {t("login.note")}
+                </p>
+              </>
+            ) : null}
           </CardContent>
         </Card>
       </div>

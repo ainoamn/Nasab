@@ -4,7 +4,7 @@ import type { Person, Relationship } from "@db/tables";
 import {
   computePersonRanks,
   formatAgeOrLifespan,
-  formatSiblingOrdinal,
+  formatSiblingLabel,
 } from "@/lib/birthOrder";
 import { cn } from "@/lib/utils";
 
@@ -110,7 +110,12 @@ export default function ImmediateFamilyStrip({
       const parts: string[] = [];
       if (m.role === "sibling" || m.role === "child") {
         const ranks = computePersonRanks(m.person, people, rels);
-        const ord = formatSiblingOrdinal(ranks);
+        const ord = formatSiblingLabel(
+          m.person,
+          people,
+          ranks,
+          t("twins.badge"),
+        );
         if (ord) parts.push(ord);
       }
       const age = formatAgeOrLifespan(m.person);

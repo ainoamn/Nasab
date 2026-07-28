@@ -59,7 +59,9 @@ app.get("/api/diag", (c) => {
     })(),
     sidecar: existsSync(path.join(process.cwd(), "db-pg.cjs")),
     hasAppSecret: Boolean(process.env.APP_SECRET),
-    passwordLoginEmail: env.passwordLoginEmail,
+    passwordLoginConfigured: Boolean(env.passwordLoginEmail),
+    hasAppPublicUrl: Boolean(env.appPublicUrl),
+    hasAllowedOrigins: env.allowedOrigins.length > 0,
   });
 });
 

@@ -1265,6 +1265,7 @@ export const en = {
     badge: "Twin",
     identical: "Identical twin",
     fraternal: "Fraternal twin",
+    mixed: "Mixed twins",
     panelTitle: "Twins",
     addNew: "Add new twin",
     linkExisting: "Link existing sibling as twin",

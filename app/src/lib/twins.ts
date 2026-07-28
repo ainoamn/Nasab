@@ -1,6 +1,6 @@
 import type { Person, Relationship } from "@db/schema";
 import { getParents } from "@/lib/familyGraph";
-import { birthSortKey } from "@/lib/birthOrder";
+import { comparePeopleByBirth } from "@/lib/birthOrder";
 
 export function getTwinGroupMembers(
   person: Person,
@@ -9,7 +9,7 @@ export function getTwinGroupMembers(
   if (person.twinGroupId == null) return [];
   return people
     .filter((p) => p.twinGroupId === person.twinGroupId && p.id !== person.id)
-    .sort((a, b) => birthSortKey(a) - birthSortKey(b));
+    .sort(comparePeopleByBirth);
 }
 
 /** توأم فعلي: مجموعة فيها شخصان على الأقل */
@@ -67,7 +67,7 @@ export function twinCandidateSiblings(
       }
       return isFullSibling(person.id, s.id, rels, byId);
     })
-    .sort((a, b) => birthSortKey(a) - birthSortKey(b));
+    .sort(comparePeopleByBirth);
 }
 
 /** قائمة أشقاء للعرض في أداة التوأم (نفس الأبوين) */
@@ -79,7 +79,7 @@ export function fullSiblingsOf(
   const byId = new Map(people.map((p) => [p.id, p]));
   return people
     .filter((s) => isFullSibling(person.id, s.id, rels, byId))
-    .sort((a, b) => birthSortKey(a) - birthSortKey(b));
+    .sort(comparePeopleByBirth);
 }
 
 /** ترتيب التوأم داخل المجموعة (١ = الأكبر) */
@@ -90,7 +90,7 @@ export function twinOrderInGroup(
   if (person.twinGroupId == null) return null;
   const group = people
     .filter((p) => p.twinGroupId === person.twinGroupId)
-    .sort((a, b) => birthSortKey(a) - birthSortKey(b));
+    .sort(comparePeopleByBirth);
   if (group.length < 2) return null;
   const idx = group.findIndex((p) => p.id === person.id);
   return idx >= 0 ? idx + 1 : null;
@@ -98,7 +98,10 @@ export function twinOrderInGroup(
 
 export type TwinKind = "identical" | "fraternal" | "mixed";
 
-/** نوع التوأم حسب جنس أفراد المجموعة */
+/**
+ * نوع التوأم حسب جنس أفراد المجموعة (استنتاج واجهة فقط):
+ * أجناس مختلفة → مختلط؛ نفس الجنس → متطابق (لا يثبت DNA).
+ */
 export function twinKindForGroup(
   person: Person,
   people: Person[],
@@ -107,7 +110,7 @@ export function twinKindForGroup(
   const group = people.filter((p) => p.twinGroupId === person.twinGroupId);
   if (group.length < 2) return null;
   const genders = new Set(group.map((p) => p.gender));
-  if (genders.size > 1) return "fraternal";
+  if (genders.size > 1) return "mixed";
   return "identical";
 }
 

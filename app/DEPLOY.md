@@ -156,7 +156,7 @@ npm run admin:ensure
 فحص بعد النشر:
 
 - `GET /api/health` → `{"ok":true,"build":"<sha>"}`
-- `GET /api/diag` → `dbConfigured: true` و`sidecar: true` و`build`
+- `GET /api/diag` → `dbConfigured: true` و`sidecar: true` و`build` (أعلام حضور فقط — بلا بريد مشرف)
 - صفحة الجاهزية: `/setup`
 - `POST /api/auth/password-login` بجسم `{ "username":"admin@bhd.om", "password":"Admin@1234" }`
 - `/login` يستخدم مسار Hono أعلاه (وليس tRPC) بسبب تعليق `.input()` على Vercel

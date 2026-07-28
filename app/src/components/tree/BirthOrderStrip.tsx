@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Person, Relationship } from "@db/tables";
 import {
-  birthSortKey,
+  comparePeopleByBirth,
   computePersonRanks,
   formatAgeOrLifespan,
   formatSiblingLabel,
@@ -32,7 +32,7 @@ export default function BirthOrderStrip({
   const { t } = useTranslation();
 
   const ordered = useMemo(
-    () => [...siblings].sort((a, b) => birthSortKey(a) - birthSortKey(b)),
+    () => [...siblings].sort(comparePeopleByBirth),
     [siblings],
   );
 
