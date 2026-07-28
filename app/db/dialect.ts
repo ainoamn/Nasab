@@ -28,7 +28,7 @@ export function getDatabaseDialect(url?: string): DatabaseDialect {
   return "mysql";
 }
 
-/** Vercel / Build Output serverless — prefer Neon HTTP over TCP. */
+/** True on Vercel / Build Output serverless runtimes. */
 export function isServerlessRuntime(): boolean {
   return (
     Boolean(process.env.VERCEL) ||

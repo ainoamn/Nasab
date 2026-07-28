@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-07-28 — إصلاح انهيار دالة Vercel + نسخ postgres
+
+### السبب
+- استيراد `postgres` / Neon بشكل ثابت عند تحميل الوحدة كان يُسقط الدالة (`FUNCTION_INVOCATION_FAILED`) على Vercel.
+- `require` الديناميكي يترك الحزم خارج حزمة esbuild، فلا تجدها دالة Build Output.
+
+### الإصلاح
+- العودة للتحميل الكسول لسائق Postgres (كما كان يعمل `/api/health`).
+- `vercel-build.mjs` ينسخ `node_modules/postgres` و`drizzle-orm` داخل `api.func`.
+- الإبقاء على مهلة تسجيل الدخول ورفض `DATABASE_URL` الفارغ.
+
+### تحقق محلي (cwd = api.func)
+- health → 200، loginLocal → 200.
+
+---
+
 ## 2026-07-28 — تضمين postgres.js في دالة Vercel
 
 ### الإصلاح

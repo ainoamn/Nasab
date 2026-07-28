@@ -25,15 +25,7 @@ app.use("/api/webhooks/*", bodyLimit({ maxSize: 256 * 1024 }));
 app.use("/api/trpc/*", bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
 
-app.get("/api/health", (c) =>
-  c.json({
-    ok: true,
-    ts: Date.now(),
-    dbConfigured: Boolean((env.databaseUrl || "").trim()),
-    serverless:
-      Boolean(process.env.VERCEL) || process.env.NASAB_SERVERLESS === "1",
-  }),
-);
+app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
