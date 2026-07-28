@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import GatewayLogo from "@/components/payment/GatewayLogo";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -17,8 +18,8 @@ import type { PaymentGatewaySlug, SubscriptionPlan } from "@contracts/constants"
 import { ArrowRight, Check, Loader2, TreePalm } from "lucide-react";
 import { toast } from "sonner";
 
-function formatOmr(amount: number) {
-  return `${(amount / 1000).toFixed(3)} ر.ع.`;
+function formatOmr(amount: number, currencyLabel: string) {
+  return `${(amount / 1000).toFixed(3)} ${currencyLabel}`;
 }
 
 export default function Checkout() {
@@ -27,6 +28,8 @@ export default function Checkout() {
   const [params] = useSearchParams();
   const planParam = (params.get("plan") ?? "plus") as SubscriptionPlan;
   const isAr = i18n.language.startsWith("ar");
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
+  const omr = t("common.currencyOmr");
 
   useAuth({ redirectOnUnauthenticated: true });
 
@@ -186,6 +189,31 @@ export default function Checkout() {
           <p className="text-sm text-muted-foreground mt-1">{t("checkout.subtitle")}</p>
         </div>
 
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("checkout.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("checkout.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("checkout.openSetup")}
+            </Link>
+          </div>
+        ) : null}
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -205,24 +233,24 @@ export default function Checkout() {
               <div className="rounded-lg border p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("checkout.subtotal")}</span>
-                  <span>{formatOmr(pricing.originalAmount)}</span>
+                  <span>{formatOmr(pricing.originalAmount, omr)}</span>
                 </div>
                 {pricing.renewalDiscountApplied > 0 && (
                   <div className="flex justify-between text-emerald-700">
                     <span>{t("checkout.renewalSaving")}</span>
-                    <span>- {formatOmr(pricing.renewalDiscountApplied)}</span>
+                    <span>- {formatOmr(pricing.renewalDiscountApplied, omr)}</span>
                   </div>
                 )}
                 {pricing.couponDiscount > 0 && (
                   <div className="flex justify-between text-emerald-700">
                     <span>{t("checkout.couponSaving")}</span>
-                    <span>- {formatOmr(pricing.couponDiscount)}</span>
+                    <span>- {formatOmr(pricing.couponDiscount, omr)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between font-bold text-base">
                   <span>{t("checkout.total")}</span>
-                  <span className="text-primary">{formatOmr(pricing.finalAmount)}</span>
+                  <span className="text-primary">{formatOmr(pricing.finalAmount, omr)}</span>
                 </div>
               </div>
             ) : null}

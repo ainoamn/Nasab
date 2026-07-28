@@ -18,6 +18,7 @@ export const ar = {
     died: "تُوفي",
     personCount: "{{count}} أفراد",
     personCountOne: "{{count}} فرد",
+    currencyOmr: "ر.ع.",
     required: "مطلوب",
     search: "ابحث...",
     confirm: "تأكيد",
@@ -195,6 +196,10 @@ export const ar = {
     planNotFound: "الخطة غير موجودة",
     noGateways: "لا توجد بوابات دفع مفعّلة",
     noGatewaysDesc: "فعّل بوابة واحدة على الأقل من لوحة المشرف (/admin/gateways)",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
   },
   checkoutSuccess: {
     paidTitle: "تم الدفع بنجاح!",
@@ -351,6 +356,10 @@ export const ar = {
     title: "لوحة المشرف",
     subtitle: "إدارة المستخدمين والاشتراكات والمدفوعات",
     backToApp: "العودة للتطبيق",
+    dbNotConfigured:
+      "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
+    buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",
+    openSetup: "فتح صفحة الجاهزية",
     nav: {
       overview: "نظرة عامة",
       users: "المستخدمون",

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useBuildBehind } from "@/hooks/useBuildBehind";
 import AppHeader from "@/components/AppHeader";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +32,7 @@ const navItems = [
 export default function AdminLayout() {
   const { isLoading, isAdmin } = useAdmin();
   const { t } = useTranslation();
+  const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
 
   if (isLoading) {
     return (
@@ -71,6 +73,31 @@ export default function AdminLayout() {
             </div>
           </div>
         </div>
+
+        {dbConfigured === false || buildBehind ? (
+          <div
+            className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100 no-print"
+            role="status"
+          >
+            {dbConfigured === false ? (
+              <p>{t("admin.dbNotConfigured")}</p>
+            ) : null}
+            {buildBehind ? (
+              <p className={dbConfigured === false ? "mt-1" : undefined}>
+                {t("admin.buildBehind", {
+                  live: liveBuild,
+                  main: mainSha,
+                })}
+              </p>
+            ) : null}
+            <Link
+              to="/setup"
+              className="mt-1 inline-block font-medium underline underline-offset-2"
+            >
+              {t("admin.openSetup")}
+            </Link>
+          </div>
+        ) : null}
 
         <div className="flex flex-col lg:flex-row gap-6">
           <aside className="lg:w-56 shrink-0 no-print">

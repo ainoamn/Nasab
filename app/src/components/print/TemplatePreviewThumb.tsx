@@ -53,6 +53,18 @@ export function TemplatePreviewThumb({
             </g>
           ))}
           <ellipse cx="40" cy="70" rx="14" ry="3" fill="#C4A574" opacity="0.5" />
+          <circle cx="58" cy="18" r="5" fill="#7c3aed" />
+          <text
+            x={58}
+            y={19}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="5"
+            fontWeight="700"
+            fill="#fff"
+          >
+            {t("twins.mark", { order: 1 })}
+          </text>
         </svg>
       )}
       {id === "manuscript" && (
@@ -80,10 +92,13 @@ export function TemplatePreviewThumb({
       {id === "book" && (
         <div className="absolute inset-2 flex">
           <div
-            className="w-1/2 rounded-s border-2 flex flex-col items-center justify-center text-[8px] text-amber-50"
+            className="w-1/2 rounded-s border-2 flex flex-col items-center justify-center text-amber-50"
             style={{ background: accent, borderColor: accent }}
           >
-            📖
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
           </div>
           <div className="w-1/2 border border-stone-200 bg-white p-1 space-y-1">
             <div className="h-1.5 w-full bg-stone-200 rounded" />

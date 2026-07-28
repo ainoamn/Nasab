@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import type { RecentRelatePair } from "@/lib/recentRelates";
 import type { FavoriteRelatePair } from "@/lib/favoriteRelates";
+import TwinBadge from "@/components/tree/TwinBadge";
+import { twinGroupSize, twinOrderInGroup } from "@/lib/twins";
 
 type Props = {
   open: boolean;
@@ -48,6 +50,7 @@ type Props = {
   recentPairs?: RecentRelatePair[];
   favoritePairs?: FavoriteRelatePair[];
   homePersonId?: number | null;
+  canWrite?: boolean;
   onOpenPerson?: (person: Person) => void;
   onShowOnChart?: (pathIds: number[]) => void;
   onCopyPathLink?: (fromId: number, toId: number) => void;
@@ -58,6 +61,8 @@ type Props = {
   onPrintCertificate?: (fromId: number, toId: number) => void;
   onToggleFavoritePair?: (fromId: number, toId: number) => void;
   onSelectRecentPair?: (fromId: number, toId: number) => void;
+  onLinkTwin?: (personId: number, twinOfPersonId: number) => void;
+  onHighlightPair?: (aId: number, bId: number) => void;
 };
 
 function viaLabel(
@@ -117,8 +122,11 @@ function DossierCard({
   childrenOf,
   spousesOf,
   homePersonId,
+  canWrite,
   onOpenPerson,
   onCopyPersonCard,
+  onLinkTwin,
+  onHighlightPair,
 }: {
   person: Person;
   people: Person[];
@@ -127,8 +135,11 @@ function DossierCard({
   childrenOf: Map<number, number[]>;
   spousesOf: Map<number, number[]>;
   homePersonId?: number | null;
+  canWrite?: boolean;
   onOpenPerson?: (person: Person) => void;
   onCopyPersonCard?: (person: Person) => void;
+  onLinkTwin?: (personId: number, twinOfPersonId: number) => void;
+  onHighlightPair?: (aId: number, bId: number) => void;
 }) {
   const { t } = useTranslation();
   const years = formatBirthYear(person);
@@ -210,10 +221,19 @@ function DossierCard({
         person={person}
         people={people}
         rels={rels}
+        canWrite={canWrite}
         className="border-amber-200/70 bg-amber-50/40 p-2"
+        onOpenPerson={(id) => {
+          const p = peopleById.get(id);
+          if (p) onOpenPerson?.(p);
+        }}
+        onHighlightPair={onHighlightPair}
+        onLinkTwin={onLinkTwin}
       />
       <ImmediateFamilyStrip
         members={members}
+        people={people}
+        rels={rels}
         onSelect={(p) => onOpenPerson?.(p)}
         className="border-0 bg-transparent p-0"
       />
@@ -232,6 +252,7 @@ export default function RelationPathDialog({
   recentPairs,
   favoritePairs,
   homePersonId = null,
+  canWrite,
   onOpenPerson,
   onShowOnChart,
   onCopyPathLink,
@@ -242,6 +263,8 @@ export default function RelationPathDialog({
   onPrintCertificate,
   onToggleFavoritePair,
   onSelectRecentPair,
+  onLinkTwin,
+  onHighlightPair,
 }: Props) {
   const { t } = useTranslation();
   const [fromId, setFromId] = useState("");
@@ -508,6 +531,14 @@ export default function RelationPathDialog({
                               </span>
                             ) : null}
                           </span>
+                          {(() => {
+                            const order = twinOrderInGroup(person, people);
+                            const total = twinGroupSize(person, people);
+                            if (order == null || total < 2) return null;
+                            return (
+                              <TwinBadge compact order={order} total={total} />
+                            );
+                          })()}
                         </button>
                       </li>
                     );
@@ -528,8 +559,11 @@ export default function RelationPathDialog({
                         childrenOf={childrenOf}
                         spousesOf={spousesOf}
                         homePersonId={homePersonId}
+                        canWrite={canWrite}
                         onOpenPerson={onOpenPerson}
                         onCopyPersonCard={onCopyPersonCard}
+                        onLinkTwin={onLinkTwin}
+                        onHighlightPair={onHighlightPair}
                       />
                       <DossierCard
                         person={toPerson}
@@ -539,8 +573,11 @@ export default function RelationPathDialog({
                         childrenOf={childrenOf}
                         spousesOf={spousesOf}
                         homePersonId={homePersonId}
+                        canWrite={canWrite}
                         onOpenPerson={onOpenPerson}
                         onCopyPersonCard={onCopyPersonCard}
+                        onLinkTwin={onLinkTwin}
+                        onHighlightPair={onHighlightPair}
                       />
                     </div>
                     {onCopyBothCards && (

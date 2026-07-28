@@ -135,7 +135,7 @@ export default function AdminCoupons() {
                   <TableCell>
                     {c.discountType === "percent"
                       ? `${c.discountValue}%`
-                      : `${(c.discountValue / 1000).toFixed(3)} ر.ع.`}
+                      : `${(c.discountValue / 1000).toFixed(3)} ${t("common.currencyOmr")}`}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">

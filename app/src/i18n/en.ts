@@ -18,6 +18,7 @@ export const en = {
     died: "d.",
     personCount: "{{count}} persons",
     personCountOne: "{{count}} person",
+    currencyOmr: "OMR",
     required: "required",
     search: "Search...",
     confirm: "Confirm",
@@ -195,6 +196,10 @@ export const en = {
     planNotFound: "Plan not found",
     noGateways: "No payment gateways enabled",
     noGatewaysDesc: "Enable at least one gateway in admin (/admin/gateways)",
+    dbNotConfigured:
+      "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup checklist",
   },
   checkoutSuccess: {
     paidTitle: "Payment successful!",
@@ -351,6 +356,10 @@ export const en = {
     title: "Admin panel",
     subtitle: "Manage users, subscriptions, and payments",
     backToApp: "Back to app",
+    dbNotConfigured:
+      "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
+    buildBehind: "Live build {{live}} is behind main {{main}}.",
+    openSetup: "Open setup checklist",
     nav: {
       overview: "Overview",
       users: "Users",

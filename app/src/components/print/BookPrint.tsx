@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { BookOpen } from "lucide-react";
 import PrintFamilyChart from "./PrintFamilyChart";
 import {
   formatBirthYear,
@@ -24,10 +25,10 @@ function BookCover({ tree, accent }: { tree: PrintTemplateProps["tree"]; accent:
       <div className="absolute inset-y-0 start-0 w-6 bg-gradient-to-r from-black/30 to-transparent" />
       <div className="px-10 py-16 text-center text-amber-50">
         <div
-          className="mx-auto mb-6 h-24 w-24 rounded-full border-4 flex items-center justify-center text-4xl"
+          className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full border-4"
           style={{ borderColor: "#D4AF37" }}
         >
-          📖
+          <BookOpen className="h-10 w-10 text-amber-200" aria-hidden />
         </div>
         <h2 className="font-display text-3xl sm:text-4xl font-bold mb-2">{tree.name}</h2>
         <p className="text-amber-100/80 font-display text-lg">

@@ -2518,6 +2518,7 @@ export default function TreeWorkspace() {
         }}
         people={people}
         rels={rels}
+        canWrite={canWrite}
         defaultFromId={
           howRelatedPair.from ??
           detailPerson?.id ??
@@ -2530,6 +2531,25 @@ export default function TreeWorkspace() {
           setChartFocusId(p.id);
           setHowRelatedOpen(false);
           requestCenterOn(p.id);
+        }}
+        onLinkTwin={(personId, twinOfPersonId) => {
+          linkTwinMut.mutate({ treeId, personId, twinOfPersonId });
+        }}
+        onHighlightPair={(aId, bId) => {
+          const path = findRelationPath(aId, bId, people, rels);
+          if (!path) {
+            toast.message(t("tree.howRelatedNone"));
+            return;
+          }
+          setHighlightPathIds(path.map((h) => h.personId));
+          setChartView("family");
+          setChartFocusId(null);
+          setMainTab("chart");
+          setHowRelatedOpen(false);
+          requestCenterOn(aId);
+          toast.success(
+            t("tree.pathHighlightActive", { count: path.length }),
+          );
         }}
         onShowOnChart={(ids) => {
           setHighlightPathIds(ids);

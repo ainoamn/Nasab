@@ -10,12 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { CompanyDocumentHeader } from "@/components/CompanyDocumentHeader";
 
-function formatOmr(amount: number) {
-  return `${(amount / 1000).toFixed(3)} ر.ع.`;
+function formatOmr(amount: number, currencyLabel: string) {
+  return `${(amount / 1000).toFixed(3)} ${currencyLabel}`;
 }
 
 export default function CheckoutSuccess() {
   const { t } = useTranslation();
+  const omr = t("common.currencyOmr");
   const [params] = useSearchParams();
   const invoiceNumber = params.get("invoice") ?? "";
   const statusParam = params.get("status") ?? "pending";
@@ -81,7 +82,7 @@ export default function CheckoutSuccess() {
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-muted-foreground">{t("account.billing.cols.amount")}</span>
-                  <span>{formatOmr(invoice.amount)}</span>
+                  <span>{formatOmr(invoice.amount, omr)}</span>
                 </div>
                 <div className="flex justify-between gap-2 items-center">
                   <span className="text-muted-foreground">{t("account.billing.cols.status")}</span>
