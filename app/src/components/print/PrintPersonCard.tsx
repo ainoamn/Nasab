@@ -1,4 +1,5 @@
 import type { Person } from "@db/schema";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   formatBirthYear,
@@ -30,6 +31,7 @@ export function PrintPersonCard({
   /** ملاحظات الزوج/الزوجة: «زوجة آسية» / «زوج أسعد» */
   spouseNotes?: string[];
 }) {
+  const { t } = useTranslation();
   const female = person.gender === "female";
   const living = person.isLiving === true || (person.isLiving as unknown) === 1;
   const birth = formatBirthYear(person);
@@ -168,8 +170,8 @@ export function PrintPersonCard({
           : female
             ? "♀"
             : "♂"}
-        {!living && " · متوفى"}
-        {isTwinCard && " · توأم"}
+        {!living && ` · ${t("common.deceased")}`}
+        {isTwinCard && ` · ${t("twins.badge")}`}
       </div>
       <div className="px-2 py-2 text-center">
         <p className="font-display text-xs font-bold leading-tight">{person.givenName}</p>

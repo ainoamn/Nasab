@@ -7,6 +7,7 @@ import type { PrintScope, PrintNameMode, PrintPaperSize } from "@/lib/printFilte
 import { PRINT_PAPER_SIZES } from "@/lib/printFilter";
 import {
   personDisplayName,
+  personDisplayNameWithTwin,
   assignGenerationsStable,
   displayGenerationNumber,
 } from "@/lib/printData";
@@ -90,7 +91,7 @@ export default function PrintScopePanel({
   const rootTriggerLabel = selectedRoot
     ? (() => {
         const gen = displayGenerationNumber(levels.get(selectedRoot.id) ?? 0);
-        const name = personDisplayName(selectedRoot);
+        const name = personDisplayNameWithTwin(selectedRoot, people);
         const laqab = selectedRoot.laqab?.trim();
         return laqab ? `${name} — ${laqab}` : name;
       })()
@@ -195,7 +196,7 @@ export default function PrintScopePanel({
                     </CommandItem>
                     {filteredRoots.map((p) => {
                       const gen = displayGenerationNumber(levels.get(p.id) ?? 0);
-                      const name = personDisplayName(p);
+                      const name = personDisplayNameWithTwin(p, people);
                       const laqab = p.laqab?.trim();
                       const selected = scope.rootPersonId === p.id;
                       return (

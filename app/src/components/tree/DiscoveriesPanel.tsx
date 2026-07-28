@@ -16,6 +16,7 @@ import {
   GitCompareArrows,
   Eye,
   X,
+  Users2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ type Props = {
   onAddParent?: (personId: number, role: "father" | "mother") => void;
   onComparePair?: (aId: number, bId: number) => void;
   onHighlightPair?: (aId: number, bId: number) => void;
+  onLinkTwin?: (personId: number, twinOfPersonId: number) => void;
   className?: string;
 };
 
@@ -41,6 +43,7 @@ function iconFor(kind: Discovery["kind"]) {
   if (kind === "noPhoto") return Camera;
   if (kind === "deathBeforeBirth" || kind === "childBeforeParent") return AlertTriangle;
   if (kind === "possibleDuplicate" || kind === "livingNoBirthYear") return AlertTriangle;
+  if (kind === "possibleTwin") return Users2;
   if (kind.startsWith("missing") || kind === "childNoSpouseLink") return UserRoundPlus;
   return AlertTriangle;
 }
@@ -64,6 +67,7 @@ export default function DiscoveriesPanel({
   onAddParent,
   onComparePair,
   onHighlightPair,
+  onLinkTwin,
   className,
 }: Props) {
   const { t } = useTranslation();
@@ -176,6 +180,42 @@ export default function DiscoveriesPanel({
                       >
                         <GitCompareArrows className="h-3 w-3" />
                         {t("tree.discoveryCompare")}
+                      </Button>
+                    )}
+                    {onHighlightPair && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() =>
+                          onHighlightPair(d.personId, d.otherPersonId!)
+                        }
+                      >
+                        <Eye className="h-3 w-3" />
+                        {t("tree.discoveryShowPath")}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      onClick={() => onOpenPerson(d.otherPersonId!)}
+                    >
+                      {t("tree.discoveryOpenOther")}
+                    </Button>
+                  </>
+                )}
+                {d.kind === "possibleTwin" && d.otherPersonId != null && (
+                  <>
+                    {canWrite && onLinkTwin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs border-violet-300 text-violet-900 hover:bg-violet-50"
+                        onClick={() => onLinkTwin(d.personId, d.otherPersonId!)}
+                      >
+                        <Users2 className="h-3 w-3" />
+                        {t("tree.discoveryLinkTwin")}
                       </Button>
                     )}
                     {onHighlightPair && (

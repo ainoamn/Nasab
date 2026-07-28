@@ -888,6 +888,7 @@ export const en = {
     discoveryCompare: "How related?",
     discoveryShowPath: "Show path",
     discoveryOpenOther: "Open other",
+    discoveryLinkTwin: "Link as twins",
     deleteTitle: "Delete \"{{name}}\"?",
     deleteBody: "The person and all their relationships will be removed. Deletion is soft and restorable from backups within 90 days.",
     deleteConfirm: "Confirm deletion",

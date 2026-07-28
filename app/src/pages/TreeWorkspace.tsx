@@ -735,6 +735,14 @@ export default function TreeWorkspace() {
     onError: (e) => toast.error(e.message),
   });
 
+  const linkTwinMut = trpc.person.linkTwin.useMutation({
+    onSuccess: async () => {
+      toast.success(t("twins.linked"));
+      await utils.person.list.invalidate({ treeId });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const deleteMut = trpc.person.remove.useMutation({
     onSuccess: async () => {
       toast.success(t("tree.deleted"));
@@ -1675,6 +1683,9 @@ export default function TreeWorkspace() {
             toast.success(
               t("tree.pathHighlightActive", { count: path.length }),
             );
+          }}
+          onLinkTwin={(personId, twinOfPersonId) => {
+            linkTwinMut.mutate({ treeId, personId, twinOfPersonId });
           }}
         />
 

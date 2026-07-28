@@ -267,7 +267,7 @@ export default function FanChartPrint(props: PrintTemplateProps) {
                       fill="#fff"
                       fontFamily="Tahoma, sans-serif"
                     >
-                      {`ت${twinOrd}`}
+                      {t("twins.mark", { order: twinOrd })}
                     </text>
                   </g>
                 )}

@@ -174,6 +174,7 @@ function PersonNode({
   /** اسم الجذر فوق الدائرة لإفساح مكان للزوجات أسفل */
   centerLabelAbove?: boolean;
 }) {
+  const { t } = useTranslation();
   const x = pct(pos.x);
   const y = pct(pos.y);
   const female = person.gender === "female";
@@ -274,7 +275,7 @@ function PersonNode({
             fill="#fff"
             fontFamily="Tahoma, sans-serif"
           >
-            {`ت${twinOrder}`}
+            {t("twins.mark", { order: twinOrder })}
           </text>
         </g>
       )}
@@ -414,7 +415,7 @@ function ChartLegend({
             fontFamily="Tahoma, sans-serif"
             style={{ direction: "ltr", unicodeBidi: "isolate" }}
           >
-            ت١
+            {t("twins.mark", { order: 1 })}
           </text>
         </>
       ),

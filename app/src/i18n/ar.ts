@@ -887,6 +887,7 @@ export const ar = {
     discoveryCompare: "كيف يرتبطان؟",
     discoveryShowPath: "أظهر المسار",
     discoveryOpenOther: "افتح الآخر",
+    discoveryLinkTwin: "ربط كتوائم",
     deleteTitle: "حذف «{{name}}»؟",
     deleteBody: "سيُحذف الشخص وكل علاقاته من الشجرة. الحذف ناعم وقابل للاسترجاع من النسخ الاحتياطية خلال 90 يوماً.",
     deleteConfirm: "تأكيد الحذف",
