@@ -22,6 +22,11 @@ export const authRouter = createRouter({
     passwordLogin: env.passwordLoginEnabled,
   })),
   me: authedQuery.query((opts) => opts.ctx.user),
+  ping: publicQuery.mutation(() => ({
+    ok: true,
+    ts: Date.now(),
+    dbConfigured: Boolean(process.env.DATABASE_URL),
+  })),
   loginLocal: publicQuery
     .input(
       z.object({
