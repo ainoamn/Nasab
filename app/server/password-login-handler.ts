@@ -33,9 +33,25 @@ export async function passwordLoginHandler(c: Context) {
 
   let body: LoginBody = {};
   try {
-    body = (await c.req.json()) as LoginBody;
+    // Prefer text()+JSON.parse — c.req.json() has hung on this Vercel setup.
+    const raw = await Promise.race([
+      c.req.text(),
+      new Promise<string>((_, reject) => {
+        setTimeout(() => reject(new Error("body-timeout")), 5000);
+      }),
+    ]);
+    body = raw ? (JSON.parse(raw) as LoginBody) : {};
   } catch {
     return c.json({ error: "invalid_json" }, 400);
+  }
+
+  const usernameRaw = String(body.username ?? "").trim();
+  const passwordRaw = String(body.password ?? "");
+  if (!usernameRaw || !passwordRaw) {
+    return c.json(
+      { error: "missing_credentials", message: "البريد وكلمة المرور مطلوبان" },
+      400,
+    );
   }
 
   const passwordLoginOn = env.passwordLoginEnabled;

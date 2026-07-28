@@ -25,11 +25,13 @@
 ### اكتشاف
 - `/api/diag` أظهر أن **Production على Vercel بلا `DATABASE_URL` ولا `APP_SECRET`**.
 - إجراءات tRPC ذات `.input(zod)` تعلق على Vercel Build Output (بدون رد)، بينما الإجراءات بلا input تعمل.
+- السبب الأقرب: مسار قراءة جسم الطلب عبر بعض الطبقات يعلّق؛ لذلك الدخول صار عبر Hono مع فحوصات سريعة.
 
 ### الإصلاح
 - مسار جديد: `POST /api/auth/password-login` (Hono) يتجاوز tRPC.
 - صفحة `/login` تستدعي هذا المسار مباشرة.
 - الإبقاء على sidecar `db-pg.cjs` (Neon HTTP) لتسجيل الدخول بعد ضبط `DATABASE_URL`.
+- عند غياب `DATABASE_URL` يرد المسار فوراً بـ 503 واضحة.
 
 ### مطلوب منك على Vercel (إلزامي)
 في Project → Settings → Environment Variables (Production) ثم **Redeploy**:
@@ -45,6 +47,13 @@ ALLOWED_ORIGINS=https://nasab-mu.vercel.app
 ```
 
 تحقق: `GET /api/diag` → `dbConfigured: true` ثم دخول من `/login`.
+
+أو بعد `vercel login`:
+```bash
+cd app
+npm run vercel:env
+```
+ثم Redeploy.
 
 ---
 
