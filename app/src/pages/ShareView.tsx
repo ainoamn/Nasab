@@ -722,9 +722,16 @@ export default function ShareView() {
               <button
                 type="button"
                 onClick={() => openPerson(pathInfo.mrca!)}
-                className="mb-1.5 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950 hover:bg-amber-100"
+                className="mb-1.5 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950 hover:bg-amber-100"
               >
                 {t("tree.commonAncestorAt", { name: pathInfo.mrca.givenName })}
+                {isTwin(pathInfo.mrca, people) ? (
+                  <TwinBadge
+                    compact
+                    order={twinOrderInGroup(pathInfo.mrca, people)}
+                    total={twinGroupSize(pathInfo.mrca, people)}
+                  />
+                ) : null}
               </button>
             )}
             <div className="flex flex-wrap items-center gap-0.5">

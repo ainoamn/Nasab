@@ -228,20 +228,37 @@ export default function FanChartView({
                   strokeWidth={selected || twin ? 2.4 : 1.1}
                 />
                 {person ? (
-                  <text
-                    x={pos.x}
-                    y={pos.y}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontSize={Math.max(9, 14 - slot.ring)}
-                    fontWeight={600}
-                    fill="#1c1917"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {person.givenName.length > 12
-                      ? `${person.givenName.slice(0, 11)}…`
-                      : person.givenName}
-                  </text>
+                  <>
+                    <text
+                      x={pos.x}
+                      y={twin ? pos.y - 5 : pos.y}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={Math.max(9, 14 - slot.ring)}
+                      fontWeight={600}
+                      fill="#1c1917"
+                      style={{ pointerEvents: "none" }}
+                    >
+                      {person.givenName.length > 12
+                        ? `${person.givenName.slice(0, 11)}…`
+                        : person.givenName}
+                    </text>
+                    {twin ? (
+                      <text
+                        x={pos.x}
+                        y={pos.y + 8}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize={8}
+                        fontWeight={700}
+                        fill="#7c3aed"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {twinMarkLabel(person, people, twinWord) ??
+                          t("twins.badge")}
+                      </text>
+                    ) : null}
+                  </>
                 ) : (
                   <text
                     x={pos.x}
@@ -288,15 +305,19 @@ export default function FanChartView({
               stroke={
                 selectedPersonId === focus.id
                   ? "#0ea5e9"
-                  : focus.gender === "female"
-                    ? "#f9a8d4"
-                    : "#93c5fd"
+                  : isTwin(focus, people)
+                    ? "#7c3aed"
+                    : focus.gender === "female"
+                      ? "#f9a8d4"
+                      : "#93c5fd"
               }
-              strokeWidth={selectedPersonId === focus.id ? 3 : 2}
+              strokeWidth={
+                selectedPersonId === focus.id || isTwin(focus, people) ? 3 : 2
+              }
             />
             <text
               x={CX}
-              y={CY - 14}
+              y={isTwin(focus, people) ? CY - 20 : CY - 14}
               textAnchor="middle"
               dominantBaseline="middle"
               fontSize={15}
@@ -307,10 +328,23 @@ export default function FanChartView({
                 ? `${focus.givenName.slice(0, 13)}…`
                 : focus.givenName}
             </text>
+            {isTwin(focus, people) ? (
+              <text
+                x={CX}
+                y={CY - 2}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={10}
+                fontWeight={700}
+                fill="#7c3aed"
+              >
+                {twinMarkLabel(focus, people, twinWord) ?? t("twins.badge")}
+              </text>
+            ) : null}
             {focus.birthYear && (
               <text
                 x={CX}
-                y={CY + 6}
+                y={isTwin(focus, people) ? CY + 14 : CY + 6}
                 textAnchor="middle"
                 fontSize={11}
                 fill="#78716c"

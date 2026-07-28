@@ -524,10 +524,10 @@ export function formatPrintChartName(
   return fullNasabName(p, laqabFallback);
 }
 
-export function formatBirthYear(p: Person): string | null {
+export function formatBirthYear(p: Person, rangeSep = "–"): string | null {
   if (!p.birthYear) return null;
   if (p.isLiving) return `${p.birthYear}`;
-  if (p.deathYear) return `${p.birthYear} – ${p.deathYear}`;
+  if (p.deathYear) return `${p.birthYear} ${rangeSep} ${p.deathYear}`;
   return `${p.birthYear}`;
 }
 

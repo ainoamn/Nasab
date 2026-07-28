@@ -232,7 +232,9 @@ export const en = {
   },
   errorBoundary: {
     title: "Something went wrong loading the page",
+    body: "This page could not be shown. Reload, and if it keeps happening open the setup page or contact support.",
     reload: "Reload page",
+    technical: "Technical details",
   },
   ranks: {
     inFamily: "Family rank {{n}}",

@@ -183,8 +183,7 @@ function PersonNode({
   const r = nodeRadius(pos.ring, totalRings, isSpouse);
   const border = female ? FEMALE_BORDER : MALE_BORDER;
   const fill = female ? FEMALE_FILL : MALE_FILL;
-  const isTwin =
-    !!twinOrder && twinTotal != null && twinTotal >= 2 && !isSpouse;
+  const isTwin = !!twinOrder && twinTotal != null && twinTotal >= 2;
   const stroke = deceased
     ? DECEASED_BORDER
     : married
@@ -263,14 +262,21 @@ function PersonNode({
         </>
       )}
 
-      {twinOrder != null && twinTotal != null && twinTotal >= 2 && !isSpouse && (
+      {twinOrder != null && twinTotal != null && twinTotal >= 2 && (
         <g transform={`translate(${r * 0.55}, ${-r * 0.75})`}>
-          <circle cx={0} cy={0} r={11} fill="#7c3aed" stroke="#fff" strokeWidth={1.5} />
+          <circle
+            cx={0}
+            cy={0}
+            r={isSpouse ? 9 : 11}
+            fill="#7c3aed"
+            stroke="#fff"
+            strokeWidth={1.5}
+          />
           <text
             y={1}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize={10}
+            fontSize={isSpouse ? 9 : 10}
             fontWeight={700}
             fill="#fff"
             fontFamily="Tahoma, sans-serif"

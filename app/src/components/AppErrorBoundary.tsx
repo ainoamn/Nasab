@@ -34,7 +34,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
             {copy.title}
           </h1>
           <p className="text-sm text-muted-foreground text-center max-w-lg">
-            {this.state.error.message}
+            {copy.body}
           </p>
           <button
             type="button"
@@ -43,6 +43,14 @@ export default class AppErrorBoundary extends Component<Props, State> {
           >
             {copy.reload}
           </button>
+          <details className="mt-2 max-w-lg text-center">
+            <summary className="cursor-pointer text-xs text-muted-foreground">
+              {copy.technical}
+            </summary>
+            <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">
+              {this.state.error.message}
+            </p>
+          </details>
         </div>
       );
     }

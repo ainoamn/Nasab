@@ -1249,6 +1249,7 @@ function PersonCard({
               <span
                 className="absolute -end-1 -top-1 z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-bold text-white shadow-sm ring-2 ring-[#ececec]"
                 title={t("chart.researchDot", { count: personGaps.length })}
+                aria-label={t("chart.researchDot", { count: personGaps.length })}
               >
                 {personGaps.length > 1 ? personGaps.length : ""}
                 {personGaps.length === 1 && (
@@ -1872,6 +1873,7 @@ function MultiSpouseBranch({
   t: (k: string, o?: Record<string, unknown>) => string;
 }) {
   const [activeSpouseId, setActiveSpouseId] = useState<number | "all">("all");
+  const twinMeta = useContext(TwinMetaContext);
   const visible =
     activeSpouseId === "all"
       ? spouseKids
@@ -1911,23 +1913,30 @@ function MultiSpouseBranch({
         >
           {t("chart.allMarriages")}
         </button>
-        {spouses.map((sp) => (
+        {spouses.map((sp) => {
+          const twin = twinMeta.get(sp.id);
+          return (
           <button
             key={sp.id}
             type="button"
             data-no-pan
             onClick={() => setActiveSpouseId(sp.id)}
             className={cn(
-              "max-w-[6.5rem] truncate rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition",
+              "inline-flex max-w-[7.5rem] items-center gap-1 truncate rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition",
               activeSpouseId === sp.id
                 ? "border-amber-500 bg-amber-50 text-amber-900"
                 : "border-stone-300 bg-white text-stone-600 hover:border-amber-300",
             )}
             title={sp.givenName}
+            aria-label={sp.givenName}
           >
-            {sp.givenName}
+            <span className="truncate">{sp.givenName}</span>
+            {twin ? (
+              <TwinBadge compact order={twin.order} total={twin.total} />
+            ) : null}
           </button>
-        ))}
+          );
+        })}
       </div>
       )}
       <DescendantsOverflow>
@@ -1947,8 +1956,17 @@ function MultiSpouseBranch({
                 {activeSpouseId === "all" && (
                   <div className="mb-1 flex items-center gap-2">
                     <span className="h-px w-6 bg-stone-300" aria-hidden />
-                    <p className="max-w-[8rem] truncate text-center text-[10px] font-medium text-stone-600">
-                      {t("chart.motherBranch", { name: spouse.givenName })}
+                    <p className="inline-flex max-w-[10rem] items-center gap-1 truncate text-center text-[10px] font-medium text-stone-600">
+                      <span className="truncate">
+                        {t("chart.motherBranch", { name: spouse.givenName })}
+                      </span>
+                      {twinMeta.get(spouse.id) ? (
+                        <TwinBadge
+                          compact
+                          order={twinMeta.get(spouse.id)!.order}
+                          total={twinMeta.get(spouse.id)!.total}
+                        />
+                      ) : null}
                     </p>
                     <span className="h-px w-6 bg-stone-300" aria-hidden />
                   </div>

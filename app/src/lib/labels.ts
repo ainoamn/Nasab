@@ -72,7 +72,7 @@ export function useLabels() {
     const parts: string[] = [];
     if (birthYear) parts.push(`${t("common.born")} ${birthYear}`);
     if (!isLiving && deathYear) parts.push(`${t("common.died")} ${deathYear}`);
-    return parts.join(" — ");
+    return parts.join(` ${t("common.emDash")} `);
   };
 
   const personCount = (n: number): string =>

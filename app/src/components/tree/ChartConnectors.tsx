@@ -48,6 +48,7 @@ export function CoupleLink({
       type={interactive ? "button" : undefined}
       data-no-pan={interactive ? true : undefined}
       title={interactive ? editTitle : undefined}
+      aria-label={interactive ? editTitle : undefined}
       onClick={
         interactive
           ? (e) => {

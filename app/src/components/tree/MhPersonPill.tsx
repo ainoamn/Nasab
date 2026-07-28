@@ -92,6 +92,7 @@ export function MhPersonPill({
         <span
           className="absolute -end-0.5 -top-0.5 z-[1] h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white"
           title={t("chart.researchDot", { count: researchCount })}
+          aria-label={t("chart.researchDot", { count: researchCount })}
         />
       )}
       {twin ? (

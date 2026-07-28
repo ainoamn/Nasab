@@ -1443,19 +1443,34 @@ export default function TreeWorkspace() {
                     onClick={() => setImportOpen(true)}
                     className="gap-2"
                     title={t("tree.importExcel")}
+                    aria-label={t("tree.importExcel")}
                   >
                     <FileSpreadsheet className="h-4 w-4" />
                     <span className="hidden sm:inline">{t("tree.importExcel")}</span>
                   </Button>
                 </>
               )}
-              <Button size="sm" variant="outline" asChild className="gap-2" title={t("tree.members")}>
+              <Button
+                size="sm"
+                variant="outline"
+                asChild
+                className="gap-2"
+                title={t("tree.members")}
+                aria-label={t("tree.members")}
+              >
                 <Link to={`/trees/${treeId}/members`}>
                   <Users className="h-4 w-4" />
                   <span className="hidden sm:inline">{t("tree.members")}</span>
                 </Link>
               </Button>
-              <Button size="sm" variant="outline" asChild className="gap-2" title={t("tree.print")}>
+              <Button
+                size="sm"
+                variant="outline"
+                asChild
+                className="gap-2"
+                title={t("tree.print")}
+                aria-label={t("tree.print")}
+              >
                 <Link to={`/trees/${treeId}/print`}>
                   <Printer className="h-4 w-4" />
                   <span className="hidden sm:inline">{t("tree.print")}</span>
@@ -1466,6 +1481,7 @@ export default function TreeWorkspace() {
                 variant="outline"
                 className="gap-2"
                 title={t("tree.exportGedcom")}
+                aria-label={t("tree.exportGedcom")}
                 onClick={() => {
                   const content = buildGedcom(tree.name, people, rels);
                   downloadGedcom(`${tree.name || "nasab"}.ged`, content);
@@ -1481,6 +1497,7 @@ export default function TreeWorkspace() {
                   variant="outline"
                   className="gap-2"
                   title={t("gedcomImport.title")}
+                  aria-label={t("gedcomImport.title")}
                   onClick={() => setGedcomImportOpen(true)}
                 >
                   <FileDown className="h-4 w-4" />
@@ -1492,6 +1509,7 @@ export default function TreeWorkspace() {
                 variant="ghost"
                 className="gap-2"
                 title={t("shortcuts.title")}
+                aria-label={t("shortcuts.title")}
                 onClick={() => setShortcutsOpen(true)}
               >
                 <Keyboard className="h-4 w-4" />
@@ -1503,6 +1521,7 @@ export default function TreeWorkspace() {
                   onClick={() => setSettingsOpen(true)}
                   className="gap-2"
                   title={t("tree.settings")}
+                  aria-label={t("tree.settings")}
                 >
                   <Settings className="h-4 w-4" />
                   <span className="hidden md:inline">{t("tree.settings")}</span>
@@ -1514,6 +1533,7 @@ export default function TreeWorkspace() {
                   variant="ghost"
                   className="gap-2"
                   title={t("tree.copyLink")}
+                  aria-label={t("tree.copyLink")}
                   onClick={() => {
                     void navigator.clipboard.writeText(shareUrl);
                     toast.success(t("tree.linkCopied"));
@@ -3028,6 +3048,7 @@ export default function TreeWorkspace() {
                             type="button"
                             className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-start text-[11px] font-medium text-sky-900 transition hover:bg-sky-100"
                             title={t("detail.kinshipHeroHint")}
+                            aria-label={t("detail.kinshipHeroHint")}
                             onClick={() => {
                               if (!path) return;
                               setHighlightPathIds(path.map((h) => h.personId));
