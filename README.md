@@ -74,13 +74,17 @@ npm run dev
 ### أوامر مفيدة
 
 ```bash
-npm run dev          # خادم التطوير
-npm run build        # بناء الإنتاج
-npm run start        # تشغيل الإنتاج (بعد build)
-npm run check        # فحص TypeScript
-npm run db:push      # تطبيق schema على قاعدة البيانات
-npm run db:generate  # توليد migrations
-npm run db:migrate   # تشغيل migrations
+npm run dev            # خادم التطوير
+npm run build          # بناء الإنتاج
+npm run start          # تشغيل الإنتاج (بعد build)
+npm run check          # فحص TypeScript
+npm run db:push        # تطبيق schema على قاعدة البيانات
+npm run db:generate    # توليد migrations
+npm run db:migrate     # تشغيل migrations
+npm run db:verify-neon # فحص Neon المحلي
+npm run prod:smoke     # دخان الإنتاج الحي
+npm run launch:status  # Neon محلي + دخان حي معاً
+npm run vercel:print-env  # طباعة متغيرات للصق في Vercel
 ```
 
 ---

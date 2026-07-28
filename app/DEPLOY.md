@@ -155,10 +155,19 @@ npm run admin:ensure
 
 فحص بعد النشر:
 
-- `GET /api/health` → `{"ok":true}`
-- `GET /api/diag` → `dbConfigured: true` و`sidecar: true`
+- `GET /api/health` → `{"ok":true,"build":"<sha>"}`
+- `GET /api/diag` → `dbConfigured: true` و`sidecar: true` و`build`
+- صفحة الجاهزية: `/setup`
 - `POST /api/auth/password-login` بجسم `{ "username":"admin@bhd.om", "password":"Admin@1234" }`
 - `/login` يستخدم مسار Hono أعلاه (وليس tRPC) بسبب تعليق `.input()` على Vercel
+
+أوامر سريعة من الجهاز:
+
+```bash
+cd app
+npm run vercel:print-env   # انسخ إلى Vercel → Redeploy
+npm run launch:status      # Neon محلي + دخان حي
+```
 
 ### إن فشل تسجيل الدخول
 

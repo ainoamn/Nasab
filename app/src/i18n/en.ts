@@ -143,6 +143,7 @@ export const en = {
     button: "Create your tree now",
   },
   footer: "An Arab platform for preserving genealogy — your data is yours, your privacy is a trust.",
+  setupLink: "Launch readiness",
   checkout: {
     title: "Complete subscription",
     subtitle: "Choose a payment gateway and pay securely",

@@ -22,6 +22,25 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, ".vercel", "output");
 
+function gitSha() {
+  const r = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
+    cwd: path.resolve(root, ".."),
+    encoding: "utf8",
+    shell: process.platform === "win32",
+  });
+  if (r.status === 0 && r.stdout?.trim()) return r.stdout.trim();
+  const r2 = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+    shell: process.platform === "win32",
+  });
+  return r2.status === 0 ? (r2.stdout || "").trim() || "unknown" : "unknown";
+}
+
+const buildSha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || gitSha();
+const buildTime = new Date().toISOString();
+console.log(`[vercel-build] build ${buildSha} @ ${buildTime}`);
+
 function run(cmd, args) {
   const r = spawnSync(cmd, args, {
     cwd: root,
@@ -61,6 +80,8 @@ await build({
   external: ["better-sqlite3", "mysql2", "./db-pg.cjs"],
   define: {
     "process.env.NASAB_SERVERLESS": '"1"',
+    "process.env.NASAB_BUILD_SHA": JSON.stringify(buildSha),
+    "process.env.NASAB_BUILD_TIME": JSON.stringify(buildTime),
   },
   alias: {
     "@db": path.join(root, "db"),

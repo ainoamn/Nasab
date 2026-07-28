@@ -59,13 +59,15 @@ for (const r of results) {
 }
 
 const diag = results.find((r) => r.path === "/api/diag")?.json;
-const healthOk = results.find((r) => r.path === "/api/health")?.status === 200;
+const health = results.find((r) => r.path === "/api/health");
+const healthOk = health?.status === 200;
 const login = results.find((r) => r.path === "/api/auth/password-login");
 
 console.log("\nVERDICT");
 console.log({
   base,
   healthOk,
+  build: health?.json?.build || diag?.build || null,
   dbConfigured: Boolean(diag?.dbConfigured),
   hasAppSecret: Boolean(diag?.hasAppSecret),
   sidecar: Boolean(diag?.sidecar),

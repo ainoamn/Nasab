@@ -28,7 +28,13 @@ app.use("/api/webhooks/*", bodyLimit({ maxSize: 256 * 1024 }));
 app.use("/api/trpc/*", bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024 }));
 
-app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
+app.get("/api/health", (c) =>
+  c.json({
+    ok: true,
+    ts: Date.now(),
+    build: process.env.NASAB_BUILD_SHA || null,
+  }),
+);
 
 /** Launch diagnostics — no secrets, only presence flags. */
 app.get("/api/diag", (c) => {
@@ -40,6 +46,8 @@ app.get("/api/diag", (c) => {
     nasabServerless: process.env.NASAB_SERVERLESS || null,
     nodeEnv: process.env.NODE_ENV || null,
     cwd: process.cwd(),
+    build: process.env.NASAB_BUILD_SHA || null,
+    builtAt: process.env.NASAB_BUILD_TIME || null,
     dbConfigured: Boolean(url),
     dbIsPostgres: /^postgres(ql)?:\/\//i.test(url),
     dbHost: (() => {

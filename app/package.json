@@ -22,6 +22,7 @@
     "db:seed-neon": "node scripts/seed-neon.mjs",
     "db:backup-neon": "node scripts/neon-backup.mjs",
     "prod:smoke": "node scripts/prod-smoke.mjs",
+    "launch:status": "node scripts/launch-status.mjs",
     "vercel:print-env": "node scripts/print-vercel-env.mjs",
     "check": "tsc -b",
     "format": "prettier --write .",

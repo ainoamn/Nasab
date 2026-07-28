@@ -15,6 +15,8 @@ type Diag = {
   hasAppSecret?: boolean;
   passwordLoginEmail?: string;
   vercel?: boolean;
+  build?: string | null;
+  builtAt?: string | null;
 };
 
 type Row = { id: string; label: string; ok: boolean | null; hint?: string };
@@ -70,6 +72,14 @@ export default function Setup() {
       label: ar ? "بريد المشرف الافتراضي" : "Default admin email",
       ok: diag?.passwordLoginEmail ? true : null,
       hint: diag?.passwordLoginEmail,
+    },
+    {
+      id: "build",
+      label: ar ? "بصمة البناء" : "Build fingerprint",
+      ok: diag?.build ? true : loading ? null : false,
+      hint: diag?.build
+        ? `${diag.build}${diag.builtAt ? ` · ${diag.builtAt}` : ""}`
+        : undefined,
     },
   ];
 

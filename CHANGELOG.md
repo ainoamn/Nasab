@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-07-28 — بصمة البناء وحالة الإطلاق
+
+### الجديد
+- حقن `NASAB_BUILD_SHA` و`NASAB_BUILD_TIME` أثناء `vercel-build`.
+- `/api/health` و`/api/diag` و`/setup` تعرض بصمة البناء.
+- رابط «جاهزية الإطلاق» في تذييل الصفحة الرئيسية.
+- `npm run launch:status` لدمج فحص Neon المحلي وفحص الدخان الحي.
+
+### توثيق
+- [`UPGRADE.md`](./UPGRADE.md) المرحلة 6 و7.
+- أوامر `launch:status` / `vercel:print-env` في [`README.md`](./README.md) و[`app/DEPLOY.md`](./app/DEPLOY.md).
+
+---
+
 ## 2026-07-28 — صفحة الجاهزية + نسخ Neon + CI smoke
 
 ### الجديد

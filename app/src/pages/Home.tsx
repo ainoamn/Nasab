@@ -244,6 +244,9 @@ export default function Home() {
             <span className="font-display font-bold text-primary">{t("brand")}</span>
           </div>
           <p>{t("footer")}</p>
+          <Link to="/setup" className="text-xs underline underline-offset-2 hover:text-foreground">
+            {t("setupLink")}
+          </Link>
         </div>
       </footer>
     </div>
