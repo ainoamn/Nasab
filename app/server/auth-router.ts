@@ -30,23 +30,21 @@ export const authRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Immediate guard — also proves the mutation path responds on Vercel.
+      if (!/^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL || env.databaseUrl || "")) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "قاعدة البيانات غير مربوطة على Vercel — أضف DATABASE_URL (Neon pooled) في Environment Variables ثم Redeploy",
+        });
+      }
+
       const passwordLoginOn = env.passwordLoginEnabled;
       const devLoginOn = env.devLocalAuthEnabled;
       if (!passwordLoginOn && !devLoginOn) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "تسجيل الدخول بالبريد غير مفعّل",
-        });
-      }
-
-      if (
-        process.env.VERCEL &&
-        !/^postgres(ql)?:\/\//i.test(env.databaseUrl || "")
-      ) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message:
-            "قاعدة البيانات غير مربوطة على Vercel — أضف DATABASE_URL (Neon) ثم أعد النشر",
         });
       }
 
