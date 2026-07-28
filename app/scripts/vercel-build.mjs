@@ -58,7 +58,7 @@ await build({
   format: "cjs",
   bundle: true,
   absWorkingDir: root,
-  external: ["better-sqlite3", "mysql2"],
+  external: ["better-sqlite3", "mysql2", "./db-pg.cjs"],
   define: {
     "process.env.NASAB_SERVERLESS": '"1"',
   },
@@ -70,6 +70,16 @@ await build({
   logOverride: {
     "empty-import-meta": "silent",
   },
+});
+
+console.log("[vercel-build] bundling db-pg.cjs (Postgres sidecar)…");
+await build({
+  entryPoints: [path.join(root, "server", "queries", "db-pg.ts")],
+  outfile: path.join(funcDir, "db-pg.cjs"),
+  platform: "node",
+  format: "cjs",
+  bundle: true,
+  absWorkingDir: root,
 });
 
 // Force CommonJS inside the function package (repo root is "type": "module").

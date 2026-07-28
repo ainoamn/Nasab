@@ -53,20 +53,37 @@ export function getDb(): AppDb {
       const fullSchema = { ...sqliteSchema, ...relations };
       instance = drizzle(sqlite, { schema: fullSchema });
     } else if (dialect === "postgres") {
-      const postgres = require("postgres") as typeof import("postgres");
-      const { drizzle } =
-        require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");
       const url = sanitizeDatabaseUrl(env.databaseUrl);
-      const max = process.env.VERCEL ? 1 : 10;
-      const client = postgres(url, {
-        prepare: false,
-        max,
-        connect_timeout: 10,
-        idle_timeout: 20,
-        max_lifetime: 60 * 5,
-      });
       const fullSchema = { ...pgSchema, ...relations };
-      instance = drizzle(client, { schema: fullSchema });
+      const max = process.env.VERCEL ? 1 : 10;
+      // On Vercel, `db-pg.cjs` is built beside the handler (see vercel-build.mjs).
+      // Keep this require dynamic so cold start never evaluates postgres.js.
+      try {
+        if (process.env.VERCEL || process.env.NASAB_SERVERLESS === "1") {
+          const { createPg } = require("./db-pg.cjs") as {
+            createPg: (
+              u: string,
+              s: Record<string, unknown>,
+              o?: { max?: number },
+            ) => AppDb;
+          };
+          instance = createPg(url, fullSchema, { max });
+        } else {
+          throw new Error("use-local-postgres");
+        }
+      } catch {
+        const postgres = require("postgres") as typeof import("postgres");
+        const { drizzle } =
+          require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");
+        const client = postgres(url, {
+          prepare: false,
+          max,
+          connect_timeout: 10,
+          idle_timeout: 20,
+          max_lifetime: 60 * 5,
+        });
+        instance = drizzle(client, { schema: fullSchema });
+      }
     } else {
       const { drizzle } =
         require("drizzle-orm/mysql2") as typeof import("drizzle-orm/mysql2");
