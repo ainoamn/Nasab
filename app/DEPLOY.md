@@ -155,21 +155,21 @@ npm run admin:ensure
 
 فحص بعد النشر:
 
-- `GET /api/health` → `{"ok":true,"dbConfigured":true}`
-- `GET /api/trpc/auth.config` → `passwordLogin: true`
-- `POST /api/trpc/auth.loginLocal` ببريد المشرف → 200 + cookie
-- `/login` يظهر حقول البريد وكلمة المرور
+- `GET /api/health` → `{"ok":true}`
+- `GET /api/diag` → `dbConfigured: true` و`sidecar: true`
+- `POST /api/auth/password-login` بجسم `{ "username":"admin@bhd.om", "password":"Admin@1234" }`
+- `/login` يستخدم مسار Hono أعلاه (وليس tRPC) بسبب تعليق `.input()` على Vercel
 
-### إن فشل تسجيل الدخول (504 / مهلة / SERVICE_UNAVAILABLE)
+### إن فشل تسجيل الدخول
 
-1. في Vercel → Project → Settings → Environment Variables تأكد من وجود **`DATABASE_URL`** = رابط Neon **pooled** (`…-pooler.…?sslmode=require`).
-2. أو من الجهاز (بعد `vercel login`):
-   ```bash
-   cd app
-   npm run vercel:env
-   ```
-   ثم **Redeploy** للإنتاج.
-3. دالة Vercel تضمّن `postgres.js` داخل الحزمة؛ تأكد أن البناء هو `node scripts/vercel-build.mjs`.
+1. افتح `https://nasab-mu.vercel.app/api/diag`
+2. إذا `dbConfigured: false` — أضف في Vercel → Environment Variables:
+   - `DATABASE_URL` = Neon **pooled** (`…-pooler.…?sslmode=require`)
+   - `APP_SECRET` (≥ 32 حرفاً)
+   - `PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD`
+   - `OWNER_UNION_ID=password:admin@bhd.om`
+3. أو من الجهاز بعد `vercel login`: `cd app && npm run vercel:env` ثم **Redeploy**
+4. أعد فحص `/api/diag` حتى يصبح `dbConfigured: true`
 
 عند **504** على `/api/*` عموماً: تأكد أن البناء هو `node scripts/vercel-build.mjs` وأن الدالة تستخدم Node listener (`getRequestListener`).
 
