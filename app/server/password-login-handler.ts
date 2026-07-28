@@ -19,19 +19,7 @@ type LoginBody = { username?: string; password?: string };
  * Vercel Build Output for procedures with Zod input schemas.
  */
 export async function passwordLoginHandler(c: Context) {
-  let body: LoginBody = {};
-  try {
-    body = (await c.req.json()) as LoginBody;
-  } catch {
-    return c.json({ error: "invalid_json" }, 400);
-  }
-
-  const usernameRaw = String(body.username ?? "").trim();
-  const passwordRaw = String(body.password ?? "");
-  if (!usernameRaw || !passwordRaw) {
-    return c.json({ error: "missing_credentials", message: "البريد وكلمة المرور مطلوبان" }, 400);
-  }
-
+  // Fail closed immediately when Neon is not configured on Vercel.
   if (!/^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL || env.databaseUrl || "")) {
     return c.json(
       {
@@ -41,6 +29,13 @@ export async function passwordLoginHandler(c: Context) {
       },
       503,
     );
+  }
+
+  let body: LoginBody = {};
+  try {
+    body = (await c.req.json()) as LoginBody;
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
   }
 
   const passwordLoginOn = env.passwordLoginEnabled;
