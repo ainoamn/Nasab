@@ -9,7 +9,7 @@
    ```bash
    node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
    ```
-3. MySQL جاهز و`DATABASE_URL` يشير إليه (ليس SQLite).
+3. قاعدة بيانات جاهزة و`DATABASE_URL` يشير إليها (MySQL أو Neon PostgreSQL — ليس SQLite).
 4. اضبط `OWNER_UNION_ID` لاتحاد حسابك (أول دخول بهذا الـ ID يصبح مشرفاً).
 5. اضبط `APP_PUBLIC_URL` و`ALLOWED_ORIGINS` على نطاق HTTPS الفعلي.
 6. مرّر `VITE_KIMI_AUTH_URL` و`VITE_APP_ID` عند البناء.
@@ -42,7 +42,8 @@ NODE_ENV=production
 PORT=3000
 APP_ID=...
 APP_SECRET=...                    # 32+ characters
-DATABASE_URL=mysql://user:pass@host:3306/nasab
+DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+# أو: DATABASE_URL=mysql://user:pass@host:3306/nasab
 APP_PUBLIC_URL=https://yourdomain.com
 TRUST_PROXY=true
 ALLOWED_ORIGINS=https://yourdomain.com
@@ -75,6 +76,65 @@ docker compose up -d --build
 - MySQL: المنفذ `3306` محلياً (أو `MYSQL_PUBLISH_PORT`)
 
 فحص الصحة: `GET http://localhost:3000/api/health`
+
+---
+
+## Neon PostgreSQL
+
+1. من لوحة Neon انسخ **pooled** connection string إلى `DATABASE_URL`.
+2. طبّق الجداول:
+   ```bash
+   cd app
+   # DATABASE_URL=postgresql://...
+   npm run db:push
+   ```
+3. لا ترفع رابط الاتصال إلى Git — استخدم `.env` / `.env.production` (مُستبعدان) أو متغيرات Vercel.
+4. إن ظهرت كلمة المرور في محادثة/لوق: أعد تدويرها من Neon فوراً.
+
+---
+
+## Vercel
+
+### لماذا نُقل الكود إلى `server/`؟
+
+Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless منفصلة (ويفشل TypeScript على المسارات `@db/*`). لذلك:
+
+| المسار | الدور |
+|--------|--------|
+| `server/` | مصدر الـ API (Hono + tRPC) |
+| `server/boot.ts` | تطبيق Hono + استماع Node (Docker / VPS) |
+| `server/vercel.ts` | غلاف `hono/vercel` |
+| `api/index.js` | يُولَّد أثناء `npm run build` — دالة واحدة لجميع `/api/*` |
+| `dist/public/` | واجهة Vite الثابتة |
+| `dist/boot.js` | خادم Node المجمّع لـ Docker |
+
+### إعداد المشروع على Vercel
+
+1. **Root Directory:** `app`
+2. **Build Command:** `npm run build` (من `vercel.json`)
+3. **Output Directory:** `dist/public`
+4. **Environment Variables** (Production + Preview إن لزم):
+
+| المتغير | مطلوب |
+|---------|--------|
+| `DATABASE_URL` | نعم (Neon pooled) |
+| `APP_ID` / `APP_SECRET` | نعم |
+| `KIMI_AUTH_URL` / `KIMI_OPEN_URL` | نعم |
+| `VITE_APP_ID` / `VITE_KIMI_AUTH_URL` | نعم (وقت البناء) |
+| `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` | نعم (نطاقك على HTTPS) |
+| `OWNER_UNION_ID` | مُستحسن |
+| `TRUST_PROXY` | `true` |
+
+5. بعد أول نشر ناجح افحص: `https://your-app.vercel.app/api/health`
+
+### أوامر البناء محلياً
+
+```bash
+cd app
+npm run build          # vite + dist/boot.js + api/index.js
+npm run build:server   # Docker/VPS فقط
+npm run build:vercel   # دالة Vercel فقط
+```
 
 ---
 

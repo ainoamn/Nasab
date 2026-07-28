@@ -30,7 +30,8 @@
 |--------|---------|
 | الواجهة | React 19 + TypeScript + Vite + Tailwind CSS + shadcn/ui |
 | API | tRPC + Hono |
-| قاعدة البيانات | SQLite (تطوير) / MySQL (إنتاج) + Drizzle ORM |
+| قاعدة البيانات | SQLite (تطوير) / PostgreSQL Neon أو MySQL (إنتاج) + Drizzle ORM |
+| النشر | Vercel (واجهة + serverless API) أو Docker / VPS |
 | المصادقة | Kimi OAuth + Google OAuth + دخول محلي (تطوير فقط) |
 | i18n | العربية + الإنجليزية (react-i18next) |
 | الرسم البياني | مخطط شجرة تفاعلي (FamilyChart) |
@@ -89,31 +90,32 @@ npm run db:migrate   # تشغيل migrations
 ├── README.md                 ← هذا الملف
 ├── CHANGELOG.md              ← سجل الإصلاحات والميزات الأخيرة
 └── app/
-    ├── api/                  ← Backend (Hono + tRPC)
+    ├── server/               ← Backend (Hono + tRPC) — المصدر
     │   ├── payments/         ← بوابات الدفع (Thawani, Stripe, PayPal…)
     │   ├── google/           ← OAuth Google
     │   ├── kimi/             ← OAuth Kimi + JWT
-    │   ├── adminRouter.ts    ← API المشرف
-    │   ├── userRouter.ts     ← API المستخدم
-    │   ├── paymentRouter.ts  ← Checkout والدفع
-    │   ├── treeRouter.ts     ← إدارة الأشجار
-    │   ├── personRouter.ts   ← إدارة الأفراد والقرابة (بما فيها فصل الربط)
-    │   ├── memberRouter.ts   ← الدعوات والأعضاء
-    │   └── boot.ts           ← نقطة دخول الخادم
-    ├── db/                   ← Schema (SQLite + MySQL)
+    │   ├── queries/          ← اتصال DB (SQLite / MySQL / Postgres)
+    │   ├── boot.ts           ← تطبيق Hono + خادم Node (Docker/VPS)
+    │   └── vercel.ts         ← نقطة دخول Vercel serverless
+    ├── api/                  ← مخرجات البناء فقط (`index.js`) لـ Vercel — لا تضع المصدر هنا
+    ├── db/                   ← Schema: SQLite + MySQL + PostgreSQL
     ├── contracts/            ← ثوابت مشتركة
     ├── src/
     │   ├── pages/            ← صفحات React (TreeWorkspace, TreePrint…)
     │   ├── components/
     │   │   ├── tree/         ← FamilyChart + موصلات الخطوط
-    │   │   ├── print/        ← قوالب الطباعة (13 قالباً)
+    │   │   ├── print/        ← قوالب الطباعة
     │   │   └── ui/           ← shadcn
     │   ├── lib/              ← familyGraph, printData, lineageParser…
     │   ├── i18n/             ← ar.ts + en.ts
     │   └── hooks/
+    ├── vercel.json           ← إعداد نشر Vercel
+    ├── DEPLOY.md             ← دليل النشر التفصيلي
     ├── .env.example
     └── package.json
 ```
+
+> **مهم:** مجلد المصدر للـ API هو `server/` وليس `api/`. Vercel يفسّر كل ملف `.ts` تحت `api/` كدالة serverless، لذلك يُبنى `api/index.js` أثناء `npm run build` فقط.
 
 ---
 
@@ -315,8 +317,18 @@ npm run db:migrate   # تشغيل migrations
 # تطوير (SQLite)
 DATABASE_URL=file:./.data/dev.sqlite
 
-# إنتاج (MySQL)
+# إنتاج — Neon PostgreSQL (موصى به مع Vercel)
+DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+
+# أو إنتاج — MySQL (Docker)
 DATABASE_URL=mysql://user:pass@host:3306/nasab
+```
+
+الجداول تُطبَّق عبر:
+
+```bash
+cd app
+npm run db:push
 ```
 
 ---
@@ -401,13 +413,20 @@ http://localhost:5173/api/oauth/google/callback
 
 - [ ] `NODE_ENV=production`
 - [ ] `APP_SECRET` قوي (≥ 32 حرفاً)
-- [ ] `DATABASE_URL` → MySQL
+- [ ] `DATABASE_URL` → Neon PostgreSQL أو MySQL (ليس SQLite)
 - [ ] `OWNER_UNION_ID` للمشرف الأول
 - [ ] `APP_PUBLIC_URL` + `ALLOWED_ORIGINS` على HTTPS
 - [ ] `npm run build` مع `VITE_*`
 - [ ] تفعيل بوابة دفع + webhooks
 - [ ] `npm run prod:check` داخل `app/`
 - [ ] **عدم** تفعيل `DEV_LOCAL_AUTH`
+
+### Vercel + Neon
+
+1. Root Directory في Vercel: `app`
+2. أضف متغيرات البيئة (Production): `DATABASE_URL`, `APP_ID`, `APP_SECRET`, `KIMI_*`, `VITE_*`, `APP_PUBLIC_URL`, `ALLOWED_ORIGINS`, …
+3. البناء (`npm run build`) يولّد الواجهة في `dist/public` ودالة API في `api/index.js`
+4. طبّق الجداول مرة واحدة محلياً أو من CI: `DATABASE_URL=postgresql://... npm run db:push`
 
 ### Docker
 
@@ -418,7 +437,7 @@ cp .env.production.example .env
 docker compose up -d --build
 ```
 
-### بدون Docker
+### بدون Docker (VPS)
 
 ```bash
 cd app

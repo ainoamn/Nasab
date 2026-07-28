@@ -7,7 +7,7 @@ import { defineConfig } from "vite"
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    devServer({ entry: "api/boot.ts", exclude: [/^\/(?!api\/).*$/] }),
+    devServer({ entry: "server/boot.ts", exclude: [/^\/(?!api\/).*$/] }),
     react(),
   ],
   css: {
@@ -23,6 +23,9 @@ export default defineConfig({
       "@db": path.resolve(__dirname, "./db"),
       db: path.resolve(__dirname, "./db"),
     },
+  },
+  ssr: {
+    external: ["postgres", "better-sqlite3", "mysql2"],
   },
   envDir: path.resolve(__dirname),
   build: {

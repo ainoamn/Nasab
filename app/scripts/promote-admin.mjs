@@ -59,6 +59,34 @@ async function main() {
     return;
   }
 
+  if (/^postgres(ql)?:\/\//i.test(databaseUrl)) {
+    const postgres = (await import("postgres")).default;
+    const clean = databaseUrl
+      .replace(/([?&])channel_binding=[^&]*/gi, "")
+      .replace(/\?&/, "?");
+    const sql = postgres(clean, { prepare: false, max: 1 });
+    let rows;
+    if (args["union-id"]) {
+      rows = await sql`SELECT * FROM users WHERE "unionId" = ${args["union-id"]} LIMIT 1`;
+    } else if (args.email) {
+      rows = await sql`SELECT * FROM users WHERE email = ${args.email} LIMIT 1`;
+    } else if (args.id) {
+      rows = await sql`SELECT * FROM users WHERE id = ${Number(args.id)} LIMIT 1`;
+    } else {
+      console.error("Provide --union-id= or --email= or --id=");
+      process.exit(1);
+    }
+    const user = rows[0];
+    if (!user) {
+      console.error("User not found");
+      process.exit(1);
+    }
+    await sql`UPDATE users SET role = 'admin' WHERE id = ${user.id}`;
+    await sql.end({ timeout: 5 });
+    console.log(`✓ promoted user #${user.id} (${user.unionId}) to admin`);
+    return;
+  }
+
   const mysql = await import("mysql2/promise");
   const conn = await mysql.createConnection(databaseUrl);
   let rows;

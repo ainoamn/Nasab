@@ -43,7 +43,15 @@ if (isProd || process.argv.includes("--strict")) {
 
   const db = process.env.DATABASE_URL ?? "";
   if (db.startsWith("file:")) {
-    errors.push("DATABASE_URL ما زال SQLite — استخدم MySQL في الإنتاج");
+    errors.push(
+      "DATABASE_URL ما زال SQLite — استخدم MySQL أو PostgreSQL (Neon) في الإنتاج",
+    );
+  } else if (
+    db &&
+    !/^mysql2?:\/\//i.test(db) &&
+    !/^postgres(ql)?:\/\//i.test(db)
+  ) {
+    errors.push("DATABASE_URL يجب أن يكون mysql:// أو postgresql://");
   }
 
   if (process.env.DEV_LOCAL_AUTH === "true") {

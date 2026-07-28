@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-07-28 — Neon PostgreSQL + نشر Vercel (server/)
+
+### الجديد
+- دعم **PostgreSQL / Neon** بجانب SQLite و MySQL (`db/schema.pg.ts`, dialect, drizzle).
+- نقل مصدر الـ API من `api/` → **`server/`** لتجنب أخطاء TypeScript على Vercel.
+- بناء دالة serverless واحدة: `api/index.js` من `server/vercel.ts` (عبر `hono/vercel`).
+- تحميل كسول لمشغّلات DB حتى لا يتعطل `npm run dev` على SQLite.
+- توثيق النشر في `README.md` و `app/DEPLOY.md` و `app/README.md`.
+
+### الأوامر
+- `npm run build` → واجهة + `dist/boot.js` + `api/index.js`
+- `npm run db:push` مع `DATABASE_URL=postgresql://...`
+
+---
+
 ## 2026-07-26 — مخططات مشاركة + اكتمال + دليل نمو
 
 ### الجديد

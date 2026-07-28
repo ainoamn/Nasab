@@ -1,14 +1,23 @@
-import { isSqliteDatabase } from "./dialect";
+import {
+  getDatabaseDialect,
+  isSqliteDatabase,
+} from "./dialect";
 import * as mysql from "./schema";
 import * as sqlite from "./schema.sqlite";
+import * as postgres from "./schema.pg";
 
 /**
- * Runtime picks SQLite or MySQL. Types use the SQLite schema as the canonical
- * shape (columns are kept in sync) to avoid mysql|sqlite union explosions in tsc.
+ * Runtime picks SQLite, MySQL, or Postgres. Types use the SQLite schema as the
+ * canonical shape (columns are kept in sync) to avoid dialect union explosions.
  */
 type CanonicalSchema = typeof sqlite;
+const dialect = getDatabaseDialect();
 const active = (
-  isSqliteDatabase() ? sqlite : mysql
+  dialect === "sqlite"
+    ? sqlite
+    : dialect === "postgres"
+      ? postgres
+      : mysql
 ) as unknown as CanonicalSchema;
 
 export const users = active.users;
@@ -60,4 +69,4 @@ export type Coupon = typeof coupons.$inferSelect;
 export type InsertCoupon = typeof coupons.$inferInsert;
 export type PlatformSettings = typeof platformSettings.$inferSelect;
 
-export { isSqliteDatabase };
+export { isSqliteDatabase, getDatabaseDialect };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Person, Relationship, TreeBranch } from "@db/tables";
-import { bankTransferAdapter } from "../../api/payments/offline";
+import { bankTransferAdapter } from "../../server/payments/offline";
 import { PRINT_TEMPLATES } from "@/components/print/registry";
 import {
   assignGenerationsStable,

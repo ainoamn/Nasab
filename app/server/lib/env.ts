@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import path from "path";
 
-// Vite SSR does not always load .env via import "dotenv/config".
-const appRoot = path.resolve(import.meta.dirname, "../..");
+// Vite SSR / Docker / Vercel: load from project cwd (stable after bundling).
+const appRoot = process.cwd();
 dotenv.config({ path: path.join(appRoot, ".env") });
 if (process.env.NODE_ENV === "production") {
   dotenv.config({

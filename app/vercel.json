@@ -2,5 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist/public",
-  "rewrites": [{ "source": "/((?!assets/).*)", "destination": "/index.html" }]
+  "framework": null,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
 }

@@ -37,6 +37,10 @@ function run(cmd, args, opts = {}) {
   });
 }
 
+function sanitizePgUrl(url) {
+  return url.replace(/([?&])channel_binding=[^&]*/gi, "").replace(/\?&/, "?");
+}
+
 async function waitForMysql(url, attempts = 40) {
   const mysql = await import("mysql2/promise");
   for (let i = 1; i <= attempts; i++) {
@@ -47,10 +51,32 @@ async function waitForMysql(url, attempts = 40) {
       return;
     } catch {
       console.log(`[nasab] waiting for MySQL (${i}/${attempts})...`);
-      await delay(2000);
     }
+    await delay(2000);
   }
   throw new Error("MySQL did not become ready in time");
+}
+
+async function waitForPostgres(url, attempts = 40) {
+  const postgres = (await import("postgres")).default;
+  const clean = sanitizePgUrl(url);
+  for (let i = 1; i <= attempts; i++) {
+    const sql = postgres(clean, { prepare: false, max: 1, connect_timeout: 5 });
+    try {
+      await sql`SELECT 1`;
+      await sql.end({ timeout: 2 });
+      return;
+    } catch {
+      try {
+        await sql.end({ timeout: 1 });
+      } catch {
+        /* ignore */
+      }
+      console.log(`[nasab] waiting for Postgres (${i}/${attempts})...`);
+    }
+    await delay(2000);
+  }
+  throw new Error("Postgres did not become ready in time");
 }
 
 async function main() {
@@ -59,6 +85,10 @@ async function main() {
   if (/^mysql2?:\/\//i.test(databaseUrl)) {
     await waitForMysql(databaseUrl);
     console.log("[nasab] MySQL is ready — applying schema (drizzle-kit push)");
+    await run("npx", ["drizzle-kit", "push", "--force"]);
+  } else if (/^postgres(ql)?:\/\//i.test(databaseUrl)) {
+    await waitForPostgres(databaseUrl);
+    console.log("[nasab] Postgres is ready — applying schema (drizzle-kit push)");
     await run("npx", ["drizzle-kit", "push", "--force"]);
   } else if (databaseUrl.startsWith("file:")) {
     console.log("[nasab] SQLite URL detected — applying schema");
