@@ -18,6 +18,7 @@ import {
 } from "./payments/webhooks";
 import { securityHeadersMiddleware } from "./lib/security-headers";
 import { Paths, PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
+import { passwordLoginHandler } from "./password-login-handler";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -54,15 +55,7 @@ app.get("/api/diag", (c) => {
   });
 });
 
-app.post("/api/auth/password-login", async (c) => {
-  // Fast path first — proves the route responds on Vercel.
-  if (c.req.query("probe") === "1") {
-    return c.json({ ok: true, probe: true, dbConfigured: Boolean(process.env.DATABASE_URL) });
-  }
-  const { passwordLoginHandler } = await import("./password-login-handler");
-  return passwordLoginHandler(c);
-});
-
+app.post("/api/auth/password-login", (c) => passwordLoginHandler(c));
 app.post("/api/auth/ping", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/oauth/kimi/start", createKimiStartHandler());
