@@ -269,7 +269,21 @@ node scripts/configure-launch.mjs --domain=https://yourdomain.com --union-id=YOU
 
 - JWT في cookie `httpOnly` (+ `Secure` خلف HTTPS)
 - OAuth `state` موقّع + `ALLOWED_ORIGINS`
-- Rate limiting على login / OAuth / webhooks / الدعوات
 - التحقق من توقيع webhooks للبوابات المدعومة
-- Security headers
 - `DEV_LOCAL_AUTH` معطّل تلقائياً عندما `NODE_ENV=production`
+
+### Rate limiting (في الذاكرة لكل instance)
+
+| المسار | الحد |
+|--------|------|
+| دخول بالبريد (`password-login` / `loginLocal`) | 10 / دقيقة لكل IP |
+| OAuth Google / Kimi | 30 / دقيقة لكل IP |
+| دعوات الأعضاء | 20–30 / دقيقة |
+| Webhooks الدفع | 120 / دقيقة |
+
+> على Vercel serverless الحد غير مشترك بين الـ instances — مناسب للحماية الأساسية فقط.
+
+### Security headers
+
+`X-Content-Type-Options: nosniff` · `X-Frame-Options: DENY` · `Referrer-Policy` · `Permissions-Policy` · HSTS في الإنتاج · CSP أساسي (`default-src 'self'`).
+

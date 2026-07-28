@@ -15,7 +15,17 @@ async function get(path) {
   } catch {
     /* html */
   }
-  return { path, status: res.status, ms: Date.now() - t0, json, text: text.slice(0, 200) };
+  return {
+    path,
+    status: res.status,
+    ms: Date.now() - t0,
+    json,
+    text: text.slice(0, 200),
+    headers: {
+      nosniff: res.headers.get("x-content-type-options"),
+      frame: res.headers.get("x-frame-options"),
+    },
+  };
 }
 
 async function post(path, body, contentType) {
@@ -63,6 +73,9 @@ const diag = results.find((r) => r.path === "/api/diag")?.json;
 const health = results.find((r) => r.path === "/api/health");
 const healthOk = health?.status === 200;
 const login = results.find((r) => r.path === "/api/auth/password-login");
+const headersOk =
+  health?.headers?.nosniff === "nosniff" &&
+  String(health?.headers?.frame || "").toUpperCase() === "DENY";
 
 console.log("\nVERDICT");
 console.log({
@@ -76,6 +89,7 @@ console.log({
   loginStatus: login?.status,
   loginError: login?.json?.error,
   setupOk: results.find((r) => r.path === "/setup")?.status === 200,
+  securityHeadersOk: headersOk,
   nextStep: diag?.dbConfigured
     ? "Try /login with admin credentials"
     : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",

@@ -1,25 +1,56 @@
 import { useMemo } from "react";
 import PrintFamilyChart from "./PrintFamilyChart";
 import { buildAscendantChain, personDisplayName } from "@/lib/printData";
+import { twinGroupSize, twinMarkLabel, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
+import type { Person } from "@db/schema";
 
-function GoldMedallion({ name, sub }: { name: string; sub?: string | null }) {
+function GoldMedallion({
+  person,
+  people,
+  sub,
+}: {
+  person: Person;
+  people: Person[];
+  sub?: string | null;
+}) {
+  const order = twinOrderInGroup(person, people);
+  const total = twinGroupSize(person, people);
+  const isTwin = order != null && total >= 2;
+  const mark = twinMarkLabel(person, people);
+
   return (
     <div className="flex flex-col items-center gap-1">
       <div
-        className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full border-4 text-center shadow-inner"
+        className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full border-4 text-center shadow-inner"
         style={{
-          borderColor: "#D4AF37",
-          background: "radial-gradient(circle at 30% 30%, #fff8dc, #B8860B 70%, #8B6914)",
+          borderColor: isTwin ? "#7c3aed" : "#D4AF37",
+          background: isTwin
+            ? "radial-gradient(circle at 30% 30%, #f5f3ff, #7c3aed 75%, #5b21b6)"
+            : "radial-gradient(circle at 30% 30%, #fff8dc, #B8860B 70%, #8B6914)",
           boxShadow: "inset 0 2px 8px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.15)",
         }}
       >
-        <span className="font-display text-[9px] sm:text-[10px] font-bold text-amber-950 leading-tight px-1 line-clamp-3">
-          {name}
+        {isTwin ? (
+          <span className="absolute -top-1 start-1/2 z-[1] -translate-x-1/2">
+            <TwinBadge compact order={order} total={total} />
+          </span>
+        ) : null}
+        <span
+          className={`font-display text-[9px] sm:text-[10px] font-bold leading-tight px-1 line-clamp-3 ${
+            isTwin ? "text-violet-50" : "text-amber-950"
+          }`}
+        >
+          {personDisplayName(person)}
         </span>
       </div>
-      {sub && <span className="text-[9px] text-amber-800/70 font-display">{sub}</span>}
+      {(sub || mark) && (
+        <span className="text-[9px] text-amber-800/70 font-display">
+          {[sub, mark].filter(Boolean).join(" · ")}
+        </span>
+      )}
     </div>
   );
 }
@@ -78,7 +109,8 @@ export default function ManuscriptPrint(props: PrintTemplateProps) {
           {elders.map((p) => (
             <GoldMedallion
               key={p.id}
-              name={personDisplayName(p)}
+              person={p}
+              people={people}
               sub={p.laqab ?? p.clan}
             />
           ))}

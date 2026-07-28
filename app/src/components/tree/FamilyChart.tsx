@@ -1323,7 +1323,14 @@ function PersonCard({
 
             {!compact && !chartMode && (
               <div className="mt-1 w-full">
-                <PersonRankLines ranks={ranks} gender={person.gender} t={t} dense />
+                <PersonRankLines
+                  ranks={ranks}
+                  gender={person.gender}
+                  t={t}
+                  dense
+                  twinOrder={twinInfo?.order}
+                  twinTotal={twinInfo?.total}
+                />
               </div>
             )}
 

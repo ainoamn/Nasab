@@ -3409,12 +3409,17 @@ export default function TreeWorkspace() {
                   </ul>
                 )}
               </div>
-              {(ranks.amongSiblings || ranks.amongGenderInTree || ranks.amongCousins) && (
+              {(ranks.amongSiblings ||
+                ranks.amongGenderInTree ||
+                ranks.amongCousins ||
+                detailPerson.twinGroupId != null) && (
                 <PersonRankLines
                   ranks={ranks}
                   gender={detailPerson.gender}
                   t={t}
                   className="text-xs"
+                  person={detailPerson}
+                  people={people}
                 />
               )}
               {detailPerson.notes && (
