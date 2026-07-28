@@ -111,8 +111,8 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 ### إعداد المشروع على Vercel
 
 1. **Root Directory:** `app`
-2. **Build Command:** `npm run build` (من `vercel.json`)
-3. **Output Directory:** `dist/public`
+2. **Build Command:** `node scripts/vercel-build.mjs` (يكتب `.vercel/output` عبر Build Output API)
+3. لا تعتمد على مجلد `api/` كمصدر — الدالة تُبنى في `.vercel/output/functions/api.func`
 4. **Environment Variables** (Production + Preview إن لزم):
 
 | المتغير | مطلوب |

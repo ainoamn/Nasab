@@ -32,11 +32,16 @@ dist-ssr
 *.sqlite
 *.sqlite3
 db/migrations/*.sql
+# Vercel Build Output (generated)
+.vercel/output/
 # TypeScript cache
 *.tsbuildinfo
 # Build outputs
 dist/
 build/
+# Generated Vercel function stub (optional local artifact)
+api/index.js
+api/index.js.map
 # Test coverage
 coverage/
 .nyc_output/

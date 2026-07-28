@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && npm run build:server && npm run build:vercel",
+    "build:vercel-output": "node scripts/vercel-build.mjs",
     "build:server": "esbuild server/boot.ts --platform=node --bundle --format=esm --outfile=dist/boot.js --packages=bundle --alias:@db=./db --alias:@contracts=./contracts --alias:@=./src --external:better-sqlite3 --banner:js=\"import { createRequire as __cr } from 'module';const require = __cr(import.meta.url);\"",
     "build:vercel": "esbuild server/vercel.ts --platform=node --bundle --format=esm --outfile=api/index.js --packages=external --alias:@db=./db --alias:@contracts=./contracts --alias:@=./src",
     "lint": "eslint .",
