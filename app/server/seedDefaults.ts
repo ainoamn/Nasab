@@ -140,7 +140,12 @@ export async function ensurePlatformDefaults() {
       .where(eq(subscriptionPlans.slug, plan.slug))
       .then((r) => r[0]);
     if (!existing) {
-      await db.insert(subscriptionPlans).values(plan);
+      try {
+        await db.insert(subscriptionPlans).values(plan);
+      } catch (err) {
+        // Concurrent cold starts on Vercel may race on unique slug.
+        console.warn("[nasab] plan seed skipped:", plan.slug, err);
+      }
     } else if (
       (plan.slug === "plus" || plan.slug === "print") &&
       existing.priceYearly === 0 &&
@@ -167,16 +172,20 @@ export async function ensurePlatformDefaults() {
       .where(eq(paymentGateways.slug, slug))
       .then((r) => r[0]);
     if (!existing) {
-      await db.insert(paymentGateways).values({
-        slug,
-        nameAr: meta.nameAr,
-        nameEn: meta.nameEn,
-        // التحويل البنكي جاهز كبوابة حية بدون مفاتيح خارجية
-        isEnabled: slug === "bank_transfer",
-        isTestMode: slug !== "bank_transfer",
-        configJson: JSON.stringify(config),
-        sortOrder: meta.sortOrder,
-      });
+      try {
+        await db.insert(paymentGateways).values({
+          slug,
+          nameAr: meta.nameAr,
+          nameEn: meta.nameEn,
+          // التحويل البنكي جاهز كبوابة حية بدون مفاتيح خارجية
+          isEnabled: slug === "bank_transfer",
+          isTestMode: slug !== "bank_transfer",
+          configJson: JSON.stringify(config),
+          sortOrder: meta.sortOrder,
+        });
+      } catch (err) {
+        console.warn("[nasab] gateway seed skipped:", slug, err);
+      }
     } else if (slug === "bank_transfer") {
       const patch: {
         isEnabled?: boolean;

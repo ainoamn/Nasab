@@ -424,9 +424,17 @@ http://localhost:5173/api/oauth/google/callback
 ### Vercel + Neon
 
 1. Root Directory في Vercel: `app`
-2. أضف متغيرات البيئة (Production): `DATABASE_URL`, `APP_ID`, `APP_SECRET`, `KIMI_*`, `VITE_*`, `APP_PUBLIC_URL`, `ALLOWED_ORIGINS`, …
-3. البناء (`npm run build`) يولّد الواجهة في `dist/public` ودالة API في `api/index.js`
-4. طبّق الجداول مرة واحدة محلياً أو من CI: `DATABASE_URL=postgresql://... npm run db:push`
+2. أضف متغيرات البيئة (Production):
+   - `DATABASE_URL` (Neon pooled)
+   - `APP_SECRET` (≥ 32 حرفاً)
+   - `PASSWORD_LOGIN_EMAIL=admin@bhd.om`
+   - `PASSWORD_LOGIN_PASSWORD=Admin@1234`
+   - `OWNER_UNION_ID=password:admin@bhd.om`
+   - `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` = نطاق Vercel
+3. البناء يكتب `.vercel/output` (واجهة + دالة API)
+4. بعد الربط: `npm run admin:ensure` لإنشاء المشرف في Neon
+
+الدليل التفصيلي: [`app/DEPLOY.md`](app/DEPLOY.md)
 
 ### Docker
 

@@ -27,7 +27,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const utils = trpc.useUtils();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState("admin@bhd.om");
   const [password, setPassword] = useState("");
 
   const authConfig = trpc.auth.config.useQuery();

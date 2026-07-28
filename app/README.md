@@ -25,3 +25,9 @@ npm start            # خادم Node للإنتاج (بعد ضبط .env.producti
 - `server/` — API (Hono + tRPC)
 - `db/` — Drizzle schemas (SQLite / MySQL / PostgreSQL)
 - `api/` — مخرجات Vercel فقط (`index.js` مولَّد، لا تضع مصدراً هنا)
+
+## مشرف الإطلاق
+
+- البريد: `admin@bhd.om`
+- كلمة المرور: `Admin@1234`
+- تأكد من متغيرات Vercel ثم: `npm run admin:ensure`

@@ -1,5 +1,10 @@
 import dotenv from "dotenv";
 import path from "path";
+import {
+  BOOTSTRAP_ADMIN_EMAIL,
+  BOOTSTRAP_ADMIN_PASSWORD,
+  passwordLoginUnionId,
+} from "./password-login";
 
 // Vite SSR / Docker / Vercel: load from project cwd (stable after bundling).
 const appRoot = process.cwd();
@@ -25,38 +30,41 @@ function required(name: string): string {
   return value ?? "";
 }
 
+const passwordLoginEmail = (
+  process.env.PASSWORD_LOGIN_EMAIL?.trim() || BOOTSTRAP_ADMIN_EMAIL
+).toLowerCase();
+
 export const env = {
-  appId: required("APP_ID") || process.env.VITE_APP_ID || "",
-  appSecret: required("APP_SECRET"),
+  appId: required("APP_ID") || process.env.VITE_APP_ID || "nasab-app",
+  /** JWT/session secret — set APP_SECRET on Vercel (≥ 32 chars). */
+  appSecret:
+    required("APP_SECRET") ||
+    "nasab-bootstrap-app-secret-change-on-vercel-now",
   isProduction: process.env.NODE_ENV === "production",
   databaseUrl: required("DATABASE_URL"),
   kimiAuthUrl: required("KIMI_AUTH_URL") || process.env.VITE_KIMI_AUTH_URL || "",
   kimiOpenUrl: required("KIMI_OPEN_URL"),
-  ownerUnionId: process.env.OWNER_UNION_ID ?? "",
-  /** إذا لم يُضبط OWNER_UNION_ID: أول مستخدم يُنشأ يصبح مشرفاً */
+  /** Default owner = password-login admin so that account stays platform admin. */
+  ownerUnionId:
+    process.env.OWNER_UNION_ID?.trim() ||
+    passwordLoginUnionId(passwordLoginEmail),
   bootstrapFirstAdmin: process.env.BOOTSTRAP_FIRST_ADMIN !== "false",
-  /** دخول تطوير محلي (معطّل تلقائياً في الإنتاج) */
   devLocalAuthEnabled:
     !process.env.NODE_ENV || process.env.NODE_ENV !== "production"
       ? process.env.DEV_LOCAL_AUTH === "true"
       : false,
   devLoginUser: process.env.DEV_LOGIN_USER ?? "admin",
   devLoginPassword: process.env.DEV_LOGIN_PASSWORD ?? "admin123",
-  /**
-   * دخول بالبريد/كلمة المرور.
-   * يُفعَّل إذا ضُبطت المتغيرات، أو كقيم افتراضية للإطلاق عند غيابها
-   * (يُفضَّل ضبط PASSWORD_LOGIN_* في Vercel).
-   */
   passwordLoginEnabled: true,
-  passwordLoginEmail: (
-    process.env.PASSWORD_LOGIN_EMAIL?.trim() || "admin@bhd.om"
-  ).toLowerCase(),
+  passwordLoginEmail,
   passwordLoginPassword:
-    process.env.PASSWORD_LOGIN_PASSWORD || "Admin@1234",
+    process.env.PASSWORD_LOGIN_PASSWORD || BOOTSTRAP_ADMIN_PASSWORD,
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-  appPublicUrl: process.env.APP_PUBLIC_URL ?? "",
-  trustProxy: process.env.TRUST_PROXY === "true",
+  appPublicUrl:
+    process.env.APP_PUBLIC_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ""),
+  trustProxy: process.env.TRUST_PROXY === "true" || Boolean(process.env.VERCEL),
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? "")
     .split(",")
     .map((s) => s.trim())

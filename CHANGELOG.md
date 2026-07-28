@@ -4,7 +4,19 @@
 
 ---
 
-## 2026-07-28 — Neon PostgreSQL + نشر Vercel (server/)
+## 2026-07-28 — مشرف البريد + إصلاح Vercel API
+
+### الجديد / الإصلاح
+- دخول مشرف ثابت: **admin@bhd.om** / **Admin@1234** (`PASSWORD_LOGIN_*` + `OWNER_UNION_ID=password:admin@bhd.om`).
+- نموذج البريد يظهر دائماً على `/login`.
+- دالة Vercel تُبنى كاملة (CommonJS + deps) عبر Build Output API.
+- سكربت `npm run admin:ensure` لإنشاء المشرف في Neon.
+- بذر الخطط/البوابات مقاوم للتزامن على Cold Start.
+
+### توثيق
+- `app/DEPLOY.md`, `README.md`, `.env.production.example`
+
+---
 
 ### الجديد
 - دعم **PostgreSQL / Neon** بجانب SQLite و MySQL (`db/schema.pg.ts`, dialect, drizzle).

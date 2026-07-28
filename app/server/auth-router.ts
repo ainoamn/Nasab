@@ -13,10 +13,7 @@ import { ensureUserIdentity } from "./couponService";
 import { isGoogleAuthEnabled } from "./google/auth";
 import { issueSessionForUser } from "./lib/issue-session";
 import { rateLimit, clientRateKey } from "./lib/rate-limit";
-
-function passwordUnionId(email: string): string {
-  return `password:${email.toLowerCase()}`;
-}
+import { passwordLoginUnionId } from "./lib/password-login";
 
 export const authRouter = createRouter({
   config: publicQuery.query(() => ({
@@ -73,8 +70,8 @@ export const authRouter = createRouter({
         input.password === env.devLoginPassword;
 
       if (passwordOk) {
-        unionId = passwordUnionId(env.passwordLoginEmail);
-        name = env.passwordLoginEmail.split("@")[0] || "Admin";
+        unionId = passwordLoginUnionId(env.passwordLoginEmail);
+        name = "مشرف نَسَب";
         email = env.passwordLoginEmail;
         username = env.passwordLoginEmail;
       } else if (devOk) {
@@ -92,6 +89,7 @@ export const authRouter = createRouter({
         email,
         username,
         role: "admin",
+        plan: "print",
         lastSignInAt: new Date(),
         signInIp: ip,
         registrationIp: ip,

@@ -126,9 +126,34 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 | `PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD` | اختياري — دخول مشرف بالبريد بدون Kimi |
 | `TRUST_PROXY` | `true` |
 
-5. بعد أول نشر ناجح افحص: `https://your-app.vercel.app/api/health`
+### حساب المشرف (دخول بالبريد)
 
-### أوامر البناء محلياً
+| الحقل | القيمة |
+|--------|--------|
+| البريد | `admin@bhd.om` |
+| كلمة المرور | `Admin@1234` |
+| اتحاد المالك | `password:admin@bhd.om` |
+
+متغيرات Vercel المطلوبة لنفس الحساب:
+
+```
+PASSWORD_LOGIN_EMAIL=admin@bhd.om
+PASSWORD_LOGIN_PASSWORD=Admin@1234
+OWNER_UNION_ID=password:admin@bhd.om
+DATABASE_URL=postgresql://...neon.../neondb?sslmode=require
+APP_SECRET=<32+ chars>
+APP_PUBLIC_URL=https://nasab-mu.vercel.app
+ALLOWED_ORIGINS=https://nasab-mu.vercel.app
+```
+
+إنشاء/تحديث صف المشرف في Neon:
+
+```bash
+cd app
+npm run admin:ensure
+```
+
+---
 
 ```bash
 cd app
