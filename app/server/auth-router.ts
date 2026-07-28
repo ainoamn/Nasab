@@ -34,6 +34,23 @@ export const authRouter = createRouter({
         password: z.string().min(1),
       }),
     )
+    .mutation(async ({ input }) => {
+      // Temporary: isolate hang — respond immediately like auth.ping.
+      return {
+        success: false as const,
+        debug: {
+          user: input.username,
+          dbConfigured: Boolean(process.env.DATABASE_URL),
+        },
+      };
+    }),
+  loginLocalReal: publicQuery
+    .input(
+      z.object({
+        username: z.string().min(1),
+        password: z.string().min(1),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       // Immediate guard — also proves the mutation path responds on Vercel.
       if (!/^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL || env.databaseUrl || "")) {
