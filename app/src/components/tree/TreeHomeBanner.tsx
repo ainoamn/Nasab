@@ -42,7 +42,9 @@ export default function TreeHomeBanner({
   className,
 }: Props) {
   const { t } = useTranslation();
-  const subtitle = [tribe, region].filter(Boolean).join(" — ");
+  const subtitle = [tribe, region]
+    .filter(Boolean)
+    .join(` ${t("common.emDash")} `);
   const score =
     completenessScore != null
       ? Math.max(0, Math.min(100, Math.round(completenessScore)))

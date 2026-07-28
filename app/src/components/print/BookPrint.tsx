@@ -32,7 +32,9 @@ function BookCover({ tree, accent }: { tree: PrintTemplateProps["tree"]; accent:
         </div>
         <h2 className="font-display text-3xl sm:text-4xl font-bold mb-2">{tree.name}</h2>
         <p className="text-amber-100/80 font-display text-lg">
-          {[tree.tribe, tree.region].filter(Boolean).join(" — ")}
+          {[tree.tribe, tree.region]
+            .filter(Boolean)
+            .join(` ${t("common.emDash")} `)}
         </p>
         <div
           className="mx-auto mt-8 h-px w-32"

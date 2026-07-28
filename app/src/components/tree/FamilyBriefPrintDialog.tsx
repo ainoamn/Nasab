@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import type { Person } from "@db/tables";
 import type { TreeOccasion } from "@/lib/treeOccasions";
 import { formatBirthYear } from "@/lib/printData";
+import { isTwin, twinGroupSize, twinOrderInGroup } from "@/lib/twins";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 import {
   Dialog,
@@ -20,6 +23,7 @@ type BriefItem = {
 
 type ResearchItem = {
   name: string;
+  personId?: number;
   gapLabel: string;
   url: string | null;
 };
@@ -32,12 +36,62 @@ type Props = {
   researchItems?: ResearchItem[];
   researchCount?: number;
   treeName?: string;
+  people?: Person[];
 };
 
 function KindIcon({ kind }: { kind: TreeOccasion["kind"] }) {
   if (kind === "memorial") return <Flower2 className="h-4 w-4" />;
   if (kind === "anniversary") return <Heart className="h-4 w-4" />;
   return <Cake className="h-4 w-4" />;
+}
+
+function OccasionLabel({
+  ev,
+  people,
+}: {
+  ev: TreeOccasion;
+  people: Person[];
+}) {
+  if (ev.kind === "anniversary" && ev.person && ev.secondaryPerson) {
+    return (
+      <p className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+        <span className="inline-flex items-center gap-1">
+          {ev.person.givenName}
+          {isTwin(ev.person, people) ? (
+            <TwinBadge
+              compact
+              order={twinOrderInGroup(ev.person, people)}
+              total={twinGroupSize(ev.person, people)}
+            />
+          ) : null}
+        </span>
+        <span aria-hidden>×</span>
+        <span className="inline-flex items-center gap-1">
+          {ev.secondaryPerson.givenName}
+          {isTwin(ev.secondaryPerson, people) ? (
+            <TwinBadge
+              compact
+              order={twinOrderInGroup(ev.secondaryPerson, people)}
+              total={twinGroupSize(ev.secondaryPerson, people)}
+            />
+          ) : null}
+        </span>
+      </p>
+    );
+  }
+  const p = ev.person;
+  return (
+    <p className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+      {ev.label}
+      {p && isTwin(p, people) ? (
+        <TwinBadge
+          compact
+          order={twinOrderInGroup(p, people)}
+          total={twinGroupSize(p, people)}
+        />
+      ) : null}
+    </p>
+  );
 }
 
 /** ورقة ملخص العائلة للطباعة — اليوم + الأسبوع + أولويات البحث */
@@ -49,8 +103,10 @@ export default function FamilyBriefPrintDialog({
   researchItems = [],
   researchCount = 0,
   treeName,
+  people = [],
 }: Props) {
   const { t } = useTranslation();
+  const peopleList = people;
 
   const kindLabel = (kind: TreeOccasion["kind"]) => {
     if (kind === "birthday") return t("tree.eventBirthday");
@@ -109,7 +165,7 @@ export default function FamilyBriefPrintDialog({
                         <KindIcon kind={ev.kind} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{ev.label}</p>
+                        <OccasionLabel ev={ev} people={peopleList} />
                         <p className="text-[11px] text-muted-foreground">
                           {kindLabel(ev.kind)} · {t("tree.eventToday")}
                           {ev.person && formatBirthYear(ev.person)
@@ -156,7 +212,7 @@ export default function FamilyBriefPrintDialog({
                         <KindIcon kind={ev.kind} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{ev.label}</p>
+                        <OccasionLabel ev={ev} people={peopleList} />
                         <p className="text-[11px] text-muted-foreground">
                           {kindLabel(ev.kind)} ·{" "}
                           {t("tree.eventInDays", { n: ev.daysUntil })}
@@ -179,20 +235,36 @@ export default function FamilyBriefPrintDialog({
                   {t("tree.familyBriefResearchHeader")}
                 </h2>
                 <ul className="space-y-1.5">
-                  {researchItems.map((item, i) => (
-                    <li key={`${item.name}-${i}`} className="text-sm">
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-muted-foreground">
-                        {` ${t("common.emDash")} `}
-                        {item.gapLabel}
-                      </span>
-                      {item.url && (
-                        <p className="break-all font-mono text-[10px] text-muted-foreground">
-                          {item.url}
-                        </p>
-                      )}
-                    </li>
-                  ))}
+                  {researchItems.map((item, i) => {
+                    const p =
+                      item.personId != null
+                        ? peopleList.find((x) => x.id === item.personId)
+                        : undefined;
+                    return (
+                      <li
+                        key={`${item.name}-${i}`}
+                        className="flex flex-wrap items-center gap-1 text-sm"
+                      >
+                        <span className="font-medium">{item.name}</span>
+                        {p && isTwin(p, peopleList) ? (
+                          <TwinBadge
+                            compact
+                            order={twinOrderInGroup(p, peopleList)}
+                            total={twinGroupSize(p, peopleList)}
+                          />
+                        ) : null}
+                        <span className="text-muted-foreground">
+                          {` ${t("common.emDash")} `}
+                          {item.gapLabel}
+                        </span>
+                        {item.url && (
+                          <p className="w-full break-all font-mono text-[10px] text-muted-foreground">
+                            {item.url}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
                 {researchCount > researchItems.length && (
                   <p className="text-xs text-muted-foreground">

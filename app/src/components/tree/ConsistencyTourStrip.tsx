@@ -212,6 +212,7 @@ export default function ConsistencyTourStrip({
             variant="ghost"
             className="h-7 w-7"
             title={t("tree.researchTourPrev")}
+            aria-label={t("tree.researchTourPrev")}
             onClick={goPrev}
           >
             <ChevronRight className="h-3.5 w-3.5 rtl:hidden" />
@@ -223,6 +224,7 @@ export default function ConsistencyTourStrip({
             variant="ghost"
             className="h-7 w-7"
             title={t("tree.researchTourNext")}
+            aria-label={t("tree.researchTourNext")}
             data-consistency-next
             onClick={goNext}
           >

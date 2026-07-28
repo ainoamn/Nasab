@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
+import TwinBadge from "@/components/tree/TwinBadge";
 import { PrintableDocumentShell } from "@/components/PrintableDocumentShell";
 import {
   Dialog,
@@ -19,6 +20,8 @@ type Props = {
   url: string;
   title?: string;
   personName?: string;
+  twinOrder?: number | null;
+  twinTotal?: number | null;
 };
 
 /** حوار رمز QR لرابط شخص — يُولَّد محلياً للطباعة والتنزيل */
@@ -28,9 +31,13 @@ export default function PersonShareQrDialog({
   url,
   title,
   personName,
+  twinOrder = null,
+  twinTotal = null,
 }: Props) {
   const { t } = useTranslation();
   const [dataUrl, setDataUrl] = useState<string>("");
+  const showTwin =
+    twinOrder != null && twinTotal != null && twinTotal >= 2;
 
   useEffect(() => {
     if (!open || !url) {
@@ -79,7 +86,12 @@ export default function PersonShareQrDialog({
             <header className="space-y-1">
               <p className="text-xs text-muted-foreground">{t("brand")}</p>
               {personName && (
-                <h1 className="font-display text-xl font-bold">{personName}</h1>
+                <h1 className="inline-flex flex-wrap items-center justify-center gap-1.5 font-display text-xl font-bold">
+                  {personName}
+                  {showTwin ? (
+                    <TwinBadge compact order={twinOrder} total={twinTotal} />
+                  ) : null}
+                </h1>
               )}
             </header>
             {dataUrl ? (
@@ -91,7 +103,7 @@ export default function PersonShareQrDialog({
                 className="mx-auto rounded-xl border bg-white p-2"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">…</p>
+              <p className="text-sm text-muted-foreground">{t("common.emDash")}</p>
             )}
             <p className="break-all font-mono text-[11px] text-muted-foreground">
               {url}

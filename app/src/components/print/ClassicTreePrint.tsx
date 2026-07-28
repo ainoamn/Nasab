@@ -22,7 +22,9 @@ export default function ClassicTreePrint(props: PrintTemplateProps) {
             {t("printPage.classicTitle", { name: tree.name })}
           </h1>
           <p className="font-display text-base sm:text-lg mt-1 opacity-90">
-            {[tree.tribe, tree.region].filter(Boolean).join(" — ")}
+            {[tree.tribe, tree.region]
+              .filter(Boolean)
+              .join(` ${t("common.emDash")} `)}
           </p>
         </div>
         <div className="bg-white px-4 py-3 border-t">

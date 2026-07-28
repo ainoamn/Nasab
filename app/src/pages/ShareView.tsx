@@ -627,7 +627,9 @@ export default function ShareView() {
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl font-bold">{t("share.treeOf", { name: tree.name })}</h1>
           <p className="mt-1 text-muted-foreground">
-            {[tree.tribe, tree.region].filter(Boolean).join(" — ")}
+            {[tree.tribe, tree.region]
+              .filter(Boolean)
+              .join(` ${t("common.emDash")} `)}
           </p>
           <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
             <Badge variant="outline" className="gap-1">
@@ -1324,6 +1326,10 @@ export default function ShareView() {
             : ""
         }
         personName={qrPerson?.givenName}
+        twinOrder={
+          qrPerson ? twinOrderInGroup(qrPerson, people) : null
+        }
+        twinTotal={qrPerson ? twinGroupSize(qrPerson, people) : null}
       />
 
       <PersonProfilePrintDialog

@@ -1283,6 +1283,7 @@ export default function TreeWorkspace() {
       })),
       researchItems: top.map((item) => ({
         name: item.personName,
+        personId: item.personId,
         gapLabel: t(`detail.gap.${item.kind}`),
         url: absoluteUrl(
           buildTreePersonPath(treeId, item.personId, { tab: "chart" }),
@@ -1413,7 +1414,9 @@ export default function TreeWorkspace() {
                   <Badge variant="outline">{L.visibility[tree.visibility as TreeVisibility]}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {[tree.tribe, tree.region].filter(Boolean).join(" — ")}
+                  {[tree.tribe, tree.region]
+                    .filter(Boolean)
+                    .join(` ${t("common.emDash")} `)}
                   {" • "}
                   {L.personCount(people.length)}
                 </p>
@@ -1749,8 +1752,19 @@ export default function TreeWorkspace() {
               <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
                 <Focus className="h-4 w-4 shrink-0 text-primary" />
                 {chartFocusPerson ? (
-                  <span className="flex-1 min-w-0">
-                    {t("tree.chartFocusedOn", { name: chartFocusPerson.givenName })}
+                  <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                    <span>
+                      {t("tree.chartFocusedOn", {
+                        name: chartFocusPerson.givenName,
+                      })}
+                    </span>
+                    {isTwin(chartFocusPerson, people) ? (
+                      <TwinBadge
+                        compact
+                        order={twinOrderInGroup(chartFocusPerson, people)}
+                        total={twinGroupSize(chartFocusPerson, people)}
+                      />
+                    ) : null}
                   </span>
                 ) : (
                   <span className="flex-1 min-w-0 text-muted-foreground">
@@ -1770,7 +1784,7 @@ export default function TreeWorkspace() {
                           key={id}
                           size="sm"
                           variant="outline"
-                          className="h-7 max-w-[7rem] truncate px-2 text-xs"
+                          className="h-7 max-w-[9rem] gap-1 truncate px-2 text-xs"
                           onClick={() => {
                             setChartFocusId((cur) => {
                               if (cur != null && cur !== id) {
@@ -1787,8 +1801,16 @@ export default function TreeWorkspace() {
                             requestCenterOn(id);
                           }}
                           title={p.givenName}
+                          aria-label={p.givenName}
                         >
-                          {p.givenName}
+                          <span className="truncate">{p.givenName}</span>
+                          {isTwin(p, people) ? (
+                            <TwinBadge
+                              compact
+                              order={twinOrderInGroup(p, people)}
+                              total={twinGroupSize(p, people)}
+                            />
+                          ) : null}
                         </Button>
                       );
                     })}
@@ -2720,6 +2742,7 @@ export default function TreeWorkspace() {
         researchItems={familyBriefPrintData.researchItems}
         researchCount={familyBriefPrintData.researchCount}
         treeName={tree.name}
+        people={people}
       />
 
       <PersonShareQrDialog
@@ -2733,6 +2756,10 @@ export default function TreeWorkspace() {
             : ""
         }
         personName={qrPerson?.givenName}
+        twinOrder={
+          qrPerson ? twinOrderInGroup(qrPerson, people) : null
+        }
+        twinTotal={qrPerson ? twinGroupSize(qrPerson, people) : null}
       />
 
       <PersonProfilePrintDialog
@@ -2805,7 +2832,7 @@ export default function TreeWorkspace() {
               timeline.push({
                 year: detailPerson.birthYear,
                 label: birthLabel
-                  ? `${t("tree.timelineBirth")} — ${birthLabel}`
+                  ? `${t("tree.timelineBirth")} ${t("common.emDash")} ${birthLabel}`
                   : t("tree.timelineBirth"),
                 key: "birth",
               });
@@ -2890,6 +2917,7 @@ export default function TreeWorkspace() {
                           variant="ghost"
                           className="h-7 w-7"
                           title={t("detail.prevSibling", { name: prevSib.givenName })}
+                          aria-label={t("detail.prevSibling", { name: prevSib.givenName })}
                           onClick={() => {
                             setDetailPerson(prevSib);
                             setChartFocusId(prevSib.id);
@@ -2907,6 +2935,7 @@ export default function TreeWorkspace() {
                           variant="ghost"
                           className="h-7 w-7"
                           title={t("detail.nextSibling", { name: nextSib.givenName })}
+                          aria-label={t("detail.nextSibling", { name: nextSib.givenName })}
                           onClick={() => {
                             setDetailPerson(nextSib);
                             setChartFocusId(nextSib.id);
@@ -3402,10 +3431,17 @@ export default function TreeWorkspace() {
                           <span className="text-muted-foreground">{t("detail.father")}: </span>
                           <button
                             type="button"
-                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline"
                             onClick={() => void openPersonTree(father.id)}
                           >
                             {father.givenName}
+                            {isTwin(father, people) ? (
+                              <TwinBadge
+                                compact
+                                order={twinOrderInGroup(father, people)}
+                                total={twinGroupSize(father, people)}
+                              />
+                            ) : null}
                           </button>
                         </span>
                         {canWrite && (
@@ -3431,10 +3467,17 @@ export default function TreeWorkspace() {
                           <span className="text-muted-foreground">{t("detail.mother")}: </span>
                           <button
                             type="button"
-                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline"
                             onClick={() => void openPersonTree(mother.id)}
                           >
                             {mother.givenName}
+                            {isTwin(mother, people) ? (
+                              <TwinBadge
+                                compact
+                                order={twinOrderInGroup(mother, people)}
+                                total={twinGroupSize(mother, people)}
+                              />
+                            ) : null}
                           </button>
                         </span>
                         {canWrite && (
@@ -3463,10 +3506,17 @@ export default function TreeWorkspace() {
                           <span className="text-muted-foreground">{t("detail.spouses")}: </span>
                           <button
                             type="button"
-                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline"
                             onClick={() => void openPersonTree(sp.id)}
                           >
                             {sp.givenName}
+                            {isTwin(sp, people) ? (
+                              <TwinBadge
+                                compact
+                                order={twinOrderInGroup(sp, people)}
+                                total={twinGroupSize(sp, people)}
+                              />
+                            ) : null}
                           </button>
                         </span>
                         {canWrite && (
@@ -3495,10 +3545,17 @@ export default function TreeWorkspace() {
                           <span className="text-muted-foreground">{t("detail.children")}: </span>
                           <button
                             type="button"
-                            className="font-medium text-foreground underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline"
                             onClick={() => void openPersonTree(ch.id)}
                           >
                             {ch.givenName}
+                            {isTwin(ch, people) ? (
+                              <TwinBadge
+                                compact
+                                order={twinOrderInGroup(ch, people)}
+                                total={twinGroupSize(ch, people)}
+                              />
+                            ) : null}
                           </button>
                         </span>
                         {canWrite && (
@@ -3740,7 +3797,8 @@ function TreeSettingsDialog({
                   <SelectContent>
                     {(Object.keys(L.visibility) as TreeVisibility[]).map((k) => (
                       <SelectItem key={k} value={k}>
-                        {L.visibility[k]} — {L.visibilityDescriptions[k]}
+                        {L.visibility[k]} {t("common.emDash")}{" "}
+                        {L.visibilityDescriptions[k]}
                       </SelectItem>
                     ))}
                   </SelectContent>

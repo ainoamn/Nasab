@@ -65,7 +65,9 @@ export default function HeritageBoardPrint(props: PrintTemplateProps) {
             {tree.name}
           </h1>
           <p className="font-display text-lg text-stone-600 mt-2">
-            {[tree.tribe, tree.region].filter(Boolean).join(" — ")}
+            {[tree.tribe, tree.region]
+              .filter(Boolean)
+              .join(` ${t("common.emDash")} `)}
           </p>
         </div>
 

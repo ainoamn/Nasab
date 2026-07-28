@@ -88,7 +88,7 @@ export default function KinshipCertificateDialog({
           </p>
         ) : (
           <PrintableDocumentShell
-            title={`${t("tree.kinshipCertTitle")} — ${data.from.givenName} ↔ ${data.to.givenName}`}
+            title={`${t("tree.kinshipCertTitle")} ${t("common.emDash")} ${data.from.givenName} ↔ ${data.to.givenName}`}
           >
             <article className="space-y-5 text-center" dir="auto">
               <header className="space-y-1 border-b pb-4">

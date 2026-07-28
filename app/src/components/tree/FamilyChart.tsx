@@ -847,6 +847,7 @@ export default function FamilyChart({
               className="h-8 w-8"
               onClick={() => zoomBy(0.1)}
               title={t("chart.zoomIn")}
+              aria-label={t("chart.zoomIn")}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -857,6 +858,7 @@ export default function FamilyChart({
               className="h-8 w-8"
               onClick={() => zoomBy(-0.1)}
               title={t("chart.zoomOut")}
+              aria-label={t("chart.zoomOut")}
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -869,6 +871,7 @@ export default function FamilyChart({
                 if (selectedPersonId != null) centerOnPersonId(selectedPersonId);
               }}
               title={t("chart.centerOnSelected")}
+              aria-label={t("chart.centerOnSelected")}
               disabled={selectedPersonId == null}
             >
               <Crosshair className="h-4 w-4" />
@@ -880,6 +883,7 @@ export default function FamilyChart({
               className="h-8 w-8"
               onClick={fitToView}
               title={t("chart.fitToView")}
+              aria-label={t("chart.fitToView")}
             >
               <Maximize className="h-4 w-4" />
             </Button>
@@ -890,6 +894,7 @@ export default function FamilyChart({
               className="h-8 w-8"
               onClick={resetView}
               title={t("chart.reset")}
+              aria-label={t("chart.reset")}
             >
               <RotateCcw className="h-4 w-4" />
             </Button>

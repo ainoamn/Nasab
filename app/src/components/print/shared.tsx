@@ -199,7 +199,9 @@ export function PrintMetaHeader({
         {t("printPage.treeOf", { name: tree.name })}
       </h1>
       <p className="font-display text-lg mt-2 text-stone-600">
-        {[tree.tribe, tree.region].filter(Boolean).join(" — ")}
+        {[tree.tribe, tree.region]
+          .filter(Boolean)
+          .join(` ${t("common.emDash")} `)}
       </p>
       <PrintStatsBar
         people={people}

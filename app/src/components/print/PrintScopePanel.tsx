@@ -95,7 +95,7 @@ export default function PrintScopePanel({
         const gen = displayGenerationNumber(levels.get(selectedRoot.id) ?? 0);
         const name = personDisplayNameWithTwin(selectedRoot, people, twinWord);
         const laqab = selectedRoot.laqab?.trim();
-        return laqab ? `${name} — ${laqab}` : name;
+        return laqab ? `${name} ${t("common.emDash")} ${laqab}` : name;
       })()
     : t("printPage.scopeRootAuto");
 
@@ -220,7 +220,10 @@ export default function PrintScopePanel({
                           <span className="min-w-0 flex-1 truncate">
                             {name}
                             {laqab ? (
-                              <span className="text-muted-foreground"> — {laqab}</span>
+                              <span className="text-muted-foreground">
+                                {" "}
+                                {t("common.emDash")} {laqab}
+                              </span>
                             ) : null}
                           </span>
                           <span className="ms-2 shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
