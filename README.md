@@ -431,10 +431,10 @@ http://localhost:5173/api/oauth/google/callback
    - `PASSWORD_LOGIN_PASSWORD=Admin@1234`
    - `OWNER_UNION_ID=password:admin@bhd.om`
    - `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` = نطاق Vercel
-3. البناء يكتب `.vercel/output` (واجهة + دالة API؛ Postgres عبر Neon HTTP على serverless)
+3. البناء يكتب `.vercel/output` (واجهة + دالة API مع `postgres.js` مضمّن)
 4. بعد الربط: `npm run admin:ensure` لإنشاء المشرف في Neon
 5. مزامنة المتغيرات من الجهاز (بعد `vercel login`): `cd app && npm run vercel:env` ثم Redeploy
-6. تحقق: `https://…/api/health?db=1` → `"db":"ok"` ثم دخول من `/login`
+6. تحقق: `https://…/api/health` → `"dbConfigured":true` ثم دخول من `/login`
 
 الموقع الحالي: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
 

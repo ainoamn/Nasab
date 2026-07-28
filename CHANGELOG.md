@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-07-28 — تضمين postgres.js في دالة Vercel
+
+### الإصلاح
+- `postgres.js` يُستورد بشكل ثابت (`pg-node.ts`) حتى يضمّنه esbuild داخل `.vercel/output` (الـ `require` الديناميكي كان يترك الحزمة خارج الدالة).
+- إزالة `@neondatabase/serverless` مؤقتاً بعد أن تسبب استيراده في `FUNCTION_INVOCATION_FAILED` على Vercel.
+- `/api/health` يعرض `dbConfigured` دون فحص DB ثقيل عند كل طلب.
+- الإبقاء على مهلة `auth.loginLocal` ورفض `DATABASE_URL` الفارغ.
+
+### تحقق محلي على الحزمة
+- `health` → 200، `auth.loginLocal` → 200 + cookie مع Neon pooled.
+
+---
+
 ## 2026-07-28 — Neon HTTP على Vercel + فحص صحة أوضح
 
 ### الإصلاح

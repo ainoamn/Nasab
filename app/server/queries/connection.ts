@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { sql } from "drizzle-orm";
 import { env } from "../lib/env";
 import {
   getDatabaseDialect,
@@ -13,12 +12,12 @@ import * as mysqlSchema from "@db/schema";
 import * as sqliteSchema from "@db/schema.sqlite";
 import * as pgSchema from "@db/schema.pg";
 import * as relations from "@db/relations";
-import { createNeonHttpDb } from "./pg-neon";
+import { createPostgresJsDb } from "./pg-node";
 
 /**
  * Multi-dialect runtime (SQLite dev / MySQL or Postgres prod).
- * Postgres on Vercel uses Neon HTTP (bundled). Other drivers stay lazy
- * so Vite SSR does not resolve native/TCP clients during SQLite dev.
+ * On Vercel, Postgres uses a statically imported postgres.js client so
+ * esbuild inlines it into the Build Output function (no missing module).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AppDb = any;
@@ -61,21 +60,11 @@ export function getDb(): AppDb {
     } else if (dialect === "postgres") {
       const url = sanitizeDatabaseUrl(env.databaseUrl);
       const fullSchema = { ...pgSchema, ...relations };
-      if (isServerlessRuntime()) {
-        instance = createNeonHttpDb(url, fullSchema);
-      } else {
-        const postgres = require("postgres") as typeof import("postgres");
-        const { drizzle } =
-          require("drizzle-orm/postgres-js") as typeof import("drizzle-orm/postgres-js");
-        const client = postgres(url, {
-          prepare: false,
-          max: 10,
-          connect_timeout: 10,
-          idle_timeout: 20,
-          max_lifetime: 60 * 5,
-        });
-        instance = drizzle(client, { schema: fullSchema });
-      }
+      // Always use the statically imported client so the Vercel bundle
+      // contains postgres.js (dynamic require() is left external by esbuild).
+      instance = createPostgresJsDb(url, fullSchema, {
+        max: isServerlessRuntime() ? 1 : 10,
+      });
     } else {
       const { drizzle } =
         require("drizzle-orm/mysql2") as typeof import("drizzle-orm/mysql2");
@@ -87,29 +76,4 @@ export function getDb(): AppDb {
     }
   }
   return instance;
-}
-
-/** Lightweight connectivity probe (never hangs forever). */
-export async function pingDatabase(timeoutMs = 4000): Promise<{
-  ok: boolean;
-  error?: string;
-}> {
-  if (!env.databaseUrl?.trim()) {
-    return { ok: false, error: "DATABASE_URL missing" };
-  }
-  try {
-    const db = getDb();
-    await Promise.race([
-      db.execute(sql`select 1`),
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`db ping timeout ${timeoutMs}ms`)), timeoutMs);
-      }),
-    ]);
-    return { ok: true };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
 }
