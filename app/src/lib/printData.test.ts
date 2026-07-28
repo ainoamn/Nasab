@@ -434,6 +434,35 @@ describe("buildPalmTreeLayout", () => {
     expect(palm.fronds[0]!.children.map((c) => c.id).sort()).toEqual([4, 5]);
     expect(formatPalmCouple(palm.fronds[0]!.father, palm.fronds[0]!.mother)).toContain("حمدان");
   });
+
+  it("orders twin leaflets by stable birth then id", () => {
+    const people = [
+      person(1, "جد"),
+      person(2, "أب"),
+      person(3, "أم", null, "female"),
+      person(10, "توأمب"),
+      person(4, "توأمأ"),
+    ];
+    people[3]!.birthYear = 2000;
+    people[3]!.birthMonth = 1;
+    people[3]!.birthDay = 1;
+    people[3]!.twinGroupId = 77;
+    people[4]!.birthYear = 2000;
+    people[4]!.birthMonth = 1;
+    people[4]!.birthDay = 1;
+    people[4]!.twinGroupId = 77;
+    const rels = [
+      parentRel(1, 2),
+      spouseRel(2, 3),
+      parentRel(2, 4),
+      parentRel(3, 4),
+      parentRel(2, 10),
+      parentRel(3, 10),
+    ];
+    const levels = assignGenerationsStable(people, rels);
+    const palm = buildPalmTreeLayout(people, rels, levels, 1);
+    expect(palm.fronds[0]!.children.map((c) => c.id)).toEqual([4, 10]);
+  });
 });
 
 describe("computeSunLayout", () => {

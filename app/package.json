@@ -26,6 +26,7 @@
     "launch:status": "node scripts/launch-status.mjs",
     "vercel:print-env": "node scripts/print-vercel-env.mjs",
     "vercel:env-check": "node scripts/print-vercel-env.mjs --checklist",
+    "assert:fingerprint": "node scripts/assert-build-fingerprint.mjs",
     "check": "tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
-import { buildClanHierarchy, personDisplayName } from "@/lib/printData";
+import { buildClanHierarchy, personDisplayNameWithTwin } from "@/lib/printData";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
 
@@ -16,12 +16,14 @@ function PyramidLevel({
   label,
   kindLabel,
   people,
+  allPeople,
   accent,
   widthPct,
 }: {
   label: string;
   kindLabel: string;
   people: PrintTemplateProps["people"];
+  allPeople: PrintTemplateProps["people"];
   accent: string;
   widthPct: number;
 }) {
@@ -47,7 +49,7 @@ function PyramidLevel({
               className="text-[9px] sm:text-[10px] bg-white/80 border rounded-full px-2 py-0.5 font-display"
               style={{ borderColor: `${accent}44` }}
             >
-              {personDisplayName(p)}
+              {personDisplayNameWithTwin(p, allPeople)}
             </span>
           ))}
           {people.length > 12 && (
@@ -89,6 +91,7 @@ export default function ClanPrint(props: PrintTemplateProps) {
             label={level.label}
             kindLabel={t(KIND_LABELS[level.kind] ?? "printPage.clanFamily")}
             people={level.people}
+            allPeople={people}
             accent={accent}
             widthPct={widths[Math.min(i, widths.length - 1)] ?? 88}
           />

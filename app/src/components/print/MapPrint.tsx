@@ -1,17 +1,9 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import PrintFamilyChart from "./PrintFamilyChart";
-import { clusterByBirthPlace, personDisplayName } from "@/lib/printData";
-import { twinMarkLabel } from "@/lib/twins";
+import { clusterByBirthPlace, personDisplayNameWithTwin } from "@/lib/printData";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
-import type { Person } from "@db/schema";
-
-function mapPersonLabel(p: Person, people: Person[]): string {
-  const mark = twinMarkLabel(p, people);
-  const name = personDisplayName(p);
-  return mark ? `${name} (${mark})` : name;
-}
 
 /** مواقع تقريبية على «خريطة» الخليج (x%, y%) */
 const REGION_HINTS: Record<string, { x: number; y: number }> = {
@@ -161,7 +153,7 @@ export default function MapPrint(props: PrintTemplateProps) {
                   <span className="text-xs text-stone-500">{c.count}</span>
                 </div>
                 <p className="text-xs text-stone-600 line-clamp-2">
-                  {c.people.map((p) => mapPersonLabel(p, people)).join(" · ")}
+                  {c.people.map((p) => personDisplayNameWithTwin(p, people)).join(" · ")}
                 </p>
               </div>
             ))

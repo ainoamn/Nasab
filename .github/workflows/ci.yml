@@ -21,6 +21,8 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - name: Assert build fingerprint wiring
+        run: node scripts/assert-build-fingerprint.mjs
       - run: npm run build
         env:
           VITE_KIMI_AUTH_URL: https://example.com

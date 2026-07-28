@@ -12,7 +12,7 @@ import {
 import { preferredParentId } from "@/lib/printLineage";
 import { comparePeopleByBirth } from "@/lib/birthOrder";
 import { sortSpouses } from "@/lib/spouseMeta";
-import { twinGroupSize } from "@/lib/twins";
+import { twinGroupSize, twinMarkLabel } from "@/lib/twins";
 
 export type PrintTreeMeta = {
   name: string;
@@ -483,6 +483,13 @@ export function stripNasabPrefix(s: string): string {
 export function personDisplayName(p: Person): string {
   if (!p.fatherName?.trim()) return p.givenName;
   return `${p.givenName} ${stripNasabPrefix(p.fatherName)}`;
+}
+
+/** اسم العرض مع علامة توأم إن وُجدت (للطباعة المخصصة) */
+export function personDisplayNameWithTwin(p: Person, people: Person[]): string {
+  const mark = twinMarkLabel(p, people);
+  const name = personDisplayName(p);
+  return mark ? `${name} · ${mark}` : name;
 }
 
 /** أول مقطع من الاسم الشخصي (قبل بن/بنت أو المسافة) */

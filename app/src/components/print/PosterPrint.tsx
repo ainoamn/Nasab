@@ -4,7 +4,7 @@ import {
   displayGenerationNumber,
   generationColor,
   groupByGeneration,
-  personDisplayName,
+  personDisplayNameWithTwin,
 } from "@/lib/printData";
 import { PrintMetaFooter, PrintMetaHeader } from "./shared";
 import type { PrintTemplateProps } from "./types";
@@ -45,9 +45,9 @@ export default function PosterPrint(props: PrintTemplateProps) {
                     key={p.id}
                     className="text-[8px] sm:text-[9px] text-white text-center truncate px-1 py-0.5 rounded font-display"
                     style={{ backgroundColor: color }}
-                    title={personDisplayName(p)}
+                    title={personDisplayNameWithTwin(p, people)}
                   >
-                    {p.givenName}
+                    {personDisplayNameWithTwin(p, people)}
                   </span>
                 ))}
                 {group.people.length > 6 && (
