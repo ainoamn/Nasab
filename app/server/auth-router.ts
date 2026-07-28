@@ -39,6 +39,15 @@ export const authRouter = createRouter({
       user: input.username,
       dbConfigured: Boolean(process.env.DATABASE_URL),
     })),
+  pingFoo: publicQuery
+    .input(z.object({ foo: z.string().min(1), bar: z.string().min(1) }))
+    .mutation(({ input }) => ({ ok: true, foo: input.foo })),
+  pingUserOnly: publicQuery
+    .input(z.object({ username: z.string().min(1) }))
+    .mutation(({ input }) => ({ ok: true, user: input.username })),
+  pingSecret: publicQuery
+    .input(z.object({ username: z.string().min(1), secret: z.string().min(1) }))
+    .mutation(({ input }) => ({ ok: true, user: input.username })),
   emailSignIn: publicQuery
     .input(
       z.object({
