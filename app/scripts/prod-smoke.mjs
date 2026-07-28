@@ -47,6 +47,7 @@ results.push(
   ),
 );
 results.push(await get("/login"));
+results.push(await get("/setup"));
 
 for (const r of results) {
   const flag =
@@ -74,6 +75,7 @@ console.log({
   loginResponds: Boolean(login && login.status !== 0 && login.ms < 14000),
   loginStatus: login?.status,
   loginError: login?.json?.error,
+  setupOk: results.find((r) => r.path === "/setup")?.status === 200,
   nextStep: diag?.dbConfigured
     ? "Try /login with admin credentials"
     : "Set DATABASE_URL + APP_SECRET on Vercel, then Redeploy (see UPGRADE.md)",

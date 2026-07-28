@@ -90,4 +90,23 @@ describe("findDiscoveries", () => {
     const d = findDiscoveries([p], []);
     expect(d.some((x) => x.kind === "deathBeforeBirth")).toBe(true);
   });
+
+  it("flags possible twins among full siblings", () => {
+    const father = person(1, "أب");
+    const mother = person(2, "أم", "female");
+    const a = person(3, "أ");
+    const b = person(4, "ب");
+    a.birthYear = 2001;
+    b.birthYear = 2001;
+    const rels = [
+      parentRel(1, 3),
+      parentRel(2, 3),
+      parentRel(1, 4),
+      parentRel(2, 4),
+    ];
+    const d = findDiscoveries([father, mother, a, b], rels);
+    expect(d.some((x) => x.kind === "possibleTwin" && x.personId === 3)).toBe(
+      true,
+    );
+  });
 });

@@ -42,6 +42,7 @@ export default function PalmTreePrint(props: PrintTemplateProps) {
       <OmaniPalmChart
         founder={layout.founder}
         fronds={visibleFronds}
+        people={people}
         trunkLabel={t("printPage.palmTrunkShort")}
         coupleLabel={t("printPage.palmFrondShort")}
         leafLabel={t("printPage.palmLeafletsShort")}

@@ -1,5 +1,6 @@
 import type { PalmFrondBranch } from "@/lib/printData";
 import { formatPalmCouple, personDisplayName } from "@/lib/printData";
+import { twinMarkLabel } from "@/lib/twins";
 import type { Person } from "@db/schema";
 import {
   PALM_CROWN,
@@ -16,6 +17,7 @@ import {
 type Props = {
   founder: Person | null;
   fronds: PalmFrondBranch[];
+  people: Person[];
   trunkLabel: string;
   coupleLabel: string;
   leafLabel: string;
@@ -23,6 +25,11 @@ type Props = {
   overflowFronds: number;
   overflowNote: string;
 };
+
+function palmPersonLabel(person: Person, people: Person[]): string {
+  const mark = twinMarkLabel(person, people);
+  return mark ? `${person.givenName} · ${mark}` : person.givenName;
+}
 
 function SvgNameBadge({
   x,
@@ -112,6 +119,7 @@ function RealisticFrond({ arc, index }: { arc: PalmFrondArc; index: number }) {
 export default function OmaniPalmChart({
   founder,
   fronds,
+  people,
   trunkLabel,
   coupleLabel,
   leafLabel,
@@ -244,7 +252,7 @@ export default function OmaniPalmChart({
                   key={child.id}
                   x={pt.x + off.dx}
                   y={pt.y + off.dy}
-                  text={child.givenName}
+                  text={palmPersonLabel(child, people)}
                   variant="leaf"
                   accent={accent}
                 />
@@ -268,7 +276,7 @@ export default function OmaniPalmChart({
                   key={gc.id}
                   x={pt.x + (gi === 0 ? -28 : 28)}
                   y={pt.y - 28 - gi * 10}
-                  text={gc.givenName}
+                  text={palmPersonLabel(gc, people)}
                   variant="tip"
                   accent={accent}
                 />

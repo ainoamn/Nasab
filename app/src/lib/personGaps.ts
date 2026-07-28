@@ -15,7 +15,7 @@ export type PersonGap = {
   kind: PersonGapKind;
 };
 
-function sameBirthHint(a: Person, b: Person): boolean {
+export function sameBirthHint(a: Person, b: Person): boolean {
   if (a.birthYear == null || b.birthYear == null) return false;
   if (a.birthYear !== b.birthYear) return false;
   if (a.birthMonth != null && b.birthMonth != null && a.birthMonth !== b.birthMonth) {

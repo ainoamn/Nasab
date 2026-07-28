@@ -1,5 +1,7 @@
 import type { Person, Relationship } from "@db/tables";
 import { buildChildrenOf, buildSpousesOf, getParents } from "@/lib/familyGraph";
+import { sameBirthHint } from "@/lib/personGaps";
+import { isFullSibling } from "@/lib/twins";
 
 export type DiscoveryKind =
   | "missingFather"
@@ -10,7 +12,8 @@ export type DiscoveryKind =
   | "deathBeforeBirth"
   | "childBeforeParent"
   | "possibleDuplicate"
-  | "livingNoBirthYear";
+  | "livingNoBirthYear"
+  | "possibleTwin";
 
 export type Discovery = {
   kind: DiscoveryKind;
@@ -104,6 +107,25 @@ export function findDiscoveries(
         personId: p.id,
         personName: p.givenName,
       });
+    }
+
+    if (p.twinGroupId == null && p.birthYear != null) {
+      const twinMate = people.find(
+        (other) =>
+          other.id !== p.id &&
+          other.twinGroupId == null &&
+          sameBirthHint(p, other) &&
+          isFullSibling(p.id, other.id, rels, byId),
+      );
+      if (twinMate) {
+        out.push({
+          kind: "possibleTwin",
+          personId: p.id,
+          personName: p.givenName,
+          otherPersonId: twinMate.id,
+          otherPersonName: twinMate.givenName,
+        });
+      }
     }
 
     for (const parentId of [fatherId, motherId]) {

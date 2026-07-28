@@ -30,8 +30,7 @@ npm run vercel:print-env
 # then Redeploy`;
 
 export default function Setup() {
-  const { t, i18n } = useTranslation();
-  const ar = i18n.language?.startsWith("ar");
+  const { t } = useTranslation();
   const [diag, setDiag] = useState<Diag | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,43 +55,43 @@ export default function Setup() {
   const rows: Row[] = [
     {
       id: "api",
-      label: ar ? "واجهة التشخيص /api/diag" : "Diagnostics API",
+      label: t("setup.rowApi"),
       ok: diag ? true : loading ? null : false,
     },
     {
       id: "sidecar",
-      label: ar ? "حزمة Neon sidecar" : "Neon sidecar bundle",
+      label: t("setup.rowSidecar"),
       ok: diag ? Boolean(diag.sidecar) : null,
     },
     {
       id: "db",
-      label: ar ? "DATABASE_URL على الخادم" : "DATABASE_URL on server",
+      label: t("setup.rowDb"),
       ok: diag ? Boolean(diag.dbConfigured) : null,
       hint: diag?.dbHost || undefined,
     },
     {
       id: "secret",
-      label: ar ? "APP_SECRET مضبوط" : "APP_SECRET set",
+      label: t("setup.rowSecret"),
       ok: diag ? Boolean(diag.hasAppSecret) : null,
     },
     {
       id: "publicUrl",
-      label: ar ? "APP_PUBLIC_URL" : "APP_PUBLIC_URL",
+      label: t("setup.rowPublicUrl"),
       ok: diag ? Boolean(diag.hasAppPublicUrl) : null,
     },
     {
       id: "origins",
-      label: ar ? "ALLOWED_ORIGINS" : "ALLOWED_ORIGINS",
+      label: t("setup.rowOrigins"),
       ok: diag ? Boolean(diag.hasAllowedOrigins) : null,
     },
     {
       id: "admin",
-      label: ar ? "دخول بالبريد مفعّل" : "Password login configured",
+      label: t("setup.rowAdmin"),
       ok: diag ? Boolean(diag.passwordLoginConfigured) : null,
     },
     {
       id: "build",
-      label: ar ? "بصمة البناء" : "Build fingerprint",
+      label: t("setup.rowBuild"),
       ok: diag?.build ? true : loading ? null : false,
       hint: diag?.build
         ? `${diag.build}${diag.builtAt ? ` · ${diag.builtAt}` : ""}`
@@ -107,9 +106,9 @@ export default function Setup() {
   async function copyEnvHelp() {
     try {
       await navigator.clipboard.writeText(ENV_SNIPPET);
-      toast.success(ar ? "تم النسخ" : "Copied");
+      toast.success(t("setup.copied"));
     } catch {
-      toast.error(ar ? "تعذّر النسخ" : "Copy failed");
+      toast.error(t("setup.copyFailed"));
     }
   }
 
@@ -128,14 +127,8 @@ export default function Setup() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-display text-xl">
-              {ar ? "جاهزية الإطلاق" : "Launch readiness"}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {ar
-                ? "فحص ربط الخادم بقاعدة Neon وخطوات إكمال الإنتاج."
-                : "Check server ↔ Neon wiring and remaining production steps."}
-            </p>
+            <CardTitle className="font-display text-xl">{t("setup.title")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("setup.subtitle")}</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-3">
@@ -165,37 +158,32 @@ export default function Setup() {
 
             {ready ? (
               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">
-                {ar
-                  ? "الخادم جاهز. يمكنك تسجيل الدخول بحساب المشرف."
-                  : "Server is ready. You can sign in with the admin account."}
+                {t("setup.ready")}
               </div>
             ) : (
               <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
-                <p>
-                  {ar
-                    ? "أضف متغيرات البيئة على Vercel ثم أعد النشر:"
-                    : "Add Vercel env vars, then redeploy:"}
-                </p>
+                <p>{t("setup.notReady")}</p>
                 <pre
                   className="overflow-x-auto rounded bg-background/80 p-2 text-xs"
                   dir="ltr"
                 >
                   {ENV_SNIPPET}
                 </pre>
-                <Button type="button" size="sm" variant="secondary" onClick={() => void copyEnvHelp()}>
-                  {ar ? "نسخ الأوامر" : "Copy commands"}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void copyEnvHelp()}
+                >
+                  {t("setup.copyCommands")}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  {ar
-                    ? "التفاصيل في UPGRADE.md — المرحلة 2."
-                    : "Details in UPGRADE.md — phase 2."}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("setup.details")}</p>
               </div>
             )}
 
             <div className="flex flex-wrap gap-2">
               <Button asChild>
-                <Link to="/login">{ar ? "صفحة الدخول" : "Login"}</Link>
+                <Link to="/login">{t("setup.login")}</Link>
               </Button>
               <Button asChild variant="outline">
                 <a href="/api/diag" target="_blank" rel="noreferrer">
@@ -203,7 +191,7 @@ export default function Setup() {
                 </a>
               </Button>
               <Button asChild variant="ghost">
-                <Link to="/">{ar ? "الرئيسية" : "Home"}</Link>
+                <Link to="/">{t("setup.home")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -212,4 +200,3 @@ export default function Setup() {
     </div>
   );
 }
-

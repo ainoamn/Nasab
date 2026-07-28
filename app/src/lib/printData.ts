@@ -1303,7 +1303,7 @@ export function buildPalmTreeLayout(
       const childLevel = levels.get(id) ?? 0;
       return childLevel > founderLevel;
     })
-    .sort((a, b) => personDisplayName(byId.get(a)!).localeCompare(personDisplayName(byId.get(b)!), "ar"));
+    .sort((a, b) => comparePeopleByBirth(byId.get(a)!, byId.get(b)!));
 
   const fronds: PalmFrondBranch[] = branchHeadIds.map((headId) => {
     const head = byId.get(headId)!;
@@ -1335,7 +1335,7 @@ export function buildPalmTreeLayout(
     const children = childIds
       .map((id) => byId.get(id)!)
       .filter((p) => (levels.get(p.id) ?? 0) > headLevel)
-      .sort((a, b) => personDisplayName(a).localeCompare(personDisplayName(b), "ar"));
+      .sort(comparePeopleByBirth);
 
     const grandchildIds = new Set<number>();
     for (const child of children) {
@@ -1351,7 +1351,7 @@ export function buildPalmTreeLayout(
     }
     const grandchildren = [...grandchildIds]
       .map((id) => byId.get(id)!)
-      .sort((a, b) => personDisplayName(a).localeCompare(personDisplayName(b), "ar"));
+      .sort(comparePeopleByBirth);
 
     return { father, mother, children, grandchildren };
   });
