@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { drizzle as drizzleNeonHttp } from "drizzle-orm/neon-http";
 import { env } from "../lib/env";
 import {
   getDatabaseDialect,
@@ -21,6 +22,16 @@ import * as relations from "@db/relations";
 export type AppDb = any;
 
 let instance: AppDb;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let neonSql: any;
+
+function liveDatabaseUrl(): string {
+  return (
+    process.env.DATABASE_URL?.trim() ||
+    env.databaseUrl?.trim() ||
+    ""
+  );
+}
 
 function nodeRequire(): NodeRequire {
   try {
@@ -35,41 +46,58 @@ function nodeRequire(): NodeRequire {
 }
 
 export function isSqliteDb(): boolean {
-  return isSqliteDatabase(env.databaseUrl);
+  return isSqliteDatabase(liveDatabaseUrl());
+}
+
+/** Neon HTTP SQL tagged template (Vercel sidecar). Null off serverless / SQLite. */
+export function getNeonSql() {
+  getDb();
+  return neonSql ?? null;
 }
 
 export function getDb(): AppDb {
   if (!instance) {
-    const dialect = getDatabaseDialect(env.databaseUrl);
+    const databaseUrl = liveDatabaseUrl();
+    const dialect = getDatabaseDialect(databaseUrl);
     const require = nodeRequire();
     if (dialect === "sqlite") {
       const Database = require("better-sqlite3") as typeof import("better-sqlite3");
       const { drizzle } =
         require("drizzle-orm/better-sqlite3") as typeof import("drizzle-orm/better-sqlite3");
-      const dbPath = env.databaseUrl.replace(/^file:/, "");
+      const dbPath = databaseUrl.replace(/^file:/, "");
       fs.mkdirSync(path.dirname(dbPath), { recursive: true });
       const sqlite = new Database(dbPath);
       sqlite.pragma("journal_mode = WAL");
       const fullSchema = { ...sqliteSchema, ...relations };
       instance = drizzle(sqlite, { schema: fullSchema });
     } else if (dialect === "postgres") {
-      const url = sanitizeDatabaseUrl(env.databaseUrl);
+      const url = sanitizeDatabaseUrl(databaseUrl);
       const fullSchema = { ...pgSchema, ...relations };
       const max = process.env.VERCEL ? 1 : 10;
       // On Vercel, `db-pg.cjs` is built beside the handler (see vercel-build.mjs).
-      // Keep this require dynamic so cold start never evaluates postgres.js.
+      // Keep this require dynamic so cold start never evaluates postgres.js / neon.
       try {
         if (process.env.VERCEL || process.env.NASAB_SERVERLESS === "1") {
-          // Resolve beside the Vercel handler (cwd = api.func on Build Output).
           const sidecar = path.join(process.cwd(), "db-pg.cjs");
-          const { createPg } = require(sidecar) as {
-            createPg: (
+          if (!fs.existsSync(sidecar)) {
+            throw new Error(`db-pg sidecar missing at ${sidecar}`);
+          }
+          const mod = require(sidecar) as {
+            createNeonSql?: (u: string) => unknown;
+            createPg?: (
               u: string,
               s: Record<string, unknown>,
               o?: { max?: number },
             ) => AppDb;
           };
-          instance = createPg(url, fullSchema, { max });
+          if (typeof mod.createNeonSql === "function") {
+            neonSql = mod.createNeonSql(url);
+            instance = drizzleNeonHttp(neonSql, { schema: fullSchema });
+          } else if (typeof mod.createPg === "function") {
+            instance = mod.createPg(url, fullSchema, { max });
+          } else {
+            throw new Error("db-pg sidecar missing createNeonSql/createPg");
+          }
         } else {
           throw new Error("use-local-postgres");
         }
@@ -94,14 +122,23 @@ export function getDb(): AppDb {
         instance = drizzle(client, { schema: fullSchema });
       }
     } else {
+      if (!databaseUrl) {
+        throw new Error("DATABASE_URL is empty — cannot open database");
+      }
       const { drizzle } =
         require("drizzle-orm/mysql2") as typeof import("drizzle-orm/mysql2");
       const fullSchema = { ...mysqlSchema, ...relations };
-      instance = drizzle(env.databaseUrl, {
+      instance = drizzle(databaseUrl, {
         mode: "default",
         schema: fullSchema,
       });
     }
   }
   return instance;
+}
+
+/** Drop cached connection (tests / after config change). */
+export function resetDbForTests() {
+  instance = undefined;
+  neonSql = undefined;
 }

@@ -34,14 +34,13 @@ const passwordLoginEmail = (
   process.env.PASSWORD_LOGIN_EMAIL?.trim() || BOOTSTRAP_ADMIN_EMAIL
 ).toLowerCase();
 
-export const env = {
+const envBase = {
   appId: required("APP_ID") || process.env.VITE_APP_ID || "nasab-app",
   /** JWT/session secret — set APP_SECRET on Vercel (≥ 32 chars). */
   appSecret:
     required("APP_SECRET") ||
     "nasab-bootstrap-app-secret-change-on-vercel-now",
   isProduction: process.env.NODE_ENV === "production",
-  databaseUrl: required("DATABASE_URL"),
   kimiAuthUrl: required("KIMI_AUTH_URL") || process.env.VITE_KIMI_AUTH_URL || "",
   kimiOpenUrl: required("KIMI_OPEN_URL"),
   /** Default owner = password-login admin so that account stays platform admin. */
@@ -79,4 +78,12 @@ export const env = {
   bankAccountNumber: process.env.BANK_ACCOUNT_NUMBER ?? "",
   bankIban: process.env.BANK_IBAN ?? "",
   bankInstructions: process.env.BANK_INSTRUCTIONS ?? "",
+};
+
+/** Live DATABASE_URL — always read process.env (Vercel injects at runtime). */
+export const env = {
+  ...envBase,
+  get databaseUrl() {
+    return process.env.DATABASE_URL?.trim() || "";
+  },
 };

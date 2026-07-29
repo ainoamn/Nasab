@@ -10,6 +10,7 @@ import { ensureUserIdentity } from "./couponService";
 import { issueSessionForUser } from "./lib/issue-session";
 import { rateLimit, clientRateKey } from "./lib/rate-limit";
 import { passwordLoginUnionId } from "./lib/password-login";
+import { classifyDbError, sanitizeDbError } from "./lib/db-errors";
 import type { Context } from "hono";
 
 type LoginBody = { username?: string; password?: string };
@@ -126,6 +127,7 @@ export async function passwordLoginHandler(c: Context) {
     );
   }
 
+  let user: Awaited<ReturnType<typeof findUserByUnionId>> | undefined;
   try {
     await Promise.race([
       upsertUser({
@@ -146,23 +148,31 @@ export async function passwordLoginHandler(c: Context) {
         );
       }),
     ]);
+    user = await findUserByUnionId(unionId);
+    if (user) await ensureUserIdentity(user.id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[nasab] password login db error:", msg);
+    const detail = sanitizeDbError(err);
+    const kind = msg === "db-timeout" ? "timeout" : classifyDbError(err);
+    console.error("[nasab] password login db error:", kind, detail);
+    const message =
+      kind === "timeout" || msg === "db-timeout"
+        ? "قاعدة البيانات لا تستجيب — تحقق من DATABASE_URL على Vercel"
+        : kind === "auth"
+          ? "رفضت Neon المصادقة — حدّث DATABASE_URL (كلمة مرور القاعدة) على Vercel ثم Redeploy"
+          : kind === "schema"
+            ? "جداول القاعدة غير جاهزة — شغّل db:push / admin:ensure على Neon"
+            : "تعذر الاتصال بقاعدة البيانات";
     return c.json(
       {
         error: "db_unavailable",
-        message:
-          msg === "db-timeout"
-            ? "قاعدة البيانات لا تستجيب — تحقق من DATABASE_URL على Vercel"
-            : "تعذر الاتصال بقاعدة البيانات",
+        kind,
+        detail,
+        message,
       },
       503,
     );
   }
-
-  const user = await findUserByUnionId(unionId);
-  if (user) await ensureUserIdentity(user.id);
 
   const token = user
     ? await issueSessionForUser(user.id, unionId, env.appId || "local-dev")

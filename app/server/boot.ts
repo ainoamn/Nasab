@@ -37,10 +37,13 @@ app.get("/api/health", (c) =>
   }),
 );
 
-/** Launch diagnostics — no secrets, only presence flags. */
-app.get("/api/diag", (c) => {
+/** Launch diagnostics — no secrets, only presence flags. Add ?db=1 to probe Neon. */
+app.get("/api/diag", async (c) => {
   const url = process.env.DATABASE_URL || "";
-  return c.json({
+  const probe = ["1", "true", "yes"].includes(
+    (c.req.query("db") || "").toLowerCase(),
+  );
+  const base = {
     ok: true,
     vercel: Boolean(process.env.VERCEL),
     vercelEnv: process.env.VERCEL_ENV || null,
@@ -65,7 +68,62 @@ app.get("/api/diag", (c) => {
     kimiEnabled: false,
     hasAppPublicUrl: Boolean(env.appPublicUrl),
     hasAllowedOrigins: env.allowedOrigins.length > 0,
-  });
+  };
+
+  if (!probe) return c.json(base);
+
+  if (!url || !/^postgres(ql)?:\/\//i.test(url)) {
+    return c.json({
+      ...base,
+      dbProbe: "skipped",
+      dbOk: false,
+      dbError: "DATABASE_URL missing or not postgres",
+    });
+  }
+
+  try {
+    const { getDb, getNeonSql } = await import("./queries/connection");
+    const t0 = Date.now();
+    const neon = getNeonSql();
+    if (neon) {
+      const rows = await Promise.race([
+        neon`select 1::int as ok`,
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("db-timeout")), 8_000);
+        }),
+      ]);
+      const row = Array.isArray(rows) ? rows[0] : (rows as { ok?: number });
+      return c.json({
+        ...base,
+        dbProbe: "neon-http",
+        dbOk: true,
+        dbMs: Date.now() - t0,
+        dbSelect: row ?? null,
+      });
+    }
+    const { sql } = await import("drizzle-orm");
+    await Promise.race([
+      getDb().execute(sql`select 1 as ok`),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("db-timeout")), 8_000);
+      }),
+    ]);
+    return c.json({
+      ...base,
+      dbProbe: "drizzle",
+      dbOk: true,
+      dbMs: Date.now() - t0,
+    });
+  } catch (err) {
+    const { classifyDbError, sanitizeDbError } = await import("./lib/db-errors");
+    return c.json({
+      ...base,
+      dbProbe: "failed",
+      dbOk: false,
+      dbKind: classifyDbError(err),
+      dbError: sanitizeDbError(err),
+    });
+  }
 });
 
 app.post("/api/auth/password-login", (c) => passwordLoginHandler(c));

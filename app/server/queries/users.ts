@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import * as schema from "@db/tables";
 import type { InsertUser } from "@db/tables";
-import { getDb, isSqliteDb } from "./connection";
+import { getDb, getNeonSql } from "./connection";
 import { getDatabaseDialect } from "@db/dialect";
 import { env } from "../lib/env";
 
@@ -14,12 +14,100 @@ export async function findUserByUnionId(unionId: string) {
   return rows.at(0);
 }
 
+/**
+ * Neon HTTP raw upsert — preferred on Vercel so login does not depend on
+ * Drizzle query building across the db-pg sidecar boundary.
+ */
+async function upsertUserNeonRaw(values: {
+  unionId: string;
+  name: string | null;
+  email: string | null;
+  username: string | null;
+  role: string;
+  plan: string;
+  lastSignInAt: Date;
+  lastSignInIp: string | null;
+  registrationIp: string | null;
+}) {
+  const sql = getNeonSql();
+  if (!sql) throw new Error("neon sql client unavailable");
+
+  await sql`
+    INSERT INTO users (
+      "unionId", name, email, username, role, plan,
+      "isBanned", "sessionVersion", country,
+      "lastSignInAt", "lastSignInIp", "registrationIp",
+      "createdAt", "updatedAt"
+    ) VALUES (
+      ${values.unionId},
+      ${values.name},
+      ${values.email},
+      ${values.username},
+      ${values.role},
+      ${values.plan},
+      false,
+      0,
+      'OM',
+      ${values.lastSignInAt},
+      ${values.lastSignInIp},
+      ${values.registrationIp},
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT ("unionId") DO UPDATE SET
+      name = EXCLUDED.name,
+      email = EXCLUDED.email,
+      username = EXCLUDED.username,
+      role = EXCLUDED.role,
+      plan = EXCLUDED.plan,
+      "lastSignInAt" = EXCLUDED."lastSignInAt",
+      "lastSignInIp" = EXCLUDED."lastSignInIp",
+      "updatedAt" = NOW()
+  `;
+}
+
 export async function upsertUser(
   data: InsertUser & { signInIp?: string | null },
 ) {
   const values = { ...data };
   const ip = data.signInIp ?? data.lastSignInIp ?? null;
   if (ip) values.lastSignInIp = ip;
+
+  delete (values as { signInIp?: unknown }).signInIp;
+
+  const dialect = getDatabaseDialect(env.databaseUrl);
+
+  if (
+    values.role === undefined &&
+    values.unionId &&
+    values.unionId === env.ownerUnionId
+  ) {
+    values.role = "admin";
+  }
+
+  // Serverless: raw Neon upsert first (handles insert + conflict update).
+  if (
+    dialect === "postgres" &&
+    (process.env.VERCEL || process.env.NASAB_SERVERLESS === "1") &&
+    values.unionId
+  ) {
+    await upsertUserNeonRaw({
+      unionId: String(values.unionId),
+      name: (values.name as string | null | undefined) ?? null,
+      email: (values.email as string | null | undefined) ?? null,
+      username: (values.username as string | null | undefined) ?? null,
+      role: String(values.role ?? "user"),
+      plan: String(values.plan ?? "free"),
+      lastSignInAt:
+        values.lastSignInAt instanceof Date
+          ? values.lastSignInAt
+          : new Date(),
+      lastSignInIp: (values.lastSignInIp as string | null | undefined) ?? null,
+      registrationIp:
+        (values.registrationIp as string | null | undefined) ?? ip ?? null,
+    });
+    return;
+  }
 
   const existing = values.unionId
     ? await findUserByUnionId(values.unionId)
@@ -33,8 +121,6 @@ export async function upsertUser(
     ...data,
   };
   if (ip) updateSet.lastSignInIp = ip;
-
-  delete (values as { signInIp?: unknown }).signInIp;
   delete (updateSet as { signInIp?: unknown }).signInIp;
 
   const db = getDb();
@@ -64,7 +150,6 @@ export async function upsertUser(
     }
   }
 
-  const dialect = getDatabaseDialect(env.databaseUrl);
   if (dialect === "sqlite" || dialect === "postgres") {
     await db
       .insert(schema.users)
