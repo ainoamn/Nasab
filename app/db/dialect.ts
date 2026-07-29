@@ -22,13 +22,14 @@ export function getDatabaseDialect(url?: string): DatabaseDialect {
   return "mysql";
 }
 
-/** Neon / some drivers struggle with channel_binding=require */
+/**
+ * Neon / some drivers struggle with channel_binding=require.
+ * Avoid `new URL().toString()` — it can re-encode passwords and break auth.
+ */
 export function sanitizeDatabaseUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.searchParams.delete("channel_binding");
-    return parsed.toString();
-  } catch {
-    return url.replace(/([?&])channel_binding=[^&]*/i, "").replace(/\?&/, "?");
-  }
+  return url
+    .replace(/([?&])channel_binding=[^&]*/gi, "")
+    .replace(/\?&/, "?")
+    .replace(/[?&]$/, "")
+    .replace(/\?{2,}/g, "?");
 }

@@ -9,9 +9,11 @@ import * as postgres from "./schema.pg";
 /**
  * Runtime picks SQLite, MySQL, or Postgres. Types use the SQLite schema as the
  * canonical shape (columns are kept in sync) to avoid dialect union explosions.
+ *
+ * Always read live DATABASE_URL — do not freeze dialect before env is ready.
  */
 type CanonicalSchema = typeof sqlite;
-const dialect = getDatabaseDialect();
+const dialect = getDatabaseDialect(process.env.DATABASE_URL);
 const active = (
   dialect === "sqlite"
     ? sqlite

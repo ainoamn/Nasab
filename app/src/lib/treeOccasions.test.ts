@@ -57,10 +57,15 @@ describe("buildTreeOccasions", () => {
       } as Relationship,
     ];
     const from = new Date(2026, 6, 28);
-    const list = buildTreeOccasions([a, b], rels).map((e) => ({
-      ...e,
-      daysUntil: daysUntilMd(e.month, e.day, from),
-    }));
+    const list = buildTreeOccasions([a, b], rels)
+      .map((e) => ({
+        ...e,
+        daysUntil: daysUntilMd(e.month, e.day, from),
+      }))
+      .sort(
+        (x, y) =>
+          x.daysUntil - y.daysUntil || x.label.localeCompare(y.label, "ar"),
+      );
     const kinds = buildTreeOccasions([a, b], rels).map((e) => e.kind);
     expect(kinds).toContain("birthday");
     expect(kinds).toContain("memorial");
