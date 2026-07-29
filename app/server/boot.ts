@@ -39,7 +39,7 @@ app.get("/api/health", (c) =>
 
 /** Launch diagnostics — no secrets, only presence flags. Add ?db=1 to probe Neon. */
 app.get("/api/diag", async (c) => {
-  const url = process.env.DATABASE_URL || "";
+  const url = env.databaseUrl;
   const probe = ["1", "true", "yes"].includes(
     (c.req.query("db") || "").toLowerCase(),
   );

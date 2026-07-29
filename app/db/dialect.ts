@@ -33,3 +33,22 @@ export function sanitizeDatabaseUrl(url: string): string {
     .replace(/[?&]$/, "")
     .replace(/\?{2,}/g, "?");
 }
+
+/**
+ * Fix common paste artifacts when DATABASE_URL is copied into Vercel:
+ * leading/trailing whitespace, surrounding quotes, or a `psql '...'` wrapper.
+ * Never touches the URL itself otherwise (password encoding preserved).
+ */
+export function normalizeDatabaseUrl(raw: string): string {
+  let url = raw.trim();
+  const psql = url.match(/^psql\s+['"]?(postgres(?:ql)?:\/\/.+?)['"]?\s*$/i);
+  if (psql?.[1]) return psql[1].trim();
+  if (
+    url.length > 1 &&
+    ((url.startsWith("'") && url.endsWith("'")) ||
+      (url.startsWith('"') && url.endsWith('"')))
+  ) {
+    url = url.slice(1, -1).trim();
+  }
+  return url;
+}

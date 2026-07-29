@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeDatabaseUrl } from "../../db/dialect";
+import { normalizeDatabaseUrl, sanitizeDatabaseUrl } from "../../db/dialect";
 import { classifyDbError, sanitizeDbError } from "../lib/db-errors";
 
 describe("sanitizeDatabaseUrl", () => {
@@ -26,5 +26,33 @@ describe("db error helpers", () => {
     );
     expect(msg).toContain("postgresql://***");
     expect(msg).not.toContain("secret");
+  });
+});
+
+describe("normalizeDatabaseUrl", () => {
+  it("trims whitespace", () => {
+    expect(normalizeDatabaseUrl("  postgresql://u:p@h/db \n")).toBe(
+      "postgresql://u:p@h/db",
+    );
+  });
+
+  it("strips surrounding quotes", () => {
+    expect(normalizeDatabaseUrl("'postgresql://u:p@h/db'")).toBe(
+      "postgresql://u:p@h/db",
+    );
+    expect(normalizeDatabaseUrl('"postgresql://u:p@h/db"')).toBe(
+      "postgresql://u:p@h/db",
+    );
+  });
+
+  it("unwraps psql paste from Neon Console", () => {
+    expect(
+      normalizeDatabaseUrl("psql 'postgresql://u:p%40x@h/neondb?sslmode=require'"),
+    ).toBe("postgresql://u:p%40x@h/neondb?sslmode=require");
+  });
+
+  it("leaves a clean URL untouched", () => {
+    const raw = "postgresql://neondb_owner:p%40ss@h/neondb?sslmode=require";
+    expect(normalizeDatabaseUrl(raw)).toBe(raw);
   });
 });
