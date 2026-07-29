@@ -124,7 +124,7 @@ writeFileSync(
       // false: getRequestListener owns the Node req stream; Vercel body helpers
       // previously left POST bodies hanging (tRPC .input / c.req.json).
       shouldAddHelpers: false,
-      maxDuration: 30,
+      maxDuration: 60,
       memory: 1024,
     },
     null,

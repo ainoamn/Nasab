@@ -14,11 +14,12 @@ export async function securityHeadersMiddleware(c: Context, next: Next) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://accounts.google.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self'",
+      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
+      "frame-src https://accounts.google.com",
       "frame-ancestors 'none'",
     ].join("; "),
   );

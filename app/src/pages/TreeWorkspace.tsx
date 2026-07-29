@@ -1894,8 +1894,8 @@ export default function TreeWorkspace() {
 
             <ConsistencyTourStrip
               treeId={treeId}
-              people={people}
-              rels={rels}
+                  people={people}
+                  rels={rels}
               dismissedKeys={dismissedDiscoveryKeys}
               homePersonId={homePersonId}
               favoriteIds={favoriteIds}
@@ -2163,7 +2163,7 @@ export default function TreeWorkspace() {
                         ? (rel, a, b) => setSpouseEdit({ rel, a, b })
                         : undefined
                     }
-                    onPersonClick={(p) => setDetailPerson(p)}
+                  onPersonClick={(p) => setDetailPerson(p)}
                     gapsById={researchGapsById}
                     canWriteGaps={canWrite}
                     onFixGap={canWrite ? fixResearchGap : undefined}
@@ -2313,13 +2313,13 @@ export default function TreeWorkspace() {
               <CardContent className="p-4">
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <div className="relative max-w-sm flex-1">
-                    <Search className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder={t("tree.searchPh")}
-                      className="pe-9"
-                    />
+                  <Search className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={t("tree.searchPh")}
+                    className="pe-9"
+                  />
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <select
@@ -2444,8 +2444,8 @@ export default function TreeWorkspace() {
                             <TableCell>
                               <Badge variant="outline">{L.privacy[p.privacy as PersonPrivacy]}</Badge>
                             </TableCell>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center gap-1">
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-1">
                                 <Button
                                   size="icon"
                                   variant="ghost"
@@ -2464,8 +2464,8 @@ export default function TreeWorkspace() {
                                       aria-label={t("common.edit")}
                                       onClick={() => setEditPerson(p)}
                                     >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
                                     <Button
                                       size="icon"
                                       variant="ghost"
@@ -2473,8 +2473,8 @@ export default function TreeWorkspace() {
                                       aria-label={t("common.link")}
                                       onClick={() => setLinkAnchor(p)}
                                     >
-                                      <Link2 className="h-4 w-4" />
-                                    </Button>
+                                    <Link2 className="h-4 w-4" />
+                                  </Button>
                                     <Button
                                       size="icon"
                                       variant="ghost"
@@ -2483,12 +2483,12 @@ export default function TreeWorkspace() {
                                       className="text-destructive"
                                       onClick={() => setDeletePerson(p)}
                                     >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                   </>
                                 )}
-                              </div>
-                            </TableCell>
+                                </div>
+                              </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -3009,7 +3009,7 @@ export default function TreeWorkspace() {
                     </div>
                     <SheetTitle className="font-display text-xl sm:text-2xl flex flex-wrap items-center gap-2">
                       <span className={!detailPerson.isLiving ? "line-through decoration-2 text-rose-900" : ""}>
-                        {detailPerson.givenName}
+                  {detailPerson.givenName}
                       </span>
                       {isTwin(detailPerson, people) ? (
                         <TwinBadge
@@ -3019,11 +3019,11 @@ export default function TreeWorkspace() {
                         />
                       ) : null}
                       <Badge variant={detailPerson.isLiving ? "default" : "destructive"}>
-                        {detailPerson.isLiving ? t("detail.alive") : t("detail.dead")}
-                      </Badge>
+                    {detailPerson.isLiving ? t("detail.alive") : t("detail.dead")}
+                  </Badge>
                     </SheetTitle>
                     <SheetDescription className="font-display text-sm sm:text-base break-words">
-                      {detailPerson.fatherName ?? ""}
+                  {detailPerson.fatherName ?? ""}
                     </SheetDescription>
                     {homePersonId != null &&
                       homePersonId !== detailPerson.id &&
@@ -3803,6 +3803,7 @@ function TreeSettingsDialog({
   const [femaleDisplay, setFemaleDisplay] = useState<FemaleDisplay>(tree.femaleDisplay);
   const [hideLiving, setHideLiving] = useState(tree.hideLiving);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const updateMut = trpc.tree.update.useMutation({
     onSuccess: async () => {
@@ -3818,6 +3819,30 @@ function TreeSettingsDialog({
       toast.success(t("settings.deleted"));
       await utils.tree.listMine.invalidate();
       navigate("/dashboard");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const dedupeMut = trpc.person.removeDuplicates.useMutation({
+    onSuccess: async (res) => {
+      toast.success(
+        t("settings.removeDuplicatesDone", {
+          removed: res.removed,
+          kept: res.kept,
+        }),
+      );
+      await utils.person.list.invalidate({ treeId });
+      await utils.tree.get.invalidate({ id: treeId });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const clearMut = trpc.person.clearAll.useMutation({
+    onSuccess: async (res) => {
+      toast.success(t("settings.clearPeopleDone", { cleared: res.cleared }));
+      setConfirmClear(false);
+      await utils.person.list.invalidate({ treeId });
+      await utils.tree.get.invalidate({ id: treeId });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -3884,9 +3909,39 @@ function TreeSettingsDialog({
               </div>
             </div>
 
+            {(myRole === "owner" || myRole === "admin") && (
+              <div className="rounded-xl border border-amber-500/40 p-4 space-y-3">
+                <p className="font-bold text-sm">{t("settings.removeDuplicates")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.removeDuplicatesHint")}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={dedupeMut.isPending}
+                  onClick={() => dedupeMut.mutate({ treeId })}
+                >
+                  {dedupeMut.isPending
+                    ? t("common.saving")
+                    : t("settings.removeDuplicates")}
+                </Button>
+              </div>
+            )}
+
             {myRole === "owner" && (
-              <div className="rounded-xl border border-destructive/40 p-4">
+              <div className="rounded-xl border border-destructive/40 p-4 space-y-3">
                 <p className="font-bold text-sm text-destructive mb-2">{t("settings.danger")}</p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">{t("settings.clearPeopleHint")}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/50 text-destructive"
+                    onClick={() => setConfirmClear(true)}
+                  >
+                    {t("settings.clearPeople")}
+                  </Button>
+                </div>
                 <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
                   {t("settings.deleteTree")}
                 </Button>
@@ -3915,6 +3970,24 @@ function TreeSettingsDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("settings.clearPeopleTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("settings.clearPeopleBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>{t("common.goBack")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => clearMut.mutate({ treeId })}
+            >
+              {t("settings.clearPeopleConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>

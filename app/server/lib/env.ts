@@ -57,10 +57,15 @@ export const env = {
   devLoginPassword: process.env.DEV_LOGIN_PASSWORD ?? "admin123",
   passwordLoginEnabled: true,
   passwordLoginEmail,
-  passwordLoginPassword:
-    process.env.PASSWORD_LOGIN_PASSWORD || BOOTSTRAP_ADMIN_PASSWORD,
-  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
-  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  passwordLoginPassword: (
+    process.env.PASSWORD_LOGIN_PASSWORD || BOOTSTRAP_ADMIN_PASSWORD
+  ).replace(/\r?\n$/g, ""),
+  googleClientId: (process.env.GOOGLE_CLIENT_ID ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim(),
+  googleClientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim(),
   appPublicUrl:
     process.env.APP_PUBLIC_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ""),

@@ -956,7 +956,7 @@ export default function FamilyChart({
               ) : (
                 graph.roots.map((root, i) => (
                   <div
-                    key={root.id}
+            key={root.id}
                     className={cn(
                       "flex flex-col items-center",
                       i > 0 && "mt-12 border-t border-dashed border-slate-200 pt-8",
@@ -975,17 +975,17 @@ export default function FamilyChart({
                     )}
                     <CoupleNode
                       focusId={root.id}
-                      depth={0}
+            depth={0}
                       byId={graph.byId}
                       childrenOf={graph.childrenOf}
                       spousesOf={graph.spousesOf}
                       rels={rels}
                       ranks={graph.ranks}
                       remoteByLocal={graph.remoteByLocal}
-                      onPersonClick={onPersonClick}
-                      compact={compact}
-                      visited={new Set()}
-                      L={L}
+            onPersonClick={onPersonClick}
+            compact={compact}
+            visited={new Set()}
+            L={L}
                       t={t}
                     />
                   </div>
@@ -1007,10 +1007,10 @@ export default function FamilyChart({
                         onPersonClick={onPersonClick}
                         L={L}
                         t={t}
-                      />
-                    ))}
-                  </div>
-                </div>
+          />
+        ))}
+      </div>
+    </div>
               )}
             </div>
           </div>
@@ -1043,7 +1043,7 @@ function PrintAncestorsAboveRoot({
 }: {
   rootId: number;
   graph: {
-    byId: Map<number, Person>;
+  byId: Map<number, Person>;
     ranks: Map<number, ReturnType<typeof computePersonRanks>>;
   };
   rels: Relationship[];
@@ -1246,7 +1246,7 @@ function PersonCard({
             )}
           >
             {hasResearch && (
-              <span
+          <span
                 className="absolute -end-1 -top-1 z-[2] flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-bold text-white shadow-sm ring-2 ring-[#ececec]"
                 title={t("chart.researchDot", { count: personGaps.length })}
                 aria-label={t("chart.researchDot", { count: personGaps.length })}
@@ -1289,7 +1289,7 @@ function PersonCard({
                     <circle cx="12" cy="8" r="3.5" />
                     <path d="M5 19.5c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5" />
                   </svg>
-                </span>
+            </span>
               )}
               {!living && (
                 <span className="absolute -bottom-0.5 inset-x-0 mx-auto w-fit rounded bg-stone-900 px-1 text-[7px] font-bold leading-tight text-white">
@@ -1321,11 +1321,11 @@ function PersonCard({
               </p>
             )}
 
-            {!compact && person.fatherName && (
+          {!compact && person.fatherName && (
               <p className="mt-0.5 w-full truncate text-[9px] leading-tight text-stone-500 font-display">
                 {person.fatherName.split(/\s+/).slice(0, 3).join(" ")}
-              </p>
-            )}
+            </p>
+          )}
 
             {years && (
               <p className="mt-1 w-full truncate text-[9px] leading-none text-stone-500">
@@ -1466,10 +1466,10 @@ function PersonCard({
                       </Button>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
+        )}
+      </div>
         </HoverCardContent>
       </HoverCard>
       {onQuickAdd && !compact && (
@@ -2009,8 +2009,8 @@ function MultiSpouseBranch({
                 L={L}
                 t={t}
               />
-            </div>
-          )}
+          </div>
+      )}
         </div>
       </DescendantsOverflow>
     </div>

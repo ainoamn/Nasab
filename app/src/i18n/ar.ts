@@ -35,6 +35,7 @@ export const ar = {
     privacy: "الخصوصية",
     pricing: "الاشتراك",
     login: "دخول",
+    home: "الرئيسية",
     startFree: "ابدأ شجرتك مجاناً",
     myTrees: "أشجاري",
     dashboard: "لوحة التحكم",
@@ -169,6 +170,9 @@ export const ar = {
     rowPublicUrl: "APP_PUBLIC_URL",
     rowOrigins: "ALLOWED_ORIGINS",
     rowAdmin: "دخول بالبريد مفعّل",
+    rowGoogle: "دخول Google للمستخدمين",
+    rowGoogleHint:
+      "أضف GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET في Vercel مع Redirect URI: /api/oauth/google/callback",
     rowBuild: "بصمة البناء",
     buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}",
     buildBehindHint:
@@ -299,9 +303,15 @@ export const ar = {
   },
   login: {
     title: "أهلاً بك في نَسَب",
-    subtitle: "سجّل دخولك لتبدأ شجرة عائلتك أو تكمل ما بدأته",
+    subtitle: "ادخل بحساب Google لإنشاء شجرتك أو قبول دعوة",
     button: "الدخول عبر Kimi",
     note: "دخول آمن ومشفر — لا نشارك بياناتك مع أحد",
+    usersNote: "للأعضاء والزوار: الدخول عبر Google. حساب المشرف منفصل بالبريد.",
+    googlePendingTitle: "دخول Google قيد التفعيل",
+    googlePendingBody:
+      "أضف GOOGLE_CLIENT_ID في إعدادات Vercel ثم أعد النشر. في Google Console أضف النطاق كـ Authorized JavaScript origin.",
+    adminToggle: "دخول المشرف بالبريد",
+    adminHint: "لحساب المشرف فقط — ليس للمستخدمين العاديين",
     localUser: "اسم المستخدم",
     email: "البريد الإلكتروني",
     localPass: "كلمة المرور",
@@ -1095,10 +1105,14 @@ export const ar = {
     preview: "{{people}} شخص · {{links}} رابط · {{twins}} مجموعة توأم",
     noPeople: "لا يوجد أفراد في الملف",
     parseError: "تعذّر قراءة ملف GEDCOM",
+    timeout:
+      "انتهت مهلة الاستيراد أو انقطع الاتصال — أعد المحاولة. إن تكرّر الأمر احذف الأفراد الناقصين ثم استورد من جديد.",
+    mergeHint: "الاستيراد يدمج مع الموجود ولا يكرر الأسماء المتطابقة.",
+    replace: "استبدال كل الأفراد بهذا الملف",
     importing: "جارٍ الاستيراد...",
     import: "استيراد إلى الشجرة",
     success:
-      "تم استيراد {{created}} شخصاً و{{linked}} رابطاً و{{twins}} مجموعة توأم من GEDCOM",
+      "تم استيراد {{created}} شخصاً و{{linked}} رابطاً و{{twins}} مجموعة توأم (تخطي {{skipped}} موجوداً)",
   },
   shortcuts: {
     title: "اختصارات لوحة المفاتيح",
@@ -1355,6 +1369,16 @@ export const ar = {
     femaleNames: "عرض أسماء الإناث للغرباء",
     hideLiving: "إخفاء الأحياء عن الغرباء",
     danger: "منطقة الخطر",
+    removeDuplicates: "إزالة الأسماء المكررة",
+    removeDuplicatesHint:
+      "يبقي أقدم نسخة من كل اسم متطابق (الاسم + الأب + الجنس + سنة الميلاد) ويحذف الباقي.",
+    removeDuplicatesDone: "أُزيل {{removed}} مكرراً — بقي {{kept}} فرداً",
+    clearPeople: "تفريغ كل الأفراد",
+    clearPeopleHint: "يحذف كل الأسماء والروابط من هذه الشجرة (قابل للاسترجاع لاحقاً من النسخ).",
+    clearPeopleTitle: "تفريغ الشجرة من كل الأفراد؟",
+    clearPeopleBody: "سيُحذف كل الأفراد والروابط من هذه الشجرة. الشجرة نفسها تبقى.",
+    clearPeopleConfirm: "نعم، فرّغ الأفراد",
+    clearPeopleDone: "فُرّغت الشجرة من {{cleared}} فرداً",
     deleteTree: "حذف الشجرة نهائياً",
     deleteTreeTitle: "حذف الشجرة كاملة؟",
     deleteTreeBody: "سيفقد جميع الأعضاء الوصول إليها فوراً. هذا الإجراء لا يمكن التراجع عنه من الواجهة.",

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Person, Relationship } from "@db/schema";
 import { persons } from "@db/tables";
 import { getDb } from "./queries/connection";
@@ -91,18 +91,16 @@ export async function applyImportedTwinGroups(
   for (const ids of byKey.values()) {
     const unique = [...new Set(ids)];
     if (unique.length < 2) continue;
-    for (const personId of unique) {
-      await db
-        .update(persons)
-        .set({ twinGroupId: next })
-        .where(
-          and(
-            eq(persons.id, personId),
-            eq(persons.treeId, treeId),
-            isNull(persons.deletedAt),
-          ),
-        );
-    }
+    await db
+      .update(persons)
+      .set({ twinGroupId: next })
+      .where(
+        and(
+          inArray(persons.id, unique),
+          eq(persons.treeId, treeId),
+          isNull(persons.deletedAt),
+        ),
+      );
     next += 1;
     groups += 1;
   }

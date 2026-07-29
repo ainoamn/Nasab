@@ -7,10 +7,11 @@ import path from "node:path";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
-import { createOAuthCallbackHandler, createKimiStartHandler } from "./kimi/auth";
+import { createOAuthCallbackHandler } from "./kimi/auth";
 import {
   createGoogleAuthHandler,
   createGoogleCallbackHandler,
+  createGoogleIdTokenHandler,
 } from "./google/auth";
 import {
   createWebhookHandler,
@@ -60,6 +61,8 @@ app.get("/api/diag", (c) => {
     sidecar: existsSync(path.join(process.cwd(), "db-pg.cjs")),
     hasAppSecret: Boolean(process.env.APP_SECRET),
     passwordLoginConfigured: Boolean(env.passwordLoginEmail),
+    googleConfigured: Boolean(env.googleClientId),
+    kimiEnabled: false,
     hasAppPublicUrl: Boolean(env.appPublicUrl),
     hasAllowedOrigins: env.allowedOrigins.length > 0,
   });
@@ -68,10 +71,16 @@ app.get("/api/diag", (c) => {
 app.post("/api/auth/password-login", (c) => passwordLoginHandler(c));
 app.post("/api/auth/ping", (c) => c.json({ ok: true, ts: Date.now() }));
 
-app.get("/api/oauth/kimi/start", createKimiStartHandler());
+app.get("/api/oauth/kimi/start", (c) =>
+  c.json(
+    { error: "kimi_disabled", message: "تسجيل الدخول عبر Kimi معطّل — استخدم Google" },
+    410,
+  ),
+);
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.get("/api/oauth/google", createGoogleAuthHandler());
 app.get("/api/oauth/google/callback", createGoogleCallbackHandler());
+app.post("/api/auth/google", createGoogleIdTokenHandler());
 app.get("/api/checkout/complete", createCheckoutCompleteHandler());
 for (const slug of PAYMENT_GATEWAY_SLUGS) {
   app.post(`/api/webhooks/${slug}`, createWebhookHandler());

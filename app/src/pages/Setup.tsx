@@ -16,6 +16,7 @@ type Diag = {
   sidecar?: boolean;
   hasAppSecret?: boolean;
   passwordLoginConfigured?: boolean;
+  googleConfigured?: boolean;
   hasAppPublicUrl?: boolean;
   hasAllowedOrigins?: boolean;
   vercel?: boolean;
@@ -107,6 +108,12 @@ export default function Setup() {
       id: "admin",
       label: t("setup.rowAdmin"),
       ok: diag ? Boolean(diag.passwordLoginConfigured) : null,
+    },
+    {
+      id: "google",
+      label: t("setup.rowGoogle"),
+      ok: diag ? Boolean(diag.googleConfigured) : null,
+      hint: diag && !diag.googleConfigured ? t("setup.rowGoogleHint") : undefined,
     },
     {
       id: "build",

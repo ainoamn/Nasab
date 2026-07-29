@@ -30,6 +30,7 @@ export default function GedcomImportDialog({
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
+  const [replace, setReplace] = useState(false);
   const [preview, setPreview] = useState<{
     people: number;
     links: number;
@@ -47,6 +48,7 @@ export default function GedcomImportDialog({
           created: res.created,
           linked: res.linked,
           twins: res.twinGroups ?? 0,
+          skipped: res.skipped ?? 0,
         }),
       );
       await utils.person.list.invalidate({ treeId });
@@ -54,9 +56,17 @@ export default function GedcomImportDialog({
       setPayload(null);
       setPreview(null);
       setFileName("");
+      setReplace(false);
       onOpenChange(false);
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      const raw = e.message || "";
+      const looksLikeHtml =
+        /not valid JSON/i.test(raw) ||
+        /Unexpected token/i.test(raw) ||
+        /^An error/i.test(raw);
+      toast.error(looksLikeHtml ? t("gedcomImport.timeout") : raw);
+    },
   });
 
   const onFile = async (file: File) => {
@@ -134,6 +144,15 @@ export default function GedcomImportDialog({
                 {preview.people > preview.sample.length ? "…" : ""}
               </p>
             )}
+            <p className="text-xs text-muted-foreground">{t("gedcomImport.mergeHint")}</p>
+            <label className="flex items-center gap-2 text-xs pt-1">
+              <input
+                type="checkbox"
+                checked={replace}
+                onChange={(e) => setReplace(e.target.checked)}
+              />
+              {t("gedcomImport.replace")}
+            </label>
           </div>
         )}
 
@@ -147,6 +166,7 @@ export default function GedcomImportDialog({
               if (!payload) return;
               mut.mutate({
                 treeId,
+                mode: replace ? "replace" : "merge",
                 people: payload.people,
                 links: payload.links,
               });

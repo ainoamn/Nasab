@@ -35,6 +35,7 @@ export const en = {
     privacy: "Privacy",
     pricing: "Pricing",
     login: "Sign in",
+    home: "Home",
     startFree: "Start your tree free",
     myTrees: "My trees",
     dashboard: "Dashboard",
@@ -169,6 +170,9 @@ export const en = {
     rowPublicUrl: "APP_PUBLIC_URL",
     rowOrigins: "ALLOWED_ORIGINS",
     rowAdmin: "Password login configured",
+    rowGoogle: "Google sign-in for users",
+    rowGoogleHint:
+      "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel with redirect URI: /api/oauth/google/callback",
     rowBuild: "Build fingerprint",
     buildBehind: "Live build {{live}} is behind main {{main}}",
     buildBehindHint:
@@ -299,9 +303,16 @@ export const en = {
   },
   login: {
     title: "Welcome to Nasab",
-    subtitle: "Sign in to start your family tree or continue where you left off",
+    subtitle: "Sign in with Google to start your tree or accept an invite",
     button: "Sign in with Kimi",
     note: "Secure encrypted sign-in — we never share your data",
+    usersNote:
+      "Members and guests: sign in with Google. Admin uses a separate email login.",
+    googlePendingTitle: "Google sign-in not configured yet",
+    googlePendingBody:
+      "Add GOOGLE_CLIENT_ID in Vercel env, then redeploy. In Google Console add this domain as an Authorized JavaScript origin.",
+    adminToggle: "Admin email login",
+    adminHint: "Admin account only — not for regular users",
     localUser: "Username",
     email: "Email",
     localPass: "Password",
@@ -1097,10 +1108,14 @@ export const en = {
     preview: "{{people}} people · {{links}} links · {{twins}} twin groups",
     noPeople: "No people found in the file",
     parseError: "Could not parse the GEDCOM file",
+    timeout:
+      "Import timed out or the connection dropped — try again. If it keeps failing, remove partial people then re-import.",
+    mergeHint: "Import merges with existing people and skips exact duplicates.",
+    replace: "Replace all people with this file",
     importing: "Importing...",
     import: "Import into tree",
     success:
-      "Imported {{created}} people, {{linked}} links, and {{twins}} twin groups from GEDCOM",
+      "Imported {{created}} people, {{linked}} links, and {{twins}} twin groups (skipped {{skipped}} existing)",
   },
   shortcuts: {
     title: "Keyboard shortcuts",
@@ -1357,6 +1372,16 @@ export const en = {
     femaleNames: "Female names shown to strangers",
     hideLiving: "Hide the living from strangers",
     danger: "Danger zone",
+    removeDuplicates: "Remove duplicate people",
+    removeDuplicatesHint:
+      "Keeps the oldest copy of each matching person (name + father + gender + birth year) and removes the rest.",
+    removeDuplicatesDone: "Removed {{removed}} duplicates — {{kept}} people remain",
+    clearPeople: "Clear all people",
+    clearPeopleHint: "Removes every person and relationship from this tree (soft-delete).",
+    clearPeopleTitle: "Clear all people from this tree?",
+    clearPeopleBody: "All people and links will be removed. The tree itself stays.",
+    clearPeopleConfirm: "Yes, clear people",
+    clearPeopleDone: "Cleared {{cleared}} people",
     deleteTree: "Delete tree permanently",
     deleteTreeTitle: "Delete the whole tree?",
     deleteTreeBody: "All members will lose access immediately. This cannot be undone from the interface.",

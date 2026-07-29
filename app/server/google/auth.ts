@@ -119,5 +119,102 @@ export function createGoogleCallbackHandler() {
 }
 
 export function isGoogleAuthEnabled() {
-  return Boolean(env.googleClientId && env.googleClientSecret);
+  // Same as BHD-Pro: GIS / ID-token needs Client ID only.
+  // Redirect OAuth also works when GOOGLE_CLIENT_SECRET is set.
+  return Boolean(env.googleClientId);
+}
+
+type GoogleIdTokenInfo = {
+  aud?: string;
+  sub?: string;
+  email?: string;
+  email_verified?: string | boolean;
+  name?: string;
+  picture?: string;
+};
+
+/** Verify Google ID token (GIS) — same flow as BHD-Pro / Hisaby */
+export async function loginWithGoogleIdToken(
+  c: Context,
+  idToken: string,
+): Promise<Response> {
+  if (!env.googleClientId) {
+    return c.json({ error: "google_disabled", message: "Google login غير مفعّل" }, 503);
+  }
+
+  const ip = getClientIp(c.req.raw.headers);
+  const rl = rateLimit({
+    key: clientRateKey("oauth-google-id", ip),
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) {
+    return c.json({ error: "rate_limited", message: "محاولات كثيرة" }, 429);
+  }
+
+  const infoResp = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+  );
+  if (!infoResp.ok) {
+    return c.json(
+      { error: "invalid_token", message: "رمز Google غير صالح" },
+      401,
+    );
+  }
+  const info = (await infoResp.json()) as GoogleIdTokenInfo;
+  if (info.aud !== env.googleClientId || !info.sub) {
+    return c.json(
+      { error: "invalid_audience", message: "رمز Google غير مقبول" },
+      401,
+    );
+  }
+  const emailVerified =
+    info.email_verified === true || info.email_verified === "true";
+  if (info.email && !emailVerified) {
+    return c.json(
+      { error: "email_unverified", message: "بريد Google غير موثّق" },
+      401,
+    );
+  }
+
+  const unionId = `google:${info.sub}`;
+  await upsertUser({
+    unionId,
+    name: info.name ?? info.email ?? "Google User",
+    email: info.email ?? null,
+    avatar: info.picture ?? null,
+    lastSignInAt: new Date(),
+    signInIp: ip,
+  });
+
+  const user = await findUserByUnionId(unionId);
+  if (!user) {
+    return c.json({ error: "user_missing", message: "تعذر إنشاء المستخدم" }, 500);
+  }
+  await ensureUserIdentity(user.id);
+
+  const token = await issueSessionForUser(user.id, unionId, env.googleClientId);
+  const cookieOpts = getSessionCookieOptions(c.req.raw.headers);
+  setCookie(c, Session.cookieName, token, {
+    ...cookieOpts,
+    maxAge: Session.maxAgeMs / 1000,
+  });
+
+  return c.json({ success: true });
+}
+
+export function createGoogleIdTokenHandler() {
+  return async (c: Context) => {
+    let body: { credential?: string; idToken?: string } = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid_body" }, 400);
+    }
+    const idToken = String(body.credential || body.idToken || "").trim();
+    if (!idToken) {
+      return c.json({ error: "missing_credential", message: "رمز Google مطلوب" }, 400);
+    }
+    return loginWithGoogleIdToken(c, idToken);
+  };
 }

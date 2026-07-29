@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { createRouter, authedQuery, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { persons, relationships, treeBranches, personLinks, trees, type Person, type Relationship } from "@db/tables";
-import { insertReturningId } from "./queries/insert-id";
+import { insertReturningId, insertReturningIds, insertMany } from "./queries/insert-id";
 import {
   applyPublicPrivacy,
   filterPersonsForMember,
@@ -20,6 +20,11 @@ import {
   searchSimilarPersons,
 } from "./lineageHelpers";
 import { assignTwinOf, clearTwinGroup, applyImportedTwinGroups } from "./twinLink";
+import {
+  embedGedcomKey,
+  extractGedcomKey,
+  personImportFingerprint,
+} from "./lib/gedcom-merge";
 
 const spouseDateFields = {
   marriageDay: z.number().int().min(1).max(31).nullish(),
@@ -1469,44 +1474,46 @@ export const personRouter = createRouter({
       // إنشاء الأشخاص بالترتيب (الآباء عادة قبل الأبناء في الملف)
       let created = 0;
       const pendingLinks: Array<{ childId: number; fatherName: string }> = [];
-      for (const row of input.rows) {
-        const id = await insertReturningId(persons, {
-            treeId: input.treeId,
-            givenName: row.givenName,
-            fatherName: row.fatherName ?? null,
-            gender: row.gender,
-            birthYear: row.birthYear ?? null,
-            deathYear: row.deathYear ?? null,
-            isLiving: !row.deathYear,
-            kunya: row.kunya ?? null,
-            laqab: row.laqab ?? null,
-            clan: row.clan ?? null,
-            notes: row.notes ?? null,
-            createdById: ctx.user.id,
-          });
+      const toInsert = input.rows.map((row) => ({
+        treeId: input.treeId,
+        givenName: row.givenName,
+        fatherName: row.fatherName ?? null,
+        gender: row.gender,
+        birthYear: row.birthYear ?? null,
+        deathYear: row.deathYear ?? null,
+        isLiving: !row.deathYear,
+        kunya: row.kunya ?? null,
+        laqab: row.laqab ?? null,
+        clan: row.clan ?? null,
+        notes: row.notes ?? null,
+        createdById: ctx.user.id,
+      }));
+      const newIds = await insertReturningIds(persons, toInsert);
+      for (let i = 0; i < input.rows.length; i++) {
+        const row = input.rows[i]!;
+        const id = newIds[i]!;
         created++;
         if (!idByName.has(row.givenName)) idByName.set(row.givenName, id);
         if (row.fatherName) {
-          // اسم الأب قد يكون متسلسلاً "محمد بن أحمد" — نأخذ الجزء الأول
           const firstName = row.fatherName.split(" ")[0]?.trim();
           if (firstName) pendingLinks.push({ childId: id, fatherName: firstName });
         }
       }
 
       // ربط الآباء بالاسم
-      let linked = 0;
+      const relRows: Array<Record<string, unknown>> = [];
       for (const link of pendingLinks) {
         const fatherId = idByName.get(link.fatherName);
         if (fatherId && fatherId !== link.childId) {
-          await db.insert(relationships).values({
+          relRows.push({
             treeId: input.treeId,
             fromPersonId: fatherId,
             toPersonId: link.childId,
             type: "parent",
           });
-          linked++;
         }
       }
+      const linked = await insertMany(relationships, relRows);
 
       await logChange({
         treeId: input.treeId,
@@ -1518,12 +1525,13 @@ export const personRouter = createRouter({
     }),
 
   /**
-   * استيراد GEDCOM: أفراد + روابط أب/زوج عبر مفاتيح مؤقتة من الملف.
+   * استيراد GEDCOM: يدمج مع الموجود (لا يكرر) ما لم يُختار الاستبدال.
    */
   importGedcom: authedQuery
     .input(
       z.object({
         treeId: z.number().int().positive(),
+        mode: z.enum(["merge", "replace"]).default("merge"),
         people: z
           .array(
             z.object({
@@ -1571,13 +1579,73 @@ export const personRouter = createRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "الشجرة غير موجودة" });
       }
 
-      await assertCanAddPerson(treeRow.ownerId, input.treeId, input.people.length);
+      if (input.mode === "replace") {
+        await db
+          .update(persons)
+          .set({ deletedAt: new Date() })
+          .where(
+            and(eq(persons.treeId, input.treeId), isNull(persons.deletedAt)),
+          );
+        await db
+          .delete(relationships)
+          .where(eq(relationships.treeId, input.treeId));
+      }
+
+      const existing = (await db
+        .select()
+        .from(persons)
+        .where(
+          and(eq(persons.treeId, input.treeId), isNull(persons.deletedAt)),
+        )) as Person[];
+
+      const byGedKey = new Map<string, number>();
+      const byFingerprint = new Map<string, number>();
+      for (const p of existing) {
+        const ged = extractGedcomKey(p.notes);
+        if (ged && !byGedKey.has(ged)) byGedKey.set(ged, p.id);
+        const fp = personImportFingerprint(p);
+        if (!byFingerprint.has(fp)) byFingerprint.set(fp, p.id);
+      }
+
+      const existingRels = await db
+        .select({
+          fromPersonId: relationships.fromPersonId,
+          toPersonId: relationships.toPersonId,
+          type: relationships.type,
+        })
+        .from(relationships)
+        .where(eq(relationships.treeId, input.treeId));
+      const existingRelKeys = new Set<string>(
+        existingRels.map((r) =>
+          r.type === "spouse"
+            ? `s:${[r.fromPersonId, r.toPersonId].sort((a, b) => a - b).join("-")}`
+            : `p:${r.fromPersonId}-${r.toPersonId}`,
+        ),
+      );
 
       const idByKey = new Map<string, number>();
       const twinEntries: Array<{ personId: number; twinGroupKey: string }> = [];
-      let created = 0;
+      const toInsert: Array<Record<string, unknown>> = [];
+      const insertKeys: string[] = [];
+      let skipped = 0;
+
       for (const row of input.people) {
-        const id = await insertReturningId(persons, {
+        const fp = personImportFingerprint(row);
+        const matchedId =
+          byGedKey.get(row.key) ?? byFingerprint.get(fp) ?? null;
+        if (matchedId) {
+          idByKey.set(row.key, matchedId);
+          skipped++;
+          if (row.twinGroupKey) {
+            twinEntries.push({
+              personId: matchedId,
+              twinGroupKey: row.twinGroupKey,
+            });
+          }
+          continue;
+        }
+        insertKeys.push(row.key);
+        toInsert.push({
           treeId: input.treeId,
           givenName: row.givenName,
           fatherName: row.fatherName ?? null,
@@ -1592,18 +1660,38 @@ export const personRouter = createRouter({
           deathPlace: row.deathPlace ?? null,
           isLiving: row.isLiving && !row.deathYear,
           kunya: row.kunya ?? null,
-          notes: row.notes ?? null,
+          notes: embedGedcomKey(row.notes, row.key),
           createdById: ctx.user.id,
         });
-        idByKey.set(row.key, id);
-        if (row.twinGroupKey) {
-          twinEntries.push({ personId: id, twinGroupKey: row.twinGroupKey });
-        }
-        created++;
       }
 
-      let linked = 0;
-      const seen = new Set<string>();
+      if (toInsert.length > 0) {
+        await assertCanAddPerson(
+          treeRow.ownerId,
+          input.treeId,
+          toInsert.length,
+        );
+      }
+
+      const peopleByKey = new Map(input.people.map((p) => [p.key, p]));
+      const newIds = await insertReturningIds(persons, toInsert);
+      for (let i = 0; i < insertKeys.length; i++) {
+        const key = insertKeys[i]!;
+        const id = newIds[i]!;
+        idByKey.set(key, id);
+        byGedKey.set(key, id);
+        const row = peopleByKey.get(key);
+        if (row) {
+          byFingerprint.set(personImportFingerprint(row), id);
+          if (row.twinGroupKey) {
+            twinEntries.push({ personId: id, twinGroupKey: row.twinGroupKey });
+          }
+        }
+      }
+      const created = newIds.length;
+
+      const seen = new Set<string>(existingRelKeys);
+      const relRows: Array<Record<string, unknown>> = [];
       for (const link of input.links) {
         const fromId = idByKey.get(link.fromKey);
         const toId = idByKey.get(link.toKey);
@@ -1614,14 +1702,14 @@ export const personRouter = createRouter({
             : `p:${fromId}-${toId}`;
         if (seen.has(dedupe)) continue;
         seen.add(dedupe);
-        await db.insert(relationships).values({
+        relRows.push({
           treeId: input.treeId,
           fromPersonId: fromId,
           toPersonId: toId,
           type: link.type,
         });
-        linked++;
       }
+      const linked = await insertMany(relationships, relRows);
 
       const twinGroups = await applyImportedTwinGroups(
         db,
@@ -1633,9 +1721,99 @@ export const personRouter = createRouter({
         treeId: input.treeId,
         userId: ctx.user.id,
         action: "import_gedcom",
-        details: `استورد GEDCOM: ${created} شخصاً و${linked} رابطاً و${twinGroups} مجموعة توأم`,
+        details: `GEDCOM (${input.mode}): +${created} · روابط ${linked} · تخطي ${skipped} · توأم ${twinGroups}`,
       });
-      return { created, linked, twinGroups };
+      return { created, linked, twinGroups, skipped };
+    }),
+
+  /** إزالة الأفراد المكررين (نفس الاسم+الأب+الجنس+سنة الميلاد) — يُبقي الأقدم */
+  removeDuplicates: authedQuery
+    .input(z.object({ treeId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await requireTreeRole(ctx.user.id, input.treeId, "admin");
+      const rows = (await db
+        .select()
+        .from(persons)
+        .where(
+          and(eq(persons.treeId, input.treeId), isNull(persons.deletedAt)),
+        )) as Person[];
+      rows.sort((a, b) => a.id - b.id);
+
+      const keep = new Map<string, number>();
+      const dropIds: number[] = [];
+      for (const p of rows) {
+        const fp = personImportFingerprint(p);
+        if (keep.has(fp)) dropIds.push(p.id);
+        else keep.set(fp, p.id);
+      }
+      if (dropIds.length === 0) {
+        return { removed: 0, kept: rows.length };
+      }
+
+      const now = new Date();
+      const BATCH = 200;
+      for (let i = 0; i < dropIds.length; i += BATCH) {
+        const chunk = dropIds.slice(i, i + BATCH);
+        await db
+          .update(persons)
+          .set({ deletedAt: now })
+          .where(
+            and(eq(persons.treeId, input.treeId), inArray(persons.id, chunk)),
+          );
+        await db
+          .delete(relationships)
+          .where(
+            and(
+              eq(relationships.treeId, input.treeId),
+              or(
+                inArray(relationships.fromPersonId, chunk),
+                inArray(relationships.toPersonId, chunk),
+              ),
+            ),
+          );
+      }
+
+      await logChange({
+        treeId: input.treeId,
+        userId: ctx.user.id,
+        action: "remove_duplicates",
+        details: `أُزيل ${dropIds.length} فرداً مكرراً`,
+      });
+      return { removed: dropIds.length, kept: keep.size };
+    }),
+
+  /** تفريغ كل أفراد الشجرة (حذف ناعم) مع مسح الروابط — للمالك/المشرف */
+  clearAll: authedQuery
+    .input(z.object({ treeId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await requireTreeRole(ctx.user.id, input.treeId, "admin");
+      const active = await db
+        .select({ id: persons.id })
+        .from(persons)
+        .where(
+          and(eq(persons.treeId, input.treeId), isNull(persons.deletedAt)),
+        );
+      if (active.length === 0) return { cleared: 0 };
+
+      await db
+        .update(persons)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(eq(persons.treeId, input.treeId), isNull(persons.deletedAt)),
+        );
+      await db
+        .delete(relationships)
+        .where(eq(relationships.treeId, input.treeId));
+
+      await logChange({
+        treeId: input.treeId,
+        userId: ctx.user.id,
+        action: "clear_people",
+        details: `فُرّغت الشجرة من ${active.length} فرداً`,
+      });
+      return { cleared: active.length };
     }),
 
   /** بحث عن أشخاص مشابهين بالاسم والنسب */

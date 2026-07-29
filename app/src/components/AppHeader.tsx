@@ -44,6 +44,17 @@ export default function AppHeader() {
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">{t("nav.myTrees")}</span>
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+            className="gap-2 px-2 sm:px-3 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            title={t("nav.logout")}
+            aria-label={t("nav.logout")}
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("nav.logout")}</span>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button

@@ -83,6 +83,8 @@ for (const key of [
   "KIMI_OPEN_URL",
   "VITE_APP_ID",
   "VITE_KIMI_AUTH_URL",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
 ]) {
   if (env[key]) toPush[key] = env[key];
 }
@@ -121,7 +123,9 @@ for (const [key, value] of Object.entries(toPush)) {
     shell: process.platform === "win32",
     env: process.env,
   });
-  const ok = vercel(["env", "add", key, "production"], `${value}\n`);
+  // Do not append \n — on Windows the CLI stores the trailing newline in the value,
+  // which breaks password login (exact string compare).
+  const ok = vercel(["env", "add", key, "production"], String(value).replace(/\r?\n$/, ""));
   console.log(ok ? "ok" : "FAIL");
 }
 
