@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-07-29 — إصلاح فشل اتصال قاعدة Neon عند تسجيل دخول المشرف
+
+### السبب
+تسجيل الدخول بالبريد على الإنتاج يعيد «تعذر الاتصال بقاعدة البيانات» رغم أن `DATABASE_URL` مضبوط (`dbConfigured: true`) وكلمة المرور صحيحة — الفشل في مسار تنفيذ الاستعلام على Vercel، لا في غياب المتغير.
+
+### الإصلاح
+- دخول المشرف يستخدم Neon SQL (HTTP) مباشرة عبر `upsertUserNeonRaw` — يتجاوز أي خلل في مسار drizzle على serverless.
+- drizzle يُبنى في الحزمة الرئيسية عبر `createNeonSql` من الـ sidecar (نسخة drizzle واحدة مع الجداول).
+- قراءة `DATABASE_URL` حيّة دائماً من `process.env` بدل لقطة وقت التحميل.
+- `sanitizeDatabaseUrl` لم تعد تُعيد ترميز كلمة مرور الرابط.
+- `GET /api/diag?db=1` يفحص الاتصال فعلياً ويعيد `dbOk` / `dbKind` (`auth` | `network` | `schema` | `timeout`) مع خطأ معقّم.
+- رسائل دخول أوضح: مصادقة مرفوضة / جداول ناقصة / مهلة — مع تفاصيل تقنية آمنة.
+- إصلاح اختبار `treeOccasions` المتذبذب بسبب التاريخ.
+
+### التحقق بعد الدمج
+1. `GET https://nasab-mu.vercel.app/api/diag?db=1` → `dbOk: true`.
+2. إن كان `dbKind: "auth"` → تحديث `DATABASE_URL` (pooled) من Neon Console إلى Vercel ثم Redeploy.
+3. الدخول: `admin@bhd.om` / `Admin@1234`.
+
+---
+
 ## 2026-07-29 — إنتاج Neon + استيراد GEDCOM + دخول Google
 
 ### البنية والإنتاج
