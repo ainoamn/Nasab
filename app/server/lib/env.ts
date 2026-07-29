@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import { normalizeDatabaseUrl } from "@db/dialect";
 import {
   BOOTSTRAP_ADMIN_EMAIL,
   BOOTSTRAP_ADMIN_PASSWORD,
@@ -84,6 +85,6 @@ const envBase = {
 export const env = {
   ...envBase,
   get databaseUrl() {
-    return process.env.DATABASE_URL?.trim() || "";
+    return normalizeDatabaseUrl(process.env.DATABASE_URL ?? "");
   },
 };
