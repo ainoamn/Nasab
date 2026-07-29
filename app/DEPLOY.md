@@ -119,12 +119,30 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 |---------|--------|
 | `DATABASE_URL` | نعم (Neon pooled) |
 | `APP_ID` / `APP_SECRET` | نعم |
-| `KIMI_AUTH_URL` / `KIMI_OPEN_URL` | نعم |
-| `VITE_APP_ID` / `VITE_KIMI_AUTH_URL` | نعم (وقت البناء) |
 | `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` | نعم (نطاقك على HTTPS) |
 | `OWNER_UNION_ID` | مُستحسن |
-| `PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD` | اختياري — دخول مشرف بالبريد بدون Kimi |
+| `PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD` | نعم — دخول **المشرف** بالبريد |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | نعم — دخول **المستخدمين** عبر Google |
 | `TRUST_PROXY` | `true` |
+| `KIMI_AUTH_URL` / `KIMI_OPEN_URL` | اختياري — Kimi معطّل في الواجهة |
+
+### دخول Google (المستخدمون)
+
+1. أنشئ OAuth Client من نوع **Web application** في [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. **Authorized JavaScript origins:**
+   ```
+   https://nasab-mu.vercel.app
+   http://localhost:5173
+   ```
+3. **Authorized redirect URIs** (مهم — ليس `/login`):
+   ```
+   https://nasab-mu.vercel.app/api/oauth/google/callback
+   http://localhost:5173/api/oauth/google/callback
+   ```
+4. ضع `GOOGLE_CLIENT_ID` و`GOOGLE_CLIENT_SECRET` في Vercel ثم Redeploy.
+5. المسار الحي: زر «الدخول عبر Google» → `GET /api/oauth/google` → callback يضبط الجلسة.
+
+المشرف يستخدم قسماً مطوياً في `/login` (بريد/كلمة مرور فقط).
 
 ### حساب المشرف (دخول بالبريد)
 
@@ -259,6 +277,9 @@ npm run launch:status    # Neon محلي استشاري + دخان حي
 
 التصدير/الاستيراد يحفظ مجموعات التوائم عبر `_TGID` و`ASSO` / `RELA twin` — انظر المرحلة 9 في [`UPGRADE.md`](../UPGRADE.md).
 
+الاستيراد **يدمج** مع الأفراد الموجودين (بصمة اسم+أب+جنس+سنة ميلاد أو علامة `[[ged:KEY]]`) ولا يكرّر الملف تلقائياً. يمكن اختيار «استبدال كل الأفراد» من حوار الاستيراد، أو من إعدادات الشجرة: **إزالة المكررات** / **تفريغ كل الأفراد**.
+
+للملفات الكبيرة يُدرج الأشخاص والروابط على دفعات لتجنّب مهلة Vercel.
 ### ضبط الإطلاق بسرعة
 
 ```bash

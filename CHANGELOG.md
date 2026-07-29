@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-07-29 — إنتاج Neon + استيراد GEDCOM + دخول Google
+
+### البنية والإنتاج
+- إصلاح `$returningId` على Postgres: إدراج دفعي (`insertReturningIds` / `insertMany`) لتجنّب مهلة Vercel.
+- إعدادات Vercel: Build = `node scripts/vercel-build.mjs`، Root = `app`، `maxDuration: 60`.
+- استيراد GEDCOM يدمج مع الموجود (لا يكرّر) مع وضع استبدال اختياري؛ علامات `[[ged:KEY]]`.
+- إعدادات الشجرة: إزالة المكررات + تفريغ الأفراد.
+
+### المصادقة
+- إلغاء Kimi من الواجهة.
+- دخول المستخدمين عبر Google OAuth (تحويل `/api/oauth/google` + مسار ID-token احتياطي).
+- دخول المشرف بالبريد تحت قسم مطوي؛ زر تسجيل خروج ظاهر في الهيدر.
+- `/setup` يعرض حالة Google؛ CSP يسمح بـ accounts.google.com.
+
+### توثيق
+- [`UPGRADE.md`](./UPGRADE.md) المرحلة 33؛ تحديث [`DEPLOY.md`](./app/DEPLOY.md) و[`README.md`](./README.md).
+
+---
+
 ## 2026-07-28 — توأم شمسي/مروحة + a11y مخطط + حدود أخطاء
 
 ### المنتج

@@ -35,7 +35,7 @@
 | API | tRPC + Hono |
 | قاعدة البيانات | SQLite (تطوير) / PostgreSQL Neon أو MySQL (إنتاج) + Drizzle ORM |
 | النشر | Vercel (واجهة + serverless API) أو Docker / VPS |
-| المصادقة | Kimi OAuth + Google OAuth + دخول محلي (تطوير فقط) |
+| المصادقة | Google OAuth (مستخدمون) + دخول مشرف بالبريد + دخول محلي (تطوير) |
 | i18n | العربية + الإنجليزية (react-i18next) |
 | الرسم البياني | مخطط شجرة تفاعلي (FamilyChart) |
 
@@ -257,9 +257,10 @@ npm run vercel:print-env  # طباعة متغيرات للصق في Vercel
 
 ### 11. تسجيل الدخول
 
-- **Kimi OAuth** (الأساسي)
-- **Google OAuth** (اختياري — `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`)
-- **دخول محلي** (تطوير فقط)
+- **Google OAuth** للمستخدمين والأعضاء (`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`)
+- **دخول مشرف بالبريد** (`PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD`)
+- **دخول محلي** (تطوير فقط — `DEV_LOCAL_AUTH`)
+- **Kimi** معطّل في الواجهة
 
 ---
 
@@ -343,27 +344,41 @@ npm run db:push
 
 ## المصادقة
 
+- **المستخدمون والأعضاء:** زر Google في `/login` → `/api/oauth/google` (تحويل OAuth).
+- **المشرف:** قسم مطوي «دخول المشرف بالبريد» (`PASSWORD_LOGIN_*`).
+- **Kimi:** معطّل في الواجهة (`auth.config.kimiEnabled = false`).
+- **تطوير محلي:** `DEV_LOCAL_AUTH=true` (معطّل تلقائياً في الإنتاج).
+
 ### متغيرات البيئة
 
 ```env
 APP_ID=
 APP_SECRET=
-KIMI_AUTH_URL=
-KIMI_OPEN_URL=
-VITE_KIMI_AUTH_URL=
-VITE_APP_ID=
-OWNER_UNION_ID=          # union ID للمشرف الأول
+OWNER_UNION_ID=password:admin@bhd.om
+PASSWORD_LOGIN_EMAIL=admin@bhd.om
+PASSWORD_LOGIN_PASSWORD=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+# Kimi اختياري — غير مستخدم في الواجهة حالياً
+# KIMI_AUTH_URL=
+# KIMI_OPEN_URL=
 ```
 
-### Google OAuth
+### Google OAuth (Google Cloud Console)
 
-Redirect URI في Google Console:
-
+**Authorized JavaScript origins**
 ```
+https://nasab-mu.vercel.app
+http://localhost:5173
+```
+
+**Authorized redirect URIs**
+```
+https://nasab-mu.vercel.app/api/oauth/google/callback
 http://localhost:5173/api/oauth/google/callback
 ```
+
+لا تستخدم `…/login` كـ redirect URI — يسبب فشل الدخول (`invalid_client` / `origin_mismatch`).
 
 ---
 

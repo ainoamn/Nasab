@@ -1,6 +1,6 @@
 # خطة الترقية والتطوير — نَسَب (Nasab)
 
-تاريخ التنفيذ: 2026-07-28  
+تاريخ التنفيذ: 2026-07-29  
 المستودع: [github.com/ainoamn/Nasab](https://github.com/ainoamn/Nasab)  
 الموقع: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
 
@@ -8,7 +8,7 @@
 
 ## الهدف
 
-ربط الإنتاج بقاعدة **Neon PostgreSQL** الحقيقية، تثبيت الدخول، ورفع جاهزية الإطلاق.
+ربط الإنتاج بقاعدة **Neon PostgreSQL** الحقيقية، تثبيت الدخول (Google + مشرف)، ورفع جاهزية الإطلاق.
 
 ---
 
@@ -34,41 +34,31 @@ npm run db:seed-neon
 
 ---
 
-## المرحلة 2 — ربط Vercel بالقاعدة ⚠️ يحتاج إجراء منك
+## المرحلة 2 — ربط Vercel بالقاعدة ✅ منفَّذة
 
-`/api/diag` على الإنتاج يظهر حالياً:
+الإنتاج مربوط بـ Neon؛ `/api/diag` → `dbConfigured: true` و`sidecar: true`.
 
-```json
-{ "dbConfigured": false, "hasAppSecret": false, "sidecar": true }
-```
+| إعداد Vercel | القيمة |
+|--------------|--------|
+| Root Directory | `app` |
+| Build Command | `node scripts/vercel-build.mjs` |
+| Output Directory | فارغ (Build Output API) |
 
-يعني الكود جاهز (sidecar موجود) لكن **متغيرات البيئة غير مضبوطة على Vercel**.
-
-### نفّذ الآن (دقيقتان)
-
-1. سجّل دخول CLI:
-   ```bash
-   cd app
-   vercel login
-   vercel link   # Root Directory = app
-   npm run vercel:env
-   ```
-2. أو من لوحة Vercel → Settings → Environment Variables (Production):
-
-| المتغير | القيمة |
-|---------|--------|
-| `DATABASE_URL` | رابط Neon **pooled** من `.env.production` |
-| `APP_SECRET` | ≥ 32 حرفاً (يُولَّد تلقائياً عبر `vercel:env`) |
-| `PASSWORD_LOGIN_EMAIL` | `admin@bhd.om` |
-| `PASSWORD_LOGIN_PASSWORD` | كلمة قوية — أو `npm run admin:rotate` |
-| `OWNER_UNION_ID` | `password:admin@bhd.om` |
-| `APP_PUBLIC_URL` | `https://nasab-mu.vercel.app` |
-| `ALLOWED_ORIGINS` | `https://nasab-mu.vercel.app` |
+| متغير | ملاحظة |
+|-------|--------|
+| `DATABASE_URL` | Neon pooled |
+| `APP_SECRET` | ≥ 32 حرفاً |
+| `PASSWORD_LOGIN_*` / `OWNER_UNION_ID` | مشرف البريد |
+| `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` | النطاق الحي |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | دخول المستخدمين |
 | `TRUST_PROXY` | `true` |
 
-3. **Redeploy** للإنتاج.
-4. تحقق: `https://nasab-mu.vercel.app/api/diag` → `dbConfigured: true`
-5. دخول: `/login` → البريد من `PASSWORD_LOGIN_EMAIL` (بعد التدوير استخدم كلمة المرور الجديدة)
+```bash
+cd app
+npm run vercel:env
+npm run deploy:status
+npm run prod:smoke
+```
 
 ---
 
@@ -86,8 +76,9 @@ npm run db:seed-neon
 
 | الأولوية | البند | الحالة |
 |----------|--------|--------|
-| عالية | تفعيل `DATABASE_URL` على Vercel | ⚠️ يدوي — `npm run vercel:print-env` ثم الصق في اللوحة |
+| عالية | تفعيل `DATABASE_URL` على Vercel | ✅ |
 | عالية | إصلاح قراءة جسم POST على Vercel | ✅ `shouldAddHelpers: false` + form-urlencoded |
+| عالية | دخول Google للمستخدمين | ✅ Redirect OAuth — يحتاج origins/redirect في Console |
 | متوسطة | فحص دخان للإنتاج | ✅ `npm run prod:smoke` |
 | متوسطة | نسخ احتياطي Neon مجدول | ✅ `Ops` workflow + سر `DATABASE_URL` |
 | منخفضة | نطاق مخصص + بريد معاملاتي | لاحقاً |
@@ -122,6 +113,35 @@ npm run prod:smoke
 | `/api/health` و`/api/diag` يعرضان `build` | ✅ |
 | رابط جاهزية من تذييل الرئيسية | ✅ |
 | `npm run launch:status` (Neon محلي + smoke حي) | ✅ |
+
+---
+
+## المرحلة 33 — إنتاج Neon + استيراد دمج + Google (منفَّذة)
+
+| البند | الحالة |
+|--------|--------|
+| `insertReturningId` يدعم Postgres عبر `.returning()` | ✅ |
+| إدراج دفعي للأشخاص/الروابط (استيراد بدون timeout) | ✅ |
+| استيراد GEDCOM: دمج / استبدال + `[[ged:KEY]]` | ✅ |
+| إزالة المكررات + تفريغ الأفراد من الإعدادات | ✅ |
+| تعطيل Kimi؛ Google عبر `/api/oauth/google` | ✅ |
+| زر تسجيل خروج ظاهر؛ Setup يعرض Google | ✅ |
+| Build Output `maxDuration: 60` | ✅ |
+
+### Google Console (مطلوب لعمل الزر)
+
+**Authorized JavaScript origins**
+```
+https://nasab-mu.vercel.app
+http://localhost:5173
+```
+
+**Authorized redirect URIs**
+```
+https://nasab-mu.vercel.app/api/oauth/google/callback
+http://localhost:5173/api/oauth/google/callback
+```
+(لا تستخدم `/login` كـ redirect URI.)
 
 ---
 
