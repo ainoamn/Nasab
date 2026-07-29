@@ -61,7 +61,7 @@ app.get("/api/diag", (c) => {
     sidecar: existsSync(path.join(process.cwd(), "db-pg.cjs")),
     hasAppSecret: Boolean(process.env.APP_SECRET),
     passwordLoginConfigured: Boolean(env.passwordLoginEmail),
-    googleConfigured: Boolean(env.googleClientId),
+    googleConfigured: Boolean(env.googleClientId && env.googleClientSecret),
     kimiEnabled: false,
     hasAppPublicUrl: Boolean(env.appPublicUrl),
     hasAllowedOrigins: env.allowedOrigins.length > 0,

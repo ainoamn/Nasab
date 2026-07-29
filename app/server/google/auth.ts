@@ -119,9 +119,8 @@ export function createGoogleCallbackHandler() {
 }
 
 export function isGoogleAuthEnabled() {
-  // Same as BHD-Pro: GIS / ID-token needs Client ID only.
-  // Redirect OAuth also works when GOOGLE_CLIENT_SECRET is set.
-  return Boolean(env.googleClientId);
+  // Redirect OAuth needs both; ID-token GIS needs client ID only.
+  return Boolean(env.googleClientId && env.googleClientSecret);
 }
 
 type GoogleIdTokenInfo = {

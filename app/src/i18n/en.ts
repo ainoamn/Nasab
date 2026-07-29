@@ -310,7 +310,7 @@ export const en = {
       "Members and guests: sign in with Google. Admin uses a separate email login.",
     googlePendingTitle: "Google sign-in not configured yet",
     googlePendingBody:
-      "Add GOOGLE_CLIENT_ID in Vercel env, then redeploy. In Google Console add this domain as an Authorized JavaScript origin.",
+      "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel. In Google Console set Redirect URI to https://nasab-mu.vercel.app/api/oauth/google/callback and JavaScript origin https://nasab-mu.vercel.app",
     adminToggle: "Admin email login",
     adminHint: "Admin account only — not for regular users",
     localUser: "Username",

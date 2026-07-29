@@ -309,7 +309,7 @@ export const ar = {
     usersNote: "للأعضاء والزوار: الدخول عبر Google. حساب المشرف منفصل بالبريد.",
     googlePendingTitle: "دخول Google قيد التفعيل",
     googlePendingBody:
-      "أضف GOOGLE_CLIENT_ID في إعدادات Vercel ثم أعد النشر. في Google Console أضف النطاق كـ Authorized JavaScript origin.",
+      "أضف GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET في Vercel. في Google Console ضع Redirect URI: https://nasab-mu.vercel.app/api/oauth/google/callback وأضف أيضاً JavaScript origin: https://nasab-mu.vercel.app",
     adminToggle: "دخول المشرف بالبريد",
     adminHint: "لحساب المشرف فقط — ليس للمستخدمين العاديين",
     localUser: "اسم المستخدم",
