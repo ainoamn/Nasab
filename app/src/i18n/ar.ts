@@ -175,7 +175,7 @@ export const ar = {
       "أضف GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET في Vercel مع Redirect URI: /api/oauth/google/callback",
     rowBhd: "دخول حساب BHD الموحّد",
     rowBhdHint:
-      "أضف BHD_IDENTITY_ISSUER و BHD_OAUTH_CLIENT_ID=bhd-nasab و BHD_OAUTH_CLIENT_SECRET (ونفس السر على مشروع one-bhd)",
+      "الدخول يعمل بالمُصدِر الافتراضي https://id.bhd-om.com و client_id=bhd-nasab. سر العميل اختياري.",
     rowBuild: "بصمة البناء",
     buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}",
     buildBehindHint:

@@ -43,7 +43,7 @@ export function isBhdIdentityReady(): boolean {
 }
 
 export function isBhdSsoEnabled(): boolean {
-  return isBhdIdentityReady() && Boolean(bhdOauthClientSecret());
+  return isBhdIdentityReady();
 }
 
 export function bhdUnionId(sub: string): string {

@@ -84,4 +84,4 @@ npx tsc -b
 4. مستخدم Google قديم بنفس البريد الموثّق لا يُنشأ له صف ثانٍ
 5. فشل العودة → `/login?error=bhd&reason=…` (`token` = رفض `/oauth/token`، `state` = كوكي PKCE، `denied` = رفض الهوية)
 6. الخروج من نَسَب يمسح `kimi_sid` ويحوّل إلى `end-session`
-7. `bhdSsoConfigured: true` بعد ضبط السر على المشروعين؛ بدونه الهوية تقبل PKCE لـ `bhd-nasab`
+7. `/api/diag` → `bhdSsoConfigured: true` عندما يكون المُصدِر و`client_id` جاهزين (السر اختياري مع PKCE)

@@ -123,7 +123,9 @@ export default function Setup() {
       ok: diag ? Boolean(diag.bhdSsoConfigured) : null,
       hint: diag && !diag.bhdSsoConfigured
         ? t("setup.rowBhdHint")
-        : diag?.bhdIssuer || undefined,
+        : diag?.bhdIssuer
+          ? `${diag.bhdIssuer} · bhd-nasab`
+          : undefined,
     },
     {
       id: "build",

@@ -175,7 +175,7 @@ export const en = {
       "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel with redirect URI: /api/oauth/google/callback",
     rowBhd: "Unified BHD account sign-in",
     rowBhdHint:
-      "Set BHD_IDENTITY_ISSUER, BHD_OAUTH_CLIENT_ID=bhd-nasab, and BHD_OAUTH_CLIENT_SECRET (same secret on the one-bhd project)",
+      "Sign-in uses the default issuer https://id.bhd-om.com and client_id=bhd-nasab. Client secret is optional.",
     rowBuild: "Build fingerprint",
     buildBehind: "Live build {{live}} is behind main {{main}}",
     buildBehindHint:

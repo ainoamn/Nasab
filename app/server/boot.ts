@@ -7,6 +7,7 @@ import path from "node:path";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
+import { isBhdIdentityReady } from "./lib/bhd-identity";
 import { createOAuthCallbackHandler } from "./kimi/auth";
 import {
   createGoogleAuthHandler,
@@ -70,7 +71,7 @@ app.get("/api/diag", async (c) => {
     hasAppSecret: Boolean(process.env.APP_SECRET),
     passwordLoginConfigured: Boolean(env.passwordLoginEmail),
     googleConfigured: Boolean(env.googleClientId && env.googleClientSecret),
-    bhdSsoConfigured: Boolean(env.bhdOauthClientSecret),
+    bhdSsoConfigured: isBhdIdentityReady(),
     bhdIssuer: env.bhdIdentityIssuer || null,
     kimiEnabled: false,
     hasAppPublicUrl: Boolean(env.appPublicUrl),
