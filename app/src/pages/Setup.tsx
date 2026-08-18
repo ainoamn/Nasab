@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TreePalm, CheckCircle2, XCircle, CircleDashed } from "lucide-react";
 import { toast } from "sonner";
 import { useBuildBehind } from "@/hooks/useBuildBehind";
+import { BHD_START_PATH } from "@/const";
 
 type Diag = {
   ok?: boolean;
@@ -39,7 +40,9 @@ export default function Setup() {
   const { t } = useTranslation();
   const [diag, setDiag] = useState<Diag | null>(null);
   const [loading, setLoading] = useState(true);
-  const { liveBuild, mainSha, buildBehind } = useBuildBehind();
+  const { liveBuild, mainSha, buildBehind } = useBuildBehind({
+    showDeployLag: true,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -240,7 +243,7 @@ export default function Setup() {
 
             <div className="flex flex-wrap gap-2">
               <Button asChild>
-                <Link to="/login">{t("setup.login")}</Link>
+                <a href={BHD_START_PATH}>{t("setup.login")}</a>
               </Button>
               <Button
                 type="button"

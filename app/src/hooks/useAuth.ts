@@ -1,7 +1,7 @@
 import { trpc } from "@/providers/trpc";
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { LOGIN_PATH } from "@/const";
+import { LOGIN_PATH, bhdStartHref } from "@/const";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -41,7 +41,11 @@ export function useAuth(options?: UseAuthOptions) {
 
   useEffect(() => {
     if (redirectOnUnauthenticated && !isLoading && !user) {
-      const currentPath = window.location.pathname;
+      const currentPath = `${window.location.pathname}${window.location.search}`;
+      if (redirectPath === LOGIN_PATH) {
+        window.location.replace(bhdStartHref(currentPath));
+        return;
+      }
       if (currentPath !== redirectPath) {
         navigate(redirectPath);
       }

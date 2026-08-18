@@ -1,5 +1,6 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useLayoutEffect, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+import { bhdStartHref } from "@/const";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,24 +32,15 @@ export default function Login() {
   const loginError = params.get("error");
   const stayForAdmin = params.get("admin") === "1";
 
-  function bhdStartHref() {
-    const qs =
-      returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
-        ? `?returnTo=${encodeURIComponent(returnTo)}`
-        : "";
-    return `/api/auth/bhd/start${qs}`;
-  }
-
   useEffect(() => {
     if (loginError === "google") toast.error(t("login.googleError"));
     if (loginError === "bhd") toast.error(t("login.bhdError"));
   }, [loginError, t]);
 
-  useEffect(() => {
-    if (dbBlocked || stayForAdmin || loginError) return;
-    if (authConfig.isLoading) return;
-    window.location.replace(bhdStartHref());
-  }, [authConfig.isLoading, dbBlocked, stayForAdmin, loginError, returnTo]);
+  useLayoutEffect(() => {
+    if (stayForAdmin || loginError || dbBlocked) return;
+    window.location.replace(bhdStartHref(returnTo));
+  }, [stayForAdmin, loginError, dbBlocked, returnTo]);
 
   async function signInWithPassword(e?: FormEvent) {
     e?.preventDefault();
@@ -153,7 +145,7 @@ export default function Login() {
                 size="lg"
                 disabled={dbBlocked || signingIn}
                 onClick={() => {
-                  window.location.href = bhdStartHref();
+                  window.location.href = bhdStartHref(returnTo);
                 }}
               >
                 {t("login.bhd")}

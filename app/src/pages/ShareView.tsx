@@ -1,4 +1,5 @@
 import { Link, useParams, useSearchParams } from "react-router";
+import { BHD_START_PATH } from "@/const";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import { useBuildBehind } from "@/hooks/useBuildBehind";
@@ -589,7 +590,7 @@ export default function ShareView() {
               </Button>
             ) : (
               <Button variant="outline" asChild>
-                <Link to="/login">{t("share.createYours")}</Link>
+                <a href={BHD_START_PATH}>{t("share.createYours")}</a>
               </Button>
             )}
           </div>

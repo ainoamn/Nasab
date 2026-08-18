@@ -187,7 +187,7 @@ export const en = {
     copyFailed: "Copy failed",
     details:
       "Details in UPGRADE.md — database link and Vercel env vars. Also check: npm run deploy:status",
-    login: "Login",
+    login: "Sign in",
     home: "Home",
     refreshDiag: "Refresh check",
     openDiag: "Open /api/diag",
@@ -335,7 +335,7 @@ export const en = {
     or: "or",
     google: "Sign in with Google",
     googleError: "Google sign-in failed — please try again",
-    bhd: "Sign in with BHD",
+    bhd: "Sign in",
     bhdError: "BHD sign-in failed — please try again",
     bhdRedirecting: "Redirecting to your unified BHD account…",
   },

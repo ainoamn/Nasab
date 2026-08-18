@@ -34,7 +34,7 @@
 | GET | `/api/auth/bhd/callback` | استبدال `code` والتحقق من `id_token` ثم `kimi_sid` |
 | GET | `/api/auth/bhd/logout` | مسح جلسة نَسَب ثم `/oauth/end-session` |
 
-واجهة `/login` تحوّل فوراً إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `id.bhd-om.com`. زر Google أُزيل من نَسَب (جوجل فقط على نطاق الهوية). دخول المشرف يبقى على `/login?admin=1`.
+واجهة أزرار «تسجيل الدخول» تذهب مباشرة إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `id.bhd-om.com`. `/login` تبقى لغلاف الأخطاء ودخول المشرف (`?admin=1`). زر Google أُزيل من نَسَب.
 
 ## ربط الحسابات الحالية
 

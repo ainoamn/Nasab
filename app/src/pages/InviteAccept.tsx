@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router";
+import { bhdStartHref } from "@/const";
 import { useAuth } from "@/hooks/useAuth";
 import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
@@ -105,7 +106,7 @@ export default function InviteAccept() {
                 ) : (
                   <div className="mt-6 space-y-3">
                     <p className="text-sm text-muted-foreground">{t("invite.loginFirst")}</p>
-                    <Button className="w-full" size="lg" onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/invite/${token}`)}`)}>
+                    <Button className="w-full" size="lg" onClick={() => { window.location.href = bhdStartHref(`/invite/${token}`); }}>
                       {t("invite.login")}
                     </Button>
                   </div>

@@ -19,7 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LOGIN_PATH } from "@/const";
+import { bhdStartHref } from "@/const";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
@@ -72,7 +72,7 @@ export default function AuthLayout({
           </div>
           <Button
             onClick={() => {
-              window.location.href = LOGIN_PATH;
+              window.location.href = bhdStartHref();
             }}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
+import { BHD_START_PATH, bhdStartHref } from "@/const";
 import { useAuth } from "@/hooks/useAuth";
-import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,6 @@ const planSlugs = ["free", "plus", "print"] as const;
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  const { liveBuild, mainSha, buildBehind } = useBuildBehind();
 
   const featuresRaw = t("features.items", { returnObjects: true });
   const designsRaw = t("printDesigns.items", { returnObjects: true });
@@ -73,8 +72,8 @@ export default function Home() {
               <Button size="sm" asChild><Link to="/dashboard">{t("nav.myTrees")}</Link></Button>
             ) : (
               <>
-                <Button size="sm" variant="ghost" asChild><Link to="/login">{t("nav.login")}</Link></Button>
-                <Button size="sm" asChild className="hidden sm:inline-flex"><Link to="/login">{t("nav.startFree")}</Link></Button>
+                <Button size="sm" variant="ghost" asChild><a href={BHD_START_PATH}>{t("nav.login")}</a></Button>
+                <Button size="sm" asChild className="hidden sm:inline-flex"><a href={BHD_START_PATH}>{t("nav.startFree")}</a></Button>
               </>
             )}
           </div>
@@ -99,23 +98,16 @@ export default function Home() {
           </p>
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3">
             <Button size="lg" asChild className="text-base px-8 w-full sm:w-auto">
-              <Link to={isAuthenticated ? "/dashboard" : "/login"}>{t("hero.start")}</Link>
+              {isAuthenticated ? (
+                <Link to="/dashboard">{t("hero.start")}</Link>
+              ) : (
+                <a href={BHD_START_PATH}>{t("hero.start")}</a>
+              )}
             </Button>
             <Button size="lg" variant="outline" asChild className="text-base w-full sm:w-auto">
               <a href="#features">{t("hero.how")} <ChevronDown className="h-4 w-4" /></a>
             </Button>
           </div>
-          {buildBehind ? (
-            <p
-              className="mx-auto mt-5 max-w-xl rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
-              role="status"
-            >
-              {t("hero.buildBehind", { live: liveBuild, main: mainSha })}{" "}
-              <Link to="/setup" className="font-medium underline underline-offset-2">
-                {t("hero.buildBehindCta")}
-              </Link>
-            </p>
-          ) : null}
           <p className="mt-4 text-sm text-muted-foreground text-pretty px-2">{t("hero.points")}</p>
         </div>
       </section>
@@ -229,9 +221,15 @@ export default function Home() {
                   </ul>
                   {planSlugs[i] !== "free" && (
                     <Button asChild className="mt-6 w-full" variant={i === 1 ? "default" : "outline"}>
-                      <Link to={isAuthenticated ? `/checkout?plan=${planSlugs[i]}` : "/login"}>
-                        {t("checkout.subscribe")}
-                      </Link>
+                      {isAuthenticated ? (
+                        <Link to={`/checkout?plan=${planSlugs[i]}`}>
+                          {t("checkout.subscribe")}
+                        </Link>
+                      ) : (
+                        <a href={bhdStartHref(`/checkout?plan=${planSlugs[i]}`)}>
+                          {t("checkout.subscribe")}
+                        </a>
+                      )}
                     </Button>
                   )}
                 </CardContent>
@@ -246,7 +244,11 @@ export default function Home() {
         <h2 className="font-display text-3xl md:text-4xl font-bold">{t("ctaSec.title")}</h2>
         <p className="mt-3 text-muted-foreground">{t("ctaSec.subtitle")}</p>
         <Button size="lg" asChild className="mt-6 text-base px-10">
-          <Link to={isAuthenticated ? "/dashboard" : "/login"}>{t("ctaSec.button")}</Link>
+          {isAuthenticated ? (
+            <Link to="/dashboard">{t("ctaSec.button")}</Link>
+          ) : (
+            <a href={BHD_START_PATH}>{t("ctaSec.button")}</a>
+          )}
         </Button>
       </section>
 

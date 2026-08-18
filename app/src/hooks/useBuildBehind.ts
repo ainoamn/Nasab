@@ -11,8 +11,15 @@ export type BuildBehindState = {
   loading: boolean;
 };
 
+type UseBuildBehindOptions = {
+  /** صفحة الجاهزية فقط — لا تُعرض على لوحة المستخدم */
+  showDeployLag?: boolean;
+};
+
 /** مقارنة بصمة البناء الحي مع آخر commit على GitHub main */
-export function useBuildBehind(): BuildBehindState {
+export function useBuildBehind(
+  options?: UseBuildBehindOptions,
+): BuildBehindState {
   const [liveBuild, setLiveBuild] = useState<string | null>(null);
   const [mainSha, setMainSha] = useState<string | null>(null);
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
@@ -41,6 +48,7 @@ export function useBuildBehind(): BuildBehindState {
   }, []);
 
   useEffect(() => {
+    if (!options?.showDeployLag) return;
     let cancelled = false;
     void fetch(GITHUB_MAIN_SHA, {
       headers: { Accept: "application/vnd.github+json" },
@@ -55,12 +63,14 @@ export function useBuildBehind(): BuildBehindState {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [options?.showDeployLag]);
 
   return {
     liveBuild,
     mainSha,
-    buildBehind: Boolean(liveBuild && mainSha && liveBuild !== mainSha),
+    buildBehind: Boolean(
+      options?.showDeployLag && liveBuild && mainSha && liveBuild !== mainSha,
+    ),
     dbConfigured,
     loading,
   };
