@@ -13,7 +13,7 @@
 - جلسة نَسَب تبقى `kimi_sid`. `/login` يحوّل إلى شاشة هوية BHD؛ جوجل فقط على نطاق الهوية.
 - دخول المشرف يبقى على `/login?admin=1`.
 - `client_id` الثابت: `bhd-nasab`.
-- التوثيق: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md) و[`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).
+- التوثيق محدّث للنطاق الحي `https://nasab.bhd-om.com` والمُصدِر `https://id.bhd-om.com`.
 - اختبارات: 204/204.
 
 ---

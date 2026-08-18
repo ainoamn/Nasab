@@ -24,7 +24,7 @@
 - [خطة الترقية والربط بـ Neon](./UPGRADE.md)
 - [هوية BHD الموحّدة (مواصفة SSO)](./docs/BHD-IDENTITY-SSO.md)
 - [تنفيذ SSO في نَسَب](./docs/NASAB-BHD-SSO.md)
-- [جاهزية الإطلاق في الواجهة: /setup](https://nasab-mu.vercel.app/setup)
+- [جاهزية الإطلاق في الواجهة: /setup](https://nasab.bhd-om.com/setup)
 - فحص دوري: GitHub Actions `Ops` (دخان + نسخ Neon)
 
 ---
@@ -37,7 +37,7 @@
 | API | tRPC + Hono |
 | قاعدة البيانات | SQLite (تطوير) / PostgreSQL Neon أو MySQL (إنتاج) + Drizzle ORM |
 | النشر | Vercel (واجهة + serverless API) أو Docker / VPS |
-| المصادقة | حساب BHD الموحّد (OIDC) + Google OAuth + دخول مشرف بالبريد + دخول محلي (تطوير) |
+| المصادقة | حساب BHD الموحّد (OIDC على `id.bhd-om.com`) + دخول مشرف بالبريد (`/login?admin=1`) |
 | i18n | العربية + الإنجليزية (react-i18next) |
 | الرسم البياني | مخطط شجرة تفاعلي (FamilyChart) |
 
@@ -259,8 +259,8 @@ npm run vercel:print-env  # طباعة متغيرات للصق في Vercel
 
 ### 11. تسجيل الدخول
 
-- **Google OAuth** للمستخدمين والأعضاء (`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`)
-- **دخول مشرف بالبريد** (`PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD`)
+- **حساب BHD الموحّد** — `/login` يحوّل إلى `id.bhd-om.com`
+- **دخول مشرف بالبريد** على `/login?admin=1`
 - **دخول محلي** (تطوير فقط — `DEV_LOCAL_AUTH`)
 - **Kimi** معطّل في الواجهة
 
@@ -346,9 +346,8 @@ npm run db:push
 
 ## المصادقة
 
-- **حساب BHD الموحّد:** زر «الدخول بحساب BHD» في `/login` → `GET /api/auth/bhd/start` (OIDC + PKCE). يُفعَّل عند ضبط أسرار الهوية. المواصفة: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md). تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).
-- **المستخدمون والأعضاء (حتى القطع):** زر Google في `/login` → `/api/oauth/google` (تحويل OAuth).
-- **المشرف:** قسم مطوي «دخول المشرف بالبريد» (`PASSWORD_LOGIN_*`). الأدوار لا تُمنح من الهوية.
+- **حساب BHD الموحّد:** `/login` يحوّل فوراً إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `https://id.bhd-om.com` (OIDC + PKCE). جوجل يحدث هناك فقط — ليس على واجهة نَسَب. المواصفة: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md). تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).
+- **المشرف:** `/login?admin=1` (`PASSWORD_LOGIN_*`). الأدوار لا تُمنح من الهوية.
 - **Kimi:** معطّل في الواجهة (`auth.config.kimiEnabled = false`).
 - **تطوير محلي:** `DEV_LOCAL_AUTH=true` (معطّل تلقائياً في الإنتاج).
 
@@ -360,34 +359,16 @@ APP_SECRET=
 OWNER_UNION_ID=password:admin@bhd.om
 PASSWORD_LOGIN_EMAIL=admin@bhd.om
 PASSWORD_LOGIN_PASSWORD=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
 # هوية BHD — client_id ثابت bhd-nasab. لا تشارك DATABASE_URL مع البوابة.
-BHD_IDENTITY_ISSUER=https://one-bhd.vercel.app
+BHD_IDENTITY_ISSUER=https://id.bhd-om.com
 BHD_OAUTH_CLIENT_ID=bhd-nasab
 BHD_OAUTH_CLIENT_SECRET=
-BHD_OAUTH_REDIRECT_URI=https://nasab-mu.vercel.app/api/auth/bhd/callback
+BHD_OAUTH_REDIRECT_URI=https://nasab.bhd-om.com/api/auth/bhd/callback
 BHD_IDENTITY_TOKEN_SECRET=
-# Kimi اختياري — غير مستخدم في الواجهة حالياً
-# KIMI_AUTH_URL=
-# KIMI_OPEN_URL=
+# مسار Google المحلي لم يعد واجهة المستخدم — يُترك حتى القطع إن لزم
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
 ```
-
-### Google OAuth (Google Cloud Console)
-
-**Authorized JavaScript origins**
-```
-https://nasab-mu.vercel.app
-http://localhost:5173
-```
-
-**Authorized redirect URIs**
-```
-https://nasab-mu.vercel.app/api/oauth/google/callback
-http://localhost:5173/api/oauth/google/callback
-```
-
-لا تستخدم `…/login` كـ redirect URI — يسبب فشل الدخول (`invalid_client` / `origin_mismatch`).
 
 ---
 
@@ -470,7 +451,7 @@ http://localhost:5173/api/oauth/google/callback
 
 **إن بقي `/api/health` على SHA قديم بعد دفع `main`:** Vercel → Deployments → **Redeploy** (Root Directory = `app`). تحقق بـ `npm run deploy:status` أو `npm run prod:smoke` (يعرض `deployInSync`).
 
-الموقع الحالي: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
+الموقع الحالي: [nasab.bhd-om.com](https://nasab.bhd-om.com) — نسخة Vercel: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
 
 الدليل التفصيلي: [`app/DEPLOY.md`](app/DEPLOY.md)
 

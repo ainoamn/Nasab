@@ -2,7 +2,7 @@
 
 تاريخ التنفيذ: 2026-07-29  
 المستودع: [github.com/ainoamn/Nasab](https://github.com/ainoamn/Nasab)  
-الموقع: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
+الموقع: [nasab.bhd-om.com](https://nasab.bhd-om.com)
 
 ---
 
@@ -12,11 +12,11 @@
 
 ---
 
-## المرحلة 35 — دخول حساب BHD الموحّد (منفَّذة في الكود)
+## المرحلة 35 — دخول حساب BHD الموحّد (منفَّذة)
 
 المصدر المعتمد: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md) — الإصدار `bhd-identity.v1`.  
 تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).  
-Issuer الحي حالياً: `https://one-bhd.vercel.app` (بعد CNAME: `https://id.bhd-om.com`).
+Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.com`. البناء الحي: `98d1d7c`.
 
 | البند | الحالة |
 |--------|--------|
@@ -24,23 +24,24 @@ Issuer الحي حالياً: `https://one-bhd.vercel.app` (بعد CNAME: `https
 | `client_id=bhd-nasab` وعمود `bhd_sub` (بدون مشاركة `DATABASE_URL`) | ✅ |
 | ربط الحسابات الحالية بالبريد الموثّق (Google / مشرف) دون صف ثانٍ | ✅ |
 | جلسة المنتج تبقى `kimi_sid` — لا تُنسخ كوكي الهوية | ✅ |
-| Google ودخول المشرف باقيان حتى القطع | ✅ |
+| `/login` يحوّل إلى شاشة الهوية — جوجل ليس على واجهة نَسَب | ✅ |
+| دخول المشرف على `/login?admin=1` | ✅ |
 | اختبارات الوحدة (PKCE / state / aud / nonce / email_verified) | ✅ |
-| ضبط أسرار Vercel على نَسَب و`one-bhd` ثم Redeploy | ⏳ تشغيل |
+| ضبط `BHD_OAUTH_CLIENT_SECRET` على نَسَب و`BHD_OAUTH_CLIENT_SECRET_NASAB` على `one-bhd` | ⏳ تشغيل |
 
 **متغيرات نَسَب (Vercel):**
 
 ```env
-BHD_IDENTITY_ISSUER=https://one-bhd.vercel.app
+BHD_IDENTITY_ISSUER=https://id.bhd-om.com
 BHD_OAUTH_CLIENT_ID=bhd-nasab
 BHD_OAUTH_CLIENT_SECRET=
-BHD_OAUTH_REDIRECT_URI=https://nasab-mu.vercel.app/api/auth/bhd/callback
+BHD_OAUTH_REDIRECT_URI=https://nasab.bhd-om.com/api/auth/bhd/callback
 BHD_IDENTITY_TOKEN_SECRET=
 ```
 
-على مشروع الهوية `one-bhd`: نفس السر في `BHD_OAUTH_CLIENT_SECRET_NASAB`، و`BHD_IDENTITY_TOKEN_SECRET` في نَسَب يطابق `IDENTITY_TOKEN_SECRET` أو `AUTH_SECRET` للهوية (مرحلة HS256).
+على مشروع الهوية `one-bhd`: نفس السر في `BHD_OAUTH_CLIENT_SECRET_NASAB`.
 
-**بعد النشر:** `GET /api/diag` → `bhdSsoConfigured: true`. زر «الدخول بحساب BHD» يظهر في `/login`.
+**بعد النشر:** `https://nasab.bhd-om.com/login` يحوّل إلى `https://id.bhd-om.com`. إكمال الدخول بعد العودة يحتاج `BHD_OAUTH_CLIENT_SECRET`.
 
 ---
 

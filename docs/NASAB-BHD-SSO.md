@@ -8,7 +8,7 @@
 
 | الطبقة | أين | ماذا يُحفظ |
 |---|---|---|
-| الهوية | `https://one-bhd.vercel.app` ثم `https://id.bhd-om.com` | حساب BHD (بريد / Google) |
+| الهوية | `https://id.bhd-om.com` | حساب BHD (بريد / Google) |
 | نَسَب | قاعدة Neon الخاصة بنَسَب | الشجرات، الأعضاء، الفوترة، العمود `bhd_sub` |
 
 - لا تُشارك `DATABASE_URL` مع البوابة أو وازن أو حسابي.
@@ -21,8 +21,8 @@
 | المفتاح | القيمة |
 |---|---|
 | `client_id` | `bhd-nasab` |
-| `redirect_uri` الإنتاج | `https://nasab-mu.vercel.app/api/auth/bhd/callback` |
-| `redirect_uri` النطاق الرسمي (عند الضبط) | `https://nasab.bhd-om.com/api/auth/bhd/callback` |
+| `redirect_uri` الإنتاج | `https://nasab.bhd-om.com/api/auth/bhd/callback` |
+| `redirect_uri` Vercel | `https://nasab-mu.vercel.app/api/auth/bhd/callback` |
 | `redirect_uri` محلي | `http://localhost:5173/api/auth/bhd/callback` |
 | `post_logout_redirect_uri` | أصل الموقع + `/` |
 
@@ -51,14 +51,14 @@
 على مشروع Vercel **nasab**:
 
 ```env
-BHD_IDENTITY_ISSUER=https://one-bhd.vercel.app
+BHD_IDENTITY_ISSUER=https://id.bhd-om.com
 BHD_OAUTH_CLIENT_ID=bhd-nasab
 BHD_OAUTH_CLIENT_SECRET=
-BHD_OAUTH_REDIRECT_URI=https://nasab-mu.vercel.app/api/auth/bhd/callback
+BHD_OAUTH_REDIRECT_URI=https://nasab.bhd-om.com/api/auth/bhd/callback
 BHD_IDENTITY_TOKEN_SECRET=
 ```
 
-حتى يعمل CNAME `id` → `cname.vercel-dns.com` اترك `BHD_IDENTITY_ISSUER` على المصدر الحي. بعده: `https://id.bhd-om.com`.
+`BHD_IDENTITY_ISSUER` الافتراضي في الكود هو `https://id.bhd-om.com` (النطاق الحي).
 
 على مشروع **one-bhd**:
 
@@ -78,9 +78,10 @@ npx tsc -b
 
 بعد النشر:
 
-1. `GET https://nasab-mu.vercel.app/api/diag` → `bhdSsoConfigured: true`
-2. `GET https://one-bhd.vercel.app/.well-known/openid-configuration` يتضمن `"bhd-nasab"`
-3. `/login` يعرض زر حساب BHD
+1. `GET https://nasab.bhd-om.com/api/health` → `"build":"98d1d7c"` أو أحدث
+2. `GET https://id.bhd-om.com/.well-known/openid-configuration` يتضمن `"bhd-nasab"`
+3. `https://nasab.bhd-om.com/login` يحوّل إلى شاشة «دخول حساب BHD» على `id.bhd-om.com`
 4. مستخدم Google قديم بنفس البريد الموثّق لا يُنشأ له صف ثانٍ
 5. `state` أو `nonce` خاطئ → `/login?error=bhd`
 6. الخروج من نَسَب يمسح `kimi_sid` ويحوّل إلى `end-session`
+7. بعد ضبط السر: `/api/diag` → `bhdSsoConfigured: true` (إكمال استبدال `code`)
