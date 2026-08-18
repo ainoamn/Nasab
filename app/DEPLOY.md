@@ -290,7 +290,7 @@ npm run deploy:status    # مقارنة SHA (غالباً BEHIND حتى Redeploy
 npm run launch:status    # Neon محلي استشاري + دخان حي
 ```
 
-بعد **Redeploy** (Root Directory = `app`): إن بقي الحي متأخراً عن `main` تظهر لافتات كهرمانية على `/trees/:id` والطباعة و`/share/:token` — مع رابط `/setup`.
+بعد **Redeploy** (Root Directory = `app`): إن بقي الحي متأخراً عن `main` تظهر ملاحظة التأخير على `/setup` فقط (ليست على لوحة الأشجار). على الخطة المجانية قد يتوقف النشر بعد 100 محاولة في اليوم.
 
 على GitHub: workflow [`Ops`](../.github/workflows/ops.yml) يعمل يومياً (دخان الإنتاج + نسخ Neon إن وُجد السر `DATABASE_URL`). خطوة مزامنة SHA تبقى `continue-on-error` لأن النشر التلقائي قد يتأخر.
 

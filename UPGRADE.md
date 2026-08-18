@@ -16,7 +16,7 @@
 
 المصدر المعتمد: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md) — الإصدار `bhd-identity.v1`.  
 تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).  
-Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.com`. البناء الحي: `98d1d7c`.
+Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.com`. `main`: `dd24a1e`. الحي حتى استئناف نشر Vercel: `2978a97`.
 
 | البند | الحالة |
 |--------|--------|
@@ -41,7 +41,7 @@ BHD_IDENTITY_TOKEN_SECRET=
 
 على مشروع الهوية `one-bhd`: نفس السر في `BHD_OAUTH_CLIENT_SECRET_NASAB`.
 
-**بعد النشر:** `https://nasab.bhd-om.com/login` يحوّل إلى `https://id.bhd-om.com`. إكمال الدخول بعد العودة يعمل بـ PKCE حتى لو كان سر العميل فارغاً؛ يُفضَّل ضبط السر لاحقاً على المشروعين.
+**بعد النشر:** أزرار «تسجيل الدخول» تذهب إلى `https://id.bhd-om.com`. إن بقي `/api/health` على SHA أقدم من `origin/main` فالسبب غالباً تأخر Git أو حد نشر Vercel المجاني (100/يوم) — Redeploy يدوي. شبكة «تطبيقات BHD» تظهر بعد الجلسة على الهوية عند أيقونة التسع نقاط، وليست صفحة دخول نَسَب.
 
 ---
 

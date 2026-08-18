@@ -78,10 +78,12 @@ npx tsc -b
 
 بعد النشر:
 
-1. `GET https://nasab.bhd-om.com/api/health` → `"build":"98d1d7c"` أو أحدث
+1. `GET https://nasab.bhd-om.com/api/health` → `"build"` يساوي `origin/main` بعد Redeploy (`dd24a1e` أو أحدث)
 2. `GET https://id.bhd-om.com/.well-known/openid-configuration` يتضمن `"bhd-nasab"`
-3. `https://nasab.bhd-om.com/login` يحوّل إلى شاشة «دخول حساب BHD» على `id.bhd-om.com`
+3. زر «تسجيل الدخول» يفتح `GET /api/auth/bhd/start` ثم شاشة الهوية — بلا بطاقة نَسَب الوسيطة
 4. مستخدم Google قديم بنفس البريد الموثّق لا يُنشأ له صف ثانٍ
 5. فشل العودة → `/login?error=bhd&reason=…` (`token` = رفض `/oauth/token`، `state` = كوكي PKCE، `denied` = رفض الهوية)
 6. الخروج من نَسَب يمسح `kimi_sid` ويحوّل إلى `end-session`
 7. `/api/diag` → `bhdSsoConfigured: true` عندما يكون المُصدِر و`client_id` جاهزين (السر اختياري مع PKCE)
+8. ملاحظة «البناء الحي متأخر» على `/setup` فقط. إن استمر التأخير مع حد Vercel المجاني: Deployments → Redeploy
+9. مشغّل «تطبيقات BHD» على نطاق الهوية بعد تسجيل الدخول — ليس جزءاً من مسار دخول نَسَب

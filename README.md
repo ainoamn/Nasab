@@ -449,7 +449,7 @@ BHD_IDENTITY_TOKEN_SECRET=
 5. مزامنة المتغيرات من الجهاز (بعد `vercel login`): `cd app && npm run vercel:env` ثم Redeploy
 6. تحقق: `https://…/api/health` → `"dbConfigured":true` ثم دخول من `/login`
 
-**إن بقي `/api/health` على SHA قديم بعد دفع `main`:** Vercel → Deployments → **Redeploy** (Root Directory = `app`). تحقق بـ `npm run deploy:status` أو `npm run prod:smoke` (يعرض `deployInSync`).
+**إن بقي `/api/health` على SHA قديم بعد دفع `main`:** Vercel → Deployments → **Redeploy** (Root Directory = `app`). على الخطة المجانية الحد 100 نشراً/يوم (`api-deployments-free-per-day`) فيوقف النشر التلقائي حتى اليوم التالي. تحقق بـ `npm run deploy:status` أو `npm run prod:smoke` (يعرض `deployInSync`).
 
 الموقع الحالي: [nasab.bhd-om.com](https://nasab.bhd-om.com) — نسخة Vercel: [nasab-mu.vercel.app](https://nasab-mu.vercel.app)
 
