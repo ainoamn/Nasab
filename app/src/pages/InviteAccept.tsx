@@ -105,7 +105,7 @@ export default function InviteAccept() {
                 ) : (
                   <div className="mt-6 space-y-3">
                     <p className="text-sm text-muted-foreground">{t("invite.loginFirst")}</p>
-                    <Button className="w-full" size="lg" onClick={() => navigate("/login")}>
+                    <Button className="w-full" size="lg" onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/invite/${token}`)}`)}>
                       {t("invite.login")}
                     </Button>
                   </div>

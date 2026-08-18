@@ -4,6 +4,7 @@
 
 - [`../README.md`](../README.md) — نظرة عامة وهيكل المشروع
 - [`DEPLOY.md`](./DEPLOY.md) — Docker / VPS / **Vercel + Neon**
+- [`../docs/NASAB-BHD-SSO.md`](../docs/NASAB-BHD-SSO.md) — دخول حساب BHD الموحّد
 
 ## أوامر سريعة
 

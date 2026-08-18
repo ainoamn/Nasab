@@ -27,8 +27,12 @@ export function useAuth(options?: UseAuthOptions) {
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await utils.invalidate();
+      if (data?.endSessionUrl) {
+        window.location.href = data.endSessionUrl;
+        return;
+      }
       navigate(redirectPath);
     },
   });

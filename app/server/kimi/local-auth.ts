@@ -7,6 +7,7 @@ export function getLocalDevUser(): User {
   return {
     id: 1,
     unionId: LOCAL_DEV_UNION_ID,
+    bhdSub: null,
     name: "مستخدم التطوير",
     email: "dev@local",
     avatar: null,

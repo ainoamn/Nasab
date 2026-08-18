@@ -14,6 +14,11 @@ import {
   createGoogleIdTokenHandler,
 } from "./google/auth";
 import {
+  createBhdStartHandler,
+  createBhdCallbackHandler,
+  createBhdLogoutHandler,
+} from "./bhd/auth";
+import {
   createWebhookHandler,
   createCheckoutCompleteHandler,
 } from "./payments/webhooks";
@@ -65,6 +70,10 @@ app.get("/api/diag", async (c) => {
     hasAppSecret: Boolean(process.env.APP_SECRET),
     passwordLoginConfigured: Boolean(env.passwordLoginEmail),
     googleConfigured: Boolean(env.googleClientId && env.googleClientSecret),
+    bhdSsoConfigured: Boolean(
+      env.bhdIdentityIssuer && env.bhdOauthClientId && env.bhdOauthClientSecret,
+    ),
+    bhdIssuer: env.bhdIdentityIssuer || null,
     kimiEnabled: false,
     hasAppPublicUrl: Boolean(env.appPublicUrl),
     hasAllowedOrigins: env.allowedOrigins.length > 0,
@@ -139,6 +148,9 @@ app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.get("/api/oauth/google", createGoogleAuthHandler());
 app.get("/api/oauth/google/callback", createGoogleCallbackHandler());
 app.post("/api/auth/google", createGoogleIdTokenHandler());
+app.get("/api/auth/bhd/start", createBhdStartHandler());
+app.get("/api/auth/bhd/callback", createBhdCallbackHandler());
+app.get("/api/auth/bhd/logout", createBhdLogoutHandler());
 app.get("/api/checkout/complete", createCheckoutCompleteHandler());
 for (const slug of PAYMENT_GATEWAY_SLUGS) {
   app.post(`/api/webhooks/${slug}`, createWebhookHandler());

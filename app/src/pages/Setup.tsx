@@ -17,6 +17,8 @@ type Diag = {
   hasAppSecret?: boolean;
   passwordLoginConfigured?: boolean;
   googleConfigured?: boolean;
+  bhdSsoConfigured?: boolean;
+  bhdIssuer?: string | null;
   hasAppPublicUrl?: boolean;
   hasAllowedOrigins?: boolean;
   vercel?: boolean;
@@ -114,6 +116,14 @@ export default function Setup() {
       label: t("setup.rowGoogle"),
       ok: diag ? Boolean(diag.googleConfigured) : null,
       hint: diag && !diag.googleConfigured ? t("setup.rowGoogleHint") : undefined,
+    },
+    {
+      id: "bhd",
+      label: t("setup.rowBhd"),
+      ok: diag ? Boolean(diag.bhdSsoConfigured) : null,
+      hint: diag && !diag.bhdSsoConfigured
+        ? t("setup.rowBhdHint")
+        : diag?.bhdIssuer || undefined,
     },
     {
       id: "build",

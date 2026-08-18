@@ -50,8 +50,13 @@ ALLOWED_ORIGINS=https://yourdomain.com
 KIMI_AUTH_URL=...
 KIMI_OPEN_URL=...
 OWNER_UNION_ID=...
-GOOGLE_CLIENT_ID=...              # اختياري
+GOOGLE_CLIENT_ID=...              # اختياري حتى القطع
 GOOGLE_CLIENT_SECRET=...
+BHD_IDENTITY_ISSUER=https://one-bhd.vercel.app
+BHD_OAUTH_CLIENT_ID=bhd-nasab
+BHD_OAUTH_CLIENT_SECRET=
+BHD_OAUTH_REDIRECT_URI=https://nasab-mu.vercel.app/api/auth/bhd/callback
+BHD_IDENTITY_TOKEN_SECRET=
 DEV_LOCAL_AUTH=false
 ```
 
@@ -122,7 +127,12 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 | `APP_PUBLIC_URL` / `ALLOWED_ORIGINS` | نعم (نطاقك على HTTPS) |
 | `OWNER_UNION_ID` | مُستحسن |
 | `PASSWORD_LOGIN_EMAIL` / `PASSWORD_LOGIN_PASSWORD` | نعم — دخول **المشرف** بالبريد |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | نعم — دخول **المستخدمين** عبر Google |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | نعم — دخول **المستخدمين** عبر Google (حتى القطع) |
+| `BHD_IDENTITY_ISSUER` | نعم لـ SSO — حالياً `https://one-bhd.vercel.app` |
+| `BHD_OAUTH_CLIENT_ID` | نعم لـ SSO — القيمة الثابتة `bhd-nasab` |
+| `BHD_OAUTH_CLIENT_SECRET` | نعم لـ SSO — نفس `BHD_OAUTH_CLIENT_SECRET_NASAB` على `one-bhd` |
+| `BHD_OAUTH_REDIRECT_URI` | نعم لـ SSO — مطابقة تامة لـ `{origin}/api/auth/bhd/callback` |
+| `BHD_IDENTITY_TOKEN_SECRET` | نعم طالما الهوية HS256 — يطابق سر توقيع الهوية |
 | `TRUST_PROXY` | `true` |
 | `KIMI_AUTH_URL` / `KIMI_OPEN_URL` | اختياري — Kimi معطّل في الواجهة |
 
@@ -143,6 +153,17 @@ Vercel يحوّل كل ملف `.ts` تحت `api/` إلى دالة serverless م�
 5. المسار الحي: زر «الدخول عبر Google» → `GET /api/oauth/google` → callback يضبط الجلسة.
 
 المشرف يستخدم قسماً مطوياً في `/login` (بريد/كلمة مرور فقط).
+
+### دخول حساب BHD الموحّد
+
+المواصفة: [`docs/BHD-IDENTITY-SSO.md`](../docs/BHD-IDENTITY-SSO.md). تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](../docs/NASAB-BHD-SSO.md).
+
+1. على Vercel نَسَب ضع `BHD_*` أعلاه. `client_id` ثابت: `bhd-nasab`.
+2. على مشروع `one-bhd` ضع نفس السر في `BHD_OAUTH_CLIENT_SECRET_NASAB`.
+3. `BHD_IDENTITY_TOKEN_SECRET` يطابق `IDENTITY_TOKEN_SECRET` أو `AUTH_SECRET` للهوية (مرحلة HS256).
+4. Redeploy. تحقق: `/api/diag` → `bhdSsoConfigured: true` وزر «الدخول بحساب BHD» في `/login`.
+
+لا تشارك `DATABASE_URL` مع البوابة. الشجرات تبقى في قاعدة نَسَب.
 
 ### حساب المشرف (دخول بالبريد)
 

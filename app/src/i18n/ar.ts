@@ -173,6 +173,9 @@ export const ar = {
     rowGoogle: "دخول Google للمستخدمين",
     rowGoogleHint:
       "أضف GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET في Vercel مع Redirect URI: /api/oauth/google/callback",
+    rowBhd: "دخول حساب BHD الموحّد",
+    rowBhdHint:
+      "أضف BHD_IDENTITY_ISSUER و BHD_OAUTH_CLIENT_ID=bhd-nasab و BHD_OAUTH_CLIENT_SECRET (ونفس السر على مشروع one-bhd)",
     rowBuild: "بصمة البناء",
     buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}",
     buildBehindHint:
@@ -304,9 +307,11 @@ export const ar = {
   login: {
     title: "أهلاً بك في نَسَب",
     subtitle: "ادخل بحساب Google لإنشاء شجرتك أو قبول دعوة",
+    bhdSubtitle: "ادخل بحساب BHD الموحّد — نفس الحساب لوازن وحسابي ونَسَب",
     button: "الدخول عبر Kimi",
     note: "دخول آمن ومشفر — لا نشارك بياناتك مع أحد",
     usersNote: "للأعضاء والزوار: الدخول عبر Google. حساب المشرف منفصل بالبريد.",
+    bhdNote: "حساب BHD واحد لكل مواقع المجموعة. بيانات الشجرة تبقى في نَسَب.",
     googlePendingTitle: "دخول Google قيد التفعيل",
     googlePendingBody:
       "أضف GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET في Vercel. في Google Console ضع Redirect URI: https://nasab-mu.vercel.app/api/oauth/google/callback وأضف أيضاً JavaScript origin: https://nasab-mu.vercel.app",
@@ -328,6 +333,8 @@ export const ar = {
     or: "أو",
     google: "الدخول عبر Google",
     googleError: "فشل الدخول عبر Google — حاول مجدداً",
+    bhd: "الدخول بحساب BHD",
+    bhdError: "فشل الدخول عبر حساب BHD — حاول مجدداً",
   },
   dashboard: {
     title: "أشجار العائلة",

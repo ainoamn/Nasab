@@ -48,15 +48,25 @@ export default function Login() {
 
   const authConfig = trpc.auth.config.useQuery();
   const googleEnabled = Boolean(authConfig.data?.googleEnabled);
+  const bhdSsoEnabled = Boolean(authConfig.data?.bhdSsoEnabled);
   const showPasswordForm = authConfig.data?.passwordLogin !== false;
   const passwordMode = !authConfig.data?.devLocalAuth;
   const dbBlocked = dbConfigured === false;
+  const returnTo = params.get("returnTo");
 
   useEffect(() => {
-    if (params.get("error") === "google") {
-      toast.error(t("login.googleError"));
-    }
+    const error = params.get("error");
+    if (error === "google") toast.error(t("login.googleError"));
+    if (error === "bhd") toast.error(t("login.bhdError"));
   }, [params, t]);
+
+  function startBhdLogin() {
+    const qs =
+      returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+        ? `?returnTo=${encodeURIComponent(returnTo)}`
+        : "";
+    window.location.href = `/api/auth/bhd/start${qs}`;
+  }
 
   async function signInWithPassword(e?: FormEvent) {
     e?.preventDefault();
@@ -111,7 +121,7 @@ export default function Login() {
               {t("login.title")}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {t("login.subtitle")}
+              {bhdSsoEnabled ? t("login.bhdSubtitle") : t("login.subtitle")}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -149,10 +159,22 @@ export default function Login() {
               </div>
             ) : null}
 
+            {bhdSsoEnabled ? (
+              <Button
+                className="w-full gap-2"
+                size="lg"
+                disabled={dbBlocked || signingIn}
+                onClick={startBhdLogin}
+              >
+                {t("login.bhd")}
+              </Button>
+            ) : null}
+
             {googleEnabled ? (
               <Button
                 className="w-full gap-2"
                 size="lg"
+                variant={bhdSsoEnabled ? "outline" : "default"}
                 disabled={dbBlocked || signingIn}
                 onClick={() => {
                   window.location.href = "/api/oauth/google";
@@ -161,7 +183,7 @@ export default function Login() {
                 <GoogleIcon />
                 {t("login.google")}
               </Button>
-            ) : (
+            ) : bhdSsoEnabled ? null : (
               <div
                 className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground space-y-1"
                 role="status"
@@ -174,7 +196,7 @@ export default function Login() {
             )}
 
             <p className="text-center text-xs text-muted-foreground">
-              {t("login.usersNote")}
+              {bhdSsoEnabled ? t("login.bhdNote") : t("login.usersNote")}
             </p>
 
             {showPasswordForm ? (

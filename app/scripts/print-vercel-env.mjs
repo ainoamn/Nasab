@@ -49,6 +49,13 @@ const rows = {
   ALLOWED_ORIGINS: env.ALLOWED_ORIGINS || "https://nasab-mu.vercel.app",
   TRUST_PROXY: "true",
   APP_ID: env.APP_ID || env.VITE_APP_ID || "nasab-app",
+  BHD_IDENTITY_ISSUER: env.BHD_IDENTITY_ISSUER || "https://one-bhd.vercel.app",
+  BHD_OAUTH_CLIENT_ID: env.BHD_OAUTH_CLIENT_ID || "bhd-nasab",
+  BHD_OAUTH_CLIENT_SECRET: env.BHD_OAUTH_CLIENT_SECRET || "",
+  BHD_OAUTH_REDIRECT_URI:
+    env.BHD_OAUTH_REDIRECT_URI ||
+    "https://nasab-mu.vercel.app/api/auth/bhd/callback",
+  BHD_IDENTITY_TOKEN_SECRET: env.BHD_IDENTITY_TOKEN_SECRET || "",
 };
 
 const checks = [

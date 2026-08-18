@@ -173,6 +173,9 @@ export const en = {
     rowGoogle: "Google sign-in for users",
     rowGoogleHint:
       "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel with redirect URI: /api/oauth/google/callback",
+    rowBhd: "Unified BHD account sign-in",
+    rowBhdHint:
+      "Set BHD_IDENTITY_ISSUER, BHD_OAUTH_CLIENT_ID=bhd-nasab, and BHD_OAUTH_CLIENT_SECRET (same secret on the one-bhd project)",
     rowBuild: "Build fingerprint",
     buildBehind: "Live build {{live}} is behind main {{main}}",
     buildBehindHint:
@@ -304,10 +307,13 @@ export const en = {
   login: {
     title: "Welcome to Nasab",
     subtitle: "Sign in with Google to start your tree or accept an invite",
+    bhdSubtitle: "Sign in with your unified BHD account — the same login for Wazen, Hisaby, and Nasab",
     button: "Sign in with Kimi",
     note: "Secure encrypted sign-in — we never share your data",
     usersNote:
       "Members and guests: sign in with Google. Admin uses a separate email login.",
+    bhdNote:
+      "One BHD account across the group. Family-tree data stays in Nasab.",
     googlePendingTitle: "Google sign-in not configured yet",
     googlePendingBody:
       "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel. In Google Console set Redirect URI to https://nasab-mu.vercel.app/api/oauth/google/callback and JavaScript origin https://nasab-mu.vercel.app",
@@ -329,6 +335,8 @@ export const en = {
     or: "or",
     google: "Sign in with Google",
     googleError: "Google sign-in failed — please try again",
+    bhd: "Sign in with BHD",
+    bhdError: "BHD sign-in failed — please try again",
   },
   dashboard: {
     title: "Family trees",

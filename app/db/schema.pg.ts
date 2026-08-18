@@ -8,6 +8,7 @@ import {
   bigint,
   boolean,
   integer,
+  uuid,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -78,9 +79,13 @@ export const couponsAppliesToEnum = pgEnum("coupons_applies_to", [
   "all",
 ]);
 
-export const users = pgTable("users", {
+export const users = pgTable(
+  "users",
+  {
   id: serial("id").primaryKey(),
   unionId: varchar("unionId", { length: 255 }).notNull().unique(),
+  /** BHD Identity `sub` (UUID). Local trees stay keyed by `id` / `unionId`. */
+  bhdSub: uuid("bhd_sub"),
   name: varchar("name", { length: 255 }),
   email: varchar("email", { length: 320 }),
   avatar: text("avatar"),
@@ -111,7 +116,11 @@ export const users = pgTable("users", {
     .notNull()
     .$onUpdate(() => new Date()),
   lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull(),
-});
+  },
+  (table) => ({
+    bhdSubIdx: uniqueIndex("users_bhd_sub_idx").on(table.bhdSub),
+  }),
+);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

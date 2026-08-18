@@ -66,6 +66,24 @@ const envBase = {
   googleClientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? "")
     .replace(/^\uFEFF/, "")
     .trim(),
+  /** Frozen default from docs/BHD-IDENTITY-SSO.md. Override until CNAME `id` is live. */
+  bhdIdentityIssuer: (
+    process.env.BHD_IDENTITY_ISSUER?.trim() || "https://id.bhd-om.com"
+  ).replace(/\/$/, ""),
+  bhdOauthClientId: (
+    process.env.BHD_OAUTH_CLIENT_ID?.trim() || "bhd-nasab"
+  ).replace(/\/$/, ""),
+  bhdOauthClientSecret: (process.env.BHD_OAUTH_CLIENT_SECRET ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim(),
+  bhdOauthRedirectUri: (process.env.BHD_OAUTH_REDIRECT_URI ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/\/$/, ""),
+  /** HS256 fallback while identity JWKS has no RSA keys. Must match identity IDENTITY_TOKEN_SECRET. */
+  bhdIdentityTokenSecret: (process.env.BHD_IDENTITY_TOKEN_SECRET ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim(),
   appPublicUrl:
     process.env.APP_PUBLIC_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ""),

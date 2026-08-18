@@ -18,7 +18,7 @@ export async function securityHeadersMiddleware(c: Context, next: Next) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
+      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://id.bhd-om.com https://one-bhd.vercel.app",
       "frame-src https://accounts.google.com",
       "frame-ancestors 'none'",
     ].join("; "),

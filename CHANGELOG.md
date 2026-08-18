@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-08-18 — دخول حساب BHD الموحّد (OIDC)
+
+ربط نَسَب بهوية المجموعة حسب `docs/BHD-IDENTITY-SSO.md` (`bhd-identity.v1`) دون مشاركة قاعدة البيانات أو تغيير بيانات الشجرة.
+
+- `GET /api/auth/bhd/start` و`/callback` و`/logout` — Authorization Code + PKCE S256.
+- عمود `bhd_sub` يربط الحساب المحلي بـ `sub` الهوية. الحسابات الحالية (Google / مشرف) تُربَط بالبريد الموثّق ولا يُنشأ صف ثانٍ.
+- جلسة نَسَب تبقى `kimi_sid`. زر Google ودخول المشرف كما هما حتى القطع.
+- `client_id` الثابت: `bhd-nasab`.
+- التوثيق: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md) و[`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).
+- اختبارات: 204/204.
+
+---
+
 ## 2026-07-29 — تحصين قراءة DATABASE_URL ضد أخطاء اللصق
 
 - `normalizeDatabaseUrl`: إزالة الفراغات وعلامات الاقتباس المحيطة وفك غلاف `psql '...'` القادم من Neon Console قبل استخدام الرابط في الاتصال والتشخيص.

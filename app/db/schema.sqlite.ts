@@ -6,9 +6,13 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-export const users = sqliteTable("users", {
+export const users = sqliteTable(
+  "users",
+  {
   id: integer("id").primaryKey({ autoIncrement: true }),
   unionId: text("unionId").notNull().unique(),
+  /** BHD Identity `sub` (UUID). Local trees stay keyed by `id` / `unionId`. */
+  bhdSub: text("bhd_sub"),
   name: text("name"),
   email: text("email"),
   avatar: text("avatar"),
@@ -45,7 +49,11 @@ export const users = sqliteTable("users", {
   lastSignInAt: integer("lastSignInAt", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+  },
+  (table) => ({
+    bhdSubIdx: uniqueIndex("users_bhd_sub_idx").on(table.bhdSub),
+  }),
+);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
