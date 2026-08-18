@@ -80,6 +80,9 @@ describe("bhd-identity helpers", () => {
     expect(() =>
       assertIdTokenClaims({ ...base, email_verified: false }, expected),
     ).toThrow("email_unverified");
+    expect(assertIdTokenClaims({ ...base, email_verified: "true" }, expected).email).toBe(
+      "user@example.com",
+    );
   });
 
   it("verifies HS256 id_token with identity secret", async () => {

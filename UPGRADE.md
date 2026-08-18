@@ -27,7 +27,7 @@ Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.co
 | `/login` يحوّل إلى شاشة الهوية — جوجل ليس على واجهة نَسَب | ✅ |
 | دخول المشرف على `/login?admin=1` | ✅ |
 | اختبارات الوحدة (PKCE / state / aud / nonce / email_verified) | ✅ |
-| ضبط `BHD_OAUTH_CLIENT_SECRET` على نَسَب و`BHD_OAUTH_CLIENT_SECRET_NASAB` على `one-bhd` | ⏳ تشغيل |
+| ضبط `BHD_OAUTH_CLIENT_SECRET` على نَسَب و`BHD_OAUTH_CLIENT_SECRET_NASAB` على `one-bhd` | ⏳ اختياري بعد PKCE |
 
 **متغيرات نَسَب (Vercel):**
 
@@ -41,7 +41,7 @@ BHD_IDENTITY_TOKEN_SECRET=
 
 على مشروع الهوية `one-bhd`: نفس السر في `BHD_OAUTH_CLIENT_SECRET_NASAB`.
 
-**بعد النشر:** `https://nasab.bhd-om.com/login` يحوّل إلى `https://id.bhd-om.com`. إكمال الدخول بعد العودة يحتاج `BHD_OAUTH_CLIENT_SECRET`.
+**بعد النشر:** `https://nasab.bhd-om.com/login` يحوّل إلى `https://id.bhd-om.com`. إكمال الدخول بعد العودة يعمل بـ PKCE حتى لو كان سر العميل فارغاً؛ يُفضَّل ضبط السر لاحقاً على المشروعين.
 
 ---
 

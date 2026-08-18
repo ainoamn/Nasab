@@ -82,6 +82,6 @@ npx tsc -b
 2. `GET https://id.bhd-om.com/.well-known/openid-configuration` يتضمن `"bhd-nasab"`
 3. `https://nasab.bhd-om.com/login` يحوّل إلى شاشة «دخول حساب BHD» على `id.bhd-om.com`
 4. مستخدم Google قديم بنفس البريد الموثّق لا يُنشأ له صف ثانٍ
-5. `state` أو `nonce` خاطئ → `/login?error=bhd`
+5. فشل العودة → `/login?error=bhd&reason=…` (`token` = رفض `/oauth/token`، `state` = كوكي PKCE، `denied` = رفض الهوية)
 6. الخروج من نَسَب يمسح `kimi_sid` ويحوّل إلى `end-session`
-7. بعد ضبط السر: `/api/diag` → `bhdSsoConfigured: true` (إكمال استبدال `code`)
+7. `bhdSsoConfigured: true` بعد ضبط السر على المشروعين؛ بدونه الهوية تقبل PKCE لـ `bhd-nasab`

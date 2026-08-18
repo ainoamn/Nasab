@@ -39,8 +39,10 @@ function oauthCookieOpts(headers: Headers) {
   return oauthStateCookieOptions(secure);
 }
 
-function loginErrorRedirect(code = "bhd") {
-  return `/login?error=${encodeURIComponent(code)}`;
+function loginErrorRedirect(reason?: string) {
+  const params = new URLSearchParams({ error: "bhd" });
+  if (reason) params.set("reason", reason);
+  return `/login?${params.toString()}`;
 }
 
 export function createBhdStartHandler() {
@@ -97,10 +99,13 @@ export function createBhdCallbackHandler() {
     const state = c.req.query("state");
 
     if (!isBhdIdentityReady()) {
-      return c.redirect(loginErrorRedirect(), 302);
+      return c.redirect(loginErrorRedirect("ready"), 302);
     }
-    if (error || !saved || !code || !state || saved.state !== state) {
-      return c.redirect(loginErrorRedirect(), 302);
+    if (error) {
+      return c.redirect(loginErrorRedirect("denied"), 302);
+    }
+    if (!saved || !code || !state || saved.state !== state) {
+      return c.redirect(loginErrorRedirect("state"), 302);
     }
 
     const issuer = bhdIdentityIssuer();
@@ -121,14 +126,14 @@ export function createBhdCallbackHandler() {
       });
       if (!tokenResp.ok) {
         console.error("[BHD OIDC] token", tokenResp.status, await tokenResp.text());
-        return c.redirect(loginErrorRedirect(), 302);
+        return c.redirect(loginErrorRedirect("token"), 302);
       }
       const tokens = (await tokenResp.json()) as {
         id_token?: string;
         access_token?: string;
       };
       if (!tokens.id_token) {
-        return c.redirect(loginErrorRedirect(), 302);
+        return c.redirect(loginErrorRedirect("id_token"), 302);
       }
 
       const claims = await verifyBhdIdToken(
@@ -168,8 +173,9 @@ export function createBhdCallbackHandler() {
         : defaultReturnTo();
       return c.redirect(dest, 302);
     } catch (err) {
+      const message = err instanceof Error ? err.message : "callback";
       console.error("[BHD OIDC]", err);
-      return c.redirect(loginErrorRedirect(), 302);
+      return c.redirect(loginErrorRedirect(message.slice(0, 40)), 302);
     }
   };
 }

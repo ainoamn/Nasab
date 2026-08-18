@@ -228,7 +228,7 @@ export function assertIdTokenClaims(
   if (typeof payload.email !== "string" || !payload.email.includes("@")) {
     throw new Error("invalid_email");
   }
-  if (payload.email_verified !== true) {
+  if (payload.email_verified !== true && payload.email_verified !== "true") {
     throw new Error("email_unverified");
   }
   return {
