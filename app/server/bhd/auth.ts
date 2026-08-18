@@ -5,7 +5,7 @@ import { getSessionCookieOptions } from "../lib/cookies";
 import { Session } from "@contracts/constants";
 import { getClientIp } from "../lib/client-ip";
 import { ensureUserIdentity } from "../couponService";
-import { getRequestOrigin } from "../lib/request-origin";
+import { getBrowserOrigin } from "../lib/request-origin";
 import { issueSessionForUser } from "../lib/issue-session";
 import { rateLimit, clientRateKey } from "../lib/rate-limit";
 import {
@@ -21,7 +21,7 @@ import {
   decodeOauthStateCookie,
   defaultReturnTo,
   encodeOauthStateCookie,
-  isBhdSsoEnabled,
+  isBhdIdentityReady,
   isSafeReturnTo,
   oauthStateCookieOptions,
   randomUrlToken,
@@ -45,14 +45,8 @@ function loginErrorRedirect(code = "bhd") {
 
 export function createBhdStartHandler() {
   return (c: Context) => {
-    if (!isBhdSsoEnabled()) {
-      return c.json(
-        {
-          error: "bhd_sso_disabled",
-          message: "دخول حساب BHD غير مفعّل — اضبط متغيرات الهوية",
-        },
-        503,
-      );
+    if (!isBhdIdentityReady()) {
+      return c.redirect(loginErrorRedirect(), 302);
     }
 
     const ip = getClientIp(c.req.raw.headers);
@@ -63,7 +57,7 @@ export function createBhdStartHandler() {
     });
     if (!rl.ok) return c.json({ error: "Too many requests" }, 429);
 
-    const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
+    const origin = getBrowserOrigin(c.req.raw.headers, c.req.url);
     const redirectUri = bhdRedirectUri(origin);
     const issuer = bhdIdentityIssuer();
     const clientId = bhdOauthClientId();
@@ -102,7 +96,7 @@ export function createBhdCallbackHandler() {
     const code = c.req.query("code");
     const state = c.req.query("state");
 
-    if (!isBhdSsoEnabled()) {
+    if (!isBhdIdentityReady()) {
       return c.redirect(loginErrorRedirect(), 302);
     }
     if (error || !saved || !code || !state || saved.state !== state) {
@@ -129,16 +123,23 @@ export function createBhdCallbackHandler() {
         console.error("[BHD OIDC] token", tokenResp.status, await tokenResp.text());
         return c.redirect(loginErrorRedirect(), 302);
       }
-      const tokens = (await tokenResp.json()) as { id_token?: string };
+      const tokens = (await tokenResp.json()) as {
+        id_token?: string;
+        access_token?: string;
+      };
       if (!tokens.id_token) {
         return c.redirect(loginErrorRedirect(), 302);
       }
 
-      const claims = await verifyBhdIdToken(tokens.id_token, {
-        issuer,
-        audience: clientId,
-        nonce: saved.nonce,
-      });
+      const claims = await verifyBhdIdToken(
+        tokens.id_token,
+        {
+          issuer,
+          audience: clientId,
+          nonce: saved.nonce,
+        },
+        tokens.access_token,
+      );
 
       const user = await linkOrCreateBhdUser({
         sub: claims.sub,
@@ -175,7 +176,7 @@ export function createBhdCallbackHandler() {
 
 export function createBhdLogoutHandler() {
   return async (c: Context) => {
-    const origin = getRequestOrigin(c.req.raw.headers, c.req.url);
+    const origin = getBrowserOrigin(c.req.raw.headers, c.req.url);
     const sessionOpts = getSessionCookieOptions(c.req.raw.headers);
     try {
       const user = await authenticateRequest(c.req.raw.headers);
@@ -188,7 +189,7 @@ export function createBhdLogoutHandler() {
       maxAge: 0,
     });
 
-    if (!isBhdSsoEnabled()) {
+    if (!isBhdIdentityReady()) {
       return c.redirect("/login", 302);
     }
     return c.redirect(
@@ -203,7 +204,7 @@ export function createBhdLogoutHandler() {
 }
 
 export function bhdEndSessionUrlForOrigin(origin: string): string | undefined {
-  if (!isBhdSsoEnabled()) return undefined;
+  if (!isBhdIdentityReady()) return undefined;
   return bhdEndSessionUrl({
     issuer: bhdIdentityIssuer(),
     clientId: bhdOauthClientId(),

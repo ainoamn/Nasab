@@ -14,7 +14,7 @@ import { isGoogleAuthEnabled } from "./google/auth";
 import { issueSessionForUser } from "./lib/issue-session";
 import { rateLimit, clientRateKey } from "./lib/rate-limit";
 import { passwordLoginUnionId } from "./lib/password-login";
-import { isBhdSsoEnabled } from "./lib/bhd-identity";
+import { isBhdIdentityReady } from "./lib/bhd-identity";
 import { bhdEndSessionUrlForOrigin } from "./bhd/auth";
 import { getRequestOrigin } from "./lib/request-origin";
 
@@ -26,7 +26,7 @@ export const authRouter = createRouter({
     kimiEnabled: false,
     devLocalAuth: env.devLocalAuthEnabled,
     passwordLogin: env.passwordLoginEnabled,
-    bhdSsoEnabled: isBhdSsoEnabled(),
+    bhdSsoEnabled: isBhdIdentityReady(),
   })),
   me: authedQuery.query((opts) => opts.ctx.user),
   loginLocal: publicQuery

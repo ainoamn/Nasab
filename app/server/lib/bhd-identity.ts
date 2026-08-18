@@ -38,14 +38,12 @@ function liveIdentityTokenSecret(): string {
   );
 }
 
+export function isBhdIdentityReady(): boolean {
+  return Boolean(bhdIdentityIssuer() && bhdOauthClientId());
+}
+
 export function isBhdSsoEnabled(): boolean {
-  const issuer =
-    process.env.BHD_IDENTITY_ISSUER?.trim() || env.bhdIdentityIssuer;
-  const clientId =
-    process.env.BHD_OAUTH_CLIENT_ID?.trim() || env.bhdOauthClientId;
-  const secret =
-    process.env.BHD_OAUTH_CLIENT_SECRET?.trim() || env.bhdOauthClientSecret;
-  return Boolean(issuer && clientId && secret);
+  return isBhdIdentityReady() && Boolean(bhdOauthClientSecret());
 }
 
 export function bhdUnionId(sub: string): string {
@@ -177,9 +175,6 @@ export function bhdOauthClientSecret(): string {
 }
 
 export function bhdRedirectUri(origin: string): string {
-  const configured =
-    process.env.BHD_OAUTH_REDIRECT_URI?.trim() || env.bhdOauthRedirectUri;
-  if (configured) return configured.replace(/\/$/, "");
   return `${origin.replace(/\/$/, "")}/api/auth/bhd/callback`;
 }
 
@@ -251,9 +246,41 @@ export function assertIdTokenClaims(
   };
 }
 
+async function claimsFromUserinfo(
+  issuer: string,
+  accessToken: string,
+  idToken: string,
+): Promise<jose.JWTPayload> {
+  const infoResp = await fetch(`${issuer.replace(/\/$/, "")}/oauth/userinfo`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!infoResp.ok) {
+    throw new Error("userinfo_failed");
+  }
+  const info = (await infoResp.json()) as {
+    sub?: string;
+    email?: string;
+    email_verified?: boolean;
+    name?: string;
+    picture?: string | null;
+  };
+  const decoded = jose.decodeJwt(idToken);
+  if (!info.sub || decoded.sub !== info.sub) {
+    throw new Error("userinfo_sub_mismatch");
+  }
+  return {
+    ...decoded,
+    email: info.email ?? decoded.email,
+    email_verified: info.email_verified ?? decoded.email_verified,
+    name: info.name ?? decoded.name,
+    picture: info.picture ?? decoded.picture,
+  };
+}
+
 export async function verifyBhdIdToken(
   idToken: string,
   expected: { issuer: string; audience: string; nonce: string },
+  accessToken?: string,
 ): Promise<BhdIdClaims> {
   const header = jose.decodeProtectedHeader(idToken);
   const alg = header.alg;
@@ -272,15 +299,22 @@ export async function verifyBhdIdToken(
     payload = verified;
   } else if (alg === "HS256") {
     const secret = liveIdentityTokenSecret();
-    if (!secret) {
+    if (secret) {
+      const { payload: verified } = await jose.jwtVerify(
+        idToken,
+        new TextEncoder().encode(secret),
+        { ...verifyOpts, algorithms: ["HS256"] },
+      );
+      payload = verified;
+    } else if (accessToken) {
+      payload = await claimsFromUserinfo(
+        expected.issuer,
+        accessToken,
+        idToken,
+      );
+    } else {
       throw new Error("missing_hs256_secret");
     }
-    const { payload: verified } = await jose.jwtVerify(
-      idToken,
-      new TextEncoder().encode(secret),
-      { ...verifyOpts, algorithms: ["HS256"] },
-    );
-    payload = verified;
   } else {
     throw new Error("unsupported_alg");
   }

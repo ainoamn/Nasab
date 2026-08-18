@@ -70,9 +70,7 @@ app.get("/api/diag", async (c) => {
     hasAppSecret: Boolean(process.env.APP_SECRET),
     passwordLoginConfigured: Boolean(env.passwordLoginEmail),
     googleConfigured: Boolean(env.googleClientId && env.googleClientSecret),
-    bhdSsoConfigured: Boolean(
-      env.bhdIdentityIssuer && env.bhdOauthClientId && env.bhdOauthClientSecret,
-    ),
+    bhdSsoConfigured: Boolean(env.bhdOauthClientSecret),
     bhdIssuer: env.bhdIdentityIssuer || null,
     kimiEnabled: false,
     hasAppPublicUrl: Boolean(env.appPublicUrl),

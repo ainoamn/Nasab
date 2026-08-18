@@ -337,6 +337,7 @@ export const en = {
     googleError: "Google sign-in failed — please try again",
     bhd: "Sign in with BHD",
     bhdError: "BHD sign-in failed — please try again",
+    bhdRedirecting: "Redirecting to your unified BHD account…",
   },
   dashboard: {
     title: "Family trees",

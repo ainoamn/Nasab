@@ -335,6 +335,7 @@ export const ar = {
     googleError: "فشل الدخول عبر Google — حاول مجدداً",
     bhd: "الدخول بحساب BHD",
     bhdError: "فشل الدخول عبر حساب BHD — حاول مجدداً",
+    bhdRedirecting: "جارٍ التحويل إلى حساب BHD الموحّد…",
   },
   dashboard: {
     title: "أشجار العائلة",

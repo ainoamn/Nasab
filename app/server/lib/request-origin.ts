@@ -24,6 +24,33 @@ export function getRequestOrigin(headers: Headers, requestUrl?: string): string 
   return env.isProduction ? "https://localhost" : "http://localhost:5173";
 }
 
+/** Origin of the browser request (Host / forwarded). Used for OIDC redirect_uri. */
+export function getBrowserOrigin(headers: Headers, requestUrl?: string): string {
+  if (env.trustProxy) {
+    const proto =
+      headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+    const host =
+      headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+      headers.get("host")?.trim();
+    if (host) return `${proto}://${host}`;
+  }
+
+  const host = headers.get("host")?.trim();
+  if (host?.startsWith("localhost") || host?.startsWith("127.0.0.1")) {
+    return `http://${host}`;
+  }
+
+  if (requestUrl) {
+    try {
+      return new URL(requestUrl).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return getRequestOrigin(headers, requestUrl);
+}
+
 export function isAllowedRedirectUri(uri: string, origin: string): boolean {
   try {
     const u = new URL(uri);

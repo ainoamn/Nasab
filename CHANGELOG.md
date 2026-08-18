@@ -10,7 +10,8 @@
 
 - `GET /api/auth/bhd/start` و`/callback` و`/logout` — Authorization Code + PKCE S256.
 - عمود `bhd_sub` يربط الحساب المحلي بـ `sub` الهوية. الحسابات الحالية (Google / مشرف) تُربَط بالبريد الموثّق ولا يُنشأ صف ثانٍ.
-- جلسة نَسَب تبقى `kimi_sid`. زر Google ودخول المشرف كما هما حتى القطع.
+- جلسة نَسَب تبقى `kimi_sid`. `/login` يحوّل إلى شاشة هوية BHD؛ جوجل فقط على نطاق الهوية.
+- دخول المشرف يبقى على `/login?admin=1`.
 - `client_id` الثابت: `bhd-nasab`.
 - التوثيق: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md) و[`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).
 - اختبارات: 204/204.
