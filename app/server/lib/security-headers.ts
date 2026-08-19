@@ -10,6 +10,11 @@ export async function securityHeadersMiddleware(c: Context, next: Next) {
   if (env.isProduction) {
     c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
+  const path = c.req.path;
+  if (path.startsWith("/api/auth")) {
+    c.header("Cache-Control", "private, no-store");
+    c.header("X-Robots-Tag", "noindex, noarchive");
+  }
   c.header(
     "Content-Security-Policy",
     [

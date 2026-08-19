@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import GatewayLogo from "@/components/payment/GatewayLogo";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { PaymentGatewaySlug, SubscriptionPlan } from "@contracts/constants";
-import { ArrowRight, Check, Loader2, TreePalm } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 function formatOmr(amount: number, currencyLabel: string) {
@@ -142,6 +142,7 @@ export default function Checkout() {
   if (offlineInfo) {
     return (
       <div className="min-h-screen bg-muted/30 py-10 px-4">
+        <AppHeader />
         <div className="mx-auto max-w-lg space-y-4">
           <Card>
             <CardHeader>
@@ -173,15 +174,7 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 font-display font-bold text-primary">
-            <TreePalm className="h-5 w-5" />
-            {t("brand")}
-          </Link>
-          <LanguageSwitcher variant="outline" />
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-8 space-y-6">
         <div>

@@ -24,6 +24,7 @@
 - [خطة الترقية والربط بـ Neon](./UPGRADE.md)
 - [هوية BHD الموحّدة (مواصفة SSO)](./docs/BHD-IDENTITY-SSO.md)
 - [مشغّل تطبيقات BHD](./docs/BHD-APP-SWITCHER.md)
+- [الدليل المرجعي للدخول الموحّد ومشغّل التطبيقات](./docs/BHD-UNIFIED-LOGIN-AND-APPS.md)
 - [خطة ربط نَسَب (دخول + تطبيقات)](./docs/BHD-NASAB-INTEGRATION.md)
 - [تنفيذ SSO في نَسَب](./docs/NASAB-BHD-SSO.md)
 - [جاهزية الإطلاق في الواجهة: /setup](https://nasab.bhd-om.com/setup)

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import AppHeader from "@/components/AppHeader";
 import { CompanyDocumentHeader } from "@/components/CompanyDocumentHeader";
 
 function formatOmr(amount: number, currencyLabel: string) {
@@ -47,6 +48,7 @@ export default function CheckoutSuccess() {
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
+      <AppHeader />
       <header className="border-b bg-background/90 backdrop-blur py-4">
         <div className="mx-auto max-w-lg px-4">
           <CompanyDocumentHeader compact align="start" />

@@ -36,7 +36,7 @@
 
 واجهة أزرار «تسجيل الدخول» تذهب مباشرة إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `id.bhd-om.com`. `/login` تبقى لغلاف الأخطاء ودخول المشرف (`?admin=1`). زر Google أُزيل من نَسَب.
 
-بعد الدخول يظهر مشغّل التطبيقات (`BhdAppSwitcher`) في الرأس. رابط «الحساب» في المشغّل يفتح `https://id.bhd-om.com/account`. إعدادات شجرة نَسَب تبقى في `/account` للمنتج. المواصفة: [`BHD-APP-SWITCHER.md`](./BHD-APP-SWITCHER.md). الخطة: [`BHD-NASAB-INTEGRATION.md`](./BHD-NASAB-INTEGRATION.md).
+بعد الدخول يظهر مشغّل التطبيقات (`BhdAppSwitcher`) في الرأس. رابط «الحساب» في المشغّل يفتح `https://id.bhd-om.com/account`. إعدادات شجرة نَسَب تبقى في `/account` للمنتج. المواصفة: [`BHD-APP-SWITCHER.md`](./BHD-APP-SWITCHER.md). الخطة: [`BHD-NASAB-INTEGRATION.md`](./BHD-NASAB-INTEGRATION.md). الدليل المرجعي: [`BHD-UNIFIED-LOGIN-AND-APPS.md`](./BHD-UNIFIED-LOGIN-AND-APPS.md).
 
 ## ربط الحسابات الحالية
 

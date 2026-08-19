@@ -33,6 +33,16 @@ export default function Login() {
   const stayForAdmin = params.get("admin") === "1";
 
   useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "robots");
+    meta.setAttribute("content", "noindex, noarchive");
+    document.head.appendChild(meta);
+    return () => {
+      meta.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (loginError === "google") toast.error(t("login.googleError"));
     if (loginError === "bhd") toast.error(t("login.bhdError"));
   }, [loginError, t]);
