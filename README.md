@@ -23,6 +23,8 @@
 - [سجل التغييرات](./CHANGELOG.md)
 - [خطة الترقية والربط بـ Neon](./UPGRADE.md)
 - [هوية BHD الموحّدة (مواصفة SSO)](./docs/BHD-IDENTITY-SSO.md)
+- [مشغّل تطبيقات BHD](./docs/BHD-APP-SWITCHER.md)
+- [خطة ربط نَسَب (دخول + تطبيقات)](./docs/BHD-NASAB-INTEGRATION.md)
 - [تنفيذ SSO في نَسَب](./docs/NASAB-BHD-SSO.md)
 - [جاهزية الإطلاق في الواجهة: /setup](https://nasab.bhd-om.com/setup)
 - فحص دوري: GitHub Actions `Ops` (دخان + نسخ Neon)
@@ -346,7 +348,7 @@ npm run db:push
 
 ## المصادقة
 
-- **حساب BHD الموحّد:** `/login` يحوّل فوراً إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `https://id.bhd-om.com` (OIDC + PKCE). جوجل يحدث هناك فقط — ليس على واجهة نَسَب. المواصفة: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md). تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).
+- **حساب BHD الموحّد:** زر «تسجيل الدخول» يفتح `GET /api/auth/bhd/start` ثم الهوية على `https://id.bhd-om.com` (OIDC + PKCE). جوجل هناك فقط. بعد الدخول: تسع نقاط؛ «الحساب» في المشغّل = `https://id.bhd-om.com/account`. الشجرات تبقى في نَسَب. الخطة: [`docs/BHD-NASAB-INTEGRATION.md`](./docs/BHD-NASAB-INTEGRATION.md).
 - **المشرف:** `/login?admin=1` (`PASSWORD_LOGIN_*`). الأدوار لا تُمنح من الهوية.
 - **Kimi:** معطّل في الواجهة (`auth.config.kimiEnabled = false`).
 - **تطوير محلي:** `DEV_LOCAL_AUTH=true` (معطّل تلقائياً في الإنتاج).

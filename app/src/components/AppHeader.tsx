@@ -2,17 +2,9 @@ import { Link, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { BhdAppSwitcher } from "@/components/bhd/BhdAppSwitcher";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, LayoutDashboard, TreePalm, UserCircle, Shield } from "lucide-react";
+import { LayoutDashboard, TreePalm, Shield } from "lucide-react";
 
 export default function AppHeader() {
   const { user, logout } = useAuth();
@@ -44,69 +36,28 @@ export default function AppHeader() {
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">{t("nav.myTrees")}</span>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={logout}
-            className="gap-2 px-2 sm:px-3 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-            title={t("nav.logout")}
-            aria-label={t("nav.logout")}
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("nav.logout")}</span>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="rounded-full ring-offset-2 focus-visible:ring-2"
-                aria-label={user?.name ?? t("user")}
-              >
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={user?.avatar ?? undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                    {user?.name?.charAt(0) ?? "؟"}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <p className="font-medium truncate">{user?.name ?? t("user")}</p>
-                <p className="text-xs text-muted-foreground font-normal truncate">
-                  {user?.email ?? ""}
-                </p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => navigate("/account")}
-                className="gap-2 cursor-pointer"
-              >
-                <UserCircle className="h-4 w-4" /> {t("nav.account")}
-              </DropdownMenuItem>
-              {isAdmin && (
-                <DropdownMenuItem
-                  onClick={() => navigate("/admin")}
-                  className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Shield className="h-4 w-4" /> {t("nav.admin")}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                onClick={() => navigate("/dashboard")}
-                className="gap-2 cursor-pointer"
-              >
-                <LayoutDashboard className="h-4 w-4" /> {t("nav.dashboard")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={logout}
-                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-              >
-                <LogOut className="h-4 w-4" /> {t("nav.logout")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isAdmin ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/admin")}
+              className="gap-2 px-2 sm:px-3"
+              title={t("nav.admin")}
+            >
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("nav.admin")}</span>
+            </Button>
+          ) : null}
+          {user ? (
+            <BhdAppSwitcher
+              user={{
+                name: user.name ?? "",
+                email: user.email ?? "",
+                picture: user.avatar ?? null,
+              }}
+              onSignOut={logout}
+            />
+          ) : null}
         </div>
       </div>
     </header>

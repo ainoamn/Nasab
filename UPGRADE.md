@@ -25,6 +25,7 @@ Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.co
 | ربط الحسابات الحالية بالبريد الموثّق (Google / مشرف) دون صف ثانٍ | ✅ |
 | جلسة المنتج تبقى `kimi_sid` — لا تُنسخ كوكي الهوية | ✅ |
 | `/login` يحوّل إلى شاشة الهوية — جوجل ليس على واجهة نَسَب | ✅ |
+| مشغّل التطبيقات بعد الدخول (`BhdAppSwitcher`) و`mode: "sso"` | ✅ |
 | دخول المشرف على `/login?admin=1` | ✅ |
 | اختبارات الوحدة (PKCE / state / aud / nonce / email_verified) | ✅ |
 | ضبط `BHD_OAUTH_CLIENT_SECRET` على نَسَب و`BHD_OAUTH_CLIENT_SECRET_NASAB` على `one-bhd` | ⏳ اختياري بعد PKCE |
