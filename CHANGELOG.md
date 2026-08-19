@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-08-19 — مزامنة الإنتاج مع `main`
+
+نُشر `b5000ed` على `nasab.bhd-om.com` و`nasab-mu.vercel.app`. `/api/health` و`/api/diag` يعرضان نفس SHA، و`bhdSsoConfigured: true`. ملاحظة التأخير كانت بسبب حد Vercel المجاني في 18 أغسطس وليست خللاً في الدخول.
+
+---
+
 ## 2026-08-18 — النشر على GitHub والحد اليومي لـ Vercel
 
 `main` على GitHub عند `dd24a1e` (دخول مباشر إلى الهوية + إخفاء شريط التأخير من اللوحة). البناء الحي بقي `2978a97` لأن مشروع Vercel `nasab` على الخطة المجانية رفض نشراً إضافياً (`api-deployments-free-per-day`، أكثر من 100 في اليوم). بعد إعادة الحد: Deployments → Redeploy، Root Directory = `app`. شبكة «تطبيقات BHD» مشغّل الهوية بعد الجلسة وليست خطوة دخول.

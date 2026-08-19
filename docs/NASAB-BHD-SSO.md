@@ -78,7 +78,7 @@ npx tsc -b
 
 بعد النشر:
 
-1. `GET https://nasab.bhd-om.com/api/health` → `"build"` يساوي `origin/main` بعد Redeploy (`dd24a1e` أو أحدث)
+1. `GET https://nasab.bhd-om.com/api/health` → `"build"` يساوي `git rev-parse --short origin/main`
 2. `GET https://id.bhd-om.com/.well-known/openid-configuration` يتضمن `"bhd-nasab"`
 3. زر «تسجيل الدخول» يفتح `GET /api/auth/bhd/start` ثم شاشة الهوية — بلا بطاقة نَسَب الوسيطة
 4. مستخدم Google قديم بنفس البريد الموثّق لا يُنشأ له صف ثانٍ

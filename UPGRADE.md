@@ -16,7 +16,7 @@
 
 المصدر المعتمد: [`docs/BHD-IDENTITY-SSO.md`](./docs/BHD-IDENTITY-SSO.md) — الإصدار `bhd-identity.v1`.  
 تنفيذ نَسَب: [`docs/NASAB-BHD-SSO.md`](./docs/NASAB-BHD-SSO.md).  
-Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.com`. `main`: `dd24a1e`. الحي حتى استئناف نشر Vercel: `2978a97`.
+Issuer الحي: `https://id.bhd-om.com`. النطاق: `https://nasab.bhd-om.com`. تحقق المزامنة: `cd app && npm run deploy:status`.
 
 | البند | الحالة |
 |--------|--------|
