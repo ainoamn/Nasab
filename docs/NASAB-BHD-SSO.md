@@ -12,7 +12,7 @@
 | نَسَب | قاعدة Neon الخاصة بنَسَب | الشجرات، الأعضاء، الفوترة، العمود `bhd_sub` |
 
 - لا تُشارك `DATABASE_URL` مع البوابة أو وازن أو حسابي.
-- جلسة نَسَب تبقى الكوكي `kimi_sid` الموقَّعة بـ `APP_SECRET`.
+- جلسة نَسَب تبقى الكوكي `kimi_sid` الموقَّعة بـ `APP_SECRET`، خمول منزلق 48 ساعة (`SessionKeepAlive` و`GET /api/auth/me`).
 - الهوية تستخدم كوكي `bhd_id` على نطاقها فقط.
 - الأدوار (`user` / `admin`) وعضوية الشجرة محلية. الهوية لا تمنح مشرفاً.
 
@@ -31,12 +31,13 @@
 | الطريقة | المسار | الوظيفة |
 |---|---|---|
 | GET | `/api/auth/bhd/start` | PKCE + كوكي `bhd_oauth_state` ثم تحويل إلى `/oauth/authorize` |
-| GET | `/api/auth/bhd/callback` | استبدال `code` والتحقق من `id_token` ثم `kimi_sid` |
+| GET | `/api/auth/bhd/callback` | استبدال `code` والتحقق من `id_token` ثم ربط `bhd_sub` (مع الإبقاء على دور الأدمن إن وُجد) ومسح الجلسة السابقة ثم `kimi_sid` |
 | GET | `/api/auth/bhd/logout` | مسح جلسة نَسَب ثم `/oauth/end-session` |
+| GET | `/api/auth/admin-entry` | دخول الإدارة → `start?returnTo=/admin` (القسم 4.9) |
 
-واجهة أزرار «تسجيل الدخول» تذهب مباشرة إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `id.bhd-om.com`. `/login` تبقى لغلاف الأخطاء ودخول المشرف (`?admin=1`). زر Google أُزيل من نَسَب.
+واجهة أزرار «تسجيل الدخول» تذهب مباشرة إلى `GET /api/auth/bhd/start` ثم شاشة الهوية على `id.bhd-om.com`. `/login` غلاف أخطاء فقط؛ `?admin=1` و`?local=1` يحوّلان إلى `admin-entry`. لا كلمة مرور محلية للمستخدم النهائي. صلاحية المشرف محلية في جدول نَسَب فقط.
 
-بعد الدخول يظهر مشغّل التطبيقات (`BhdAppSwitcher`) في الرأس. رابط «الحساب» في المشغّل يفتح `https://id.bhd-om.com/account`. إعدادات شجرة نَسَب تبقى في `/account` للمنتج. المواصفة: [`BHD-APP-SWITCHER.md`](./BHD-APP-SWITCHER.md). الخطة: [`BHD-NASAB-INTEGRATION.md`](./BHD-NASAB-INTEGRATION.md). الدليل المرجعي: [`BHD-UNIFIED-LOGIN-AND-APPS.md`](./BHD-UNIFIED-LOGIN-AND-APPS.md).
+بعد الدخول يظهر مشغّل التطبيقات (`BhdAppSwitcher`) في الرأس. رابط «الحساب» في المشغّل يفتح `https://id.bhd-om.com/account`. إعدادات شجرة نَسَب تبقى في `/account` للمنتج. المواصفة: [`BHD-APP-SWITCHER.md`](./BHD-APP-SWITCHER.md). الخطة: [`BHD-NASAB-INTEGRATION.md`](./BHD-NASAB-INTEGRATION.md). دليل الأدمن: [`BHD-PRODUCT-SSO-ADMIN.md`](./BHD-PRODUCT-SSO-ADMIN.md). الدليل المرجعي: [`BHD-UNIFIED-LOGIN-AND-APPS.md`](./BHD-UNIFIED-LOGIN-AND-APPS.md).
 
 ## ربط الحسابات الحالية
 

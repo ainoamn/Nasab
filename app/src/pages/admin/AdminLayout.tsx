@@ -30,7 +30,7 @@ const navItems = [
 ] as const;
 
 export default function AdminLayout() {
-  const { isLoading, isAdmin } = useAdmin();
+  const { isLoading, isAdmin } = useAdmin({ redirectOnForbidden: false });
   const { t } = useTranslation();
   const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
 
@@ -46,7 +46,33 @@ export default function AdminLayout() {
     );
   }
 
-  if (!isAdmin) return null;
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-muted/30">
+        <AppHeader />
+        <div className="mx-auto max-w-lg p-6">
+          <div
+            className="rounded-xl border bg-background p-6 text-center space-y-2"
+            role="alert"
+          >
+            <h1 className="font-display text-xl font-bold">
+              {t("admin.forbidden")}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {t("admin.forbiddenHint")}
+            </p>
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
+            >
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+              {t("admin.backToApp")}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">

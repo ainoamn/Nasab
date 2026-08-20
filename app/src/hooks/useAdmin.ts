@@ -7,7 +7,7 @@ type UseAdminOptions = {
 };
 
 export function useAdmin(options?: UseAdminOptions) {
-  const { redirectOnForbidden = true } = options ?? {};
+  const { redirectOnForbidden = false } = options ?? {};
   const auth = useAuth({ redirectOnUnauthenticated: true });
   const navigate = useNavigate();
 

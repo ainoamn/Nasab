@@ -159,6 +159,7 @@ export const ar = {
     button: "أنشئ شجرتك الآن",
   },
   footer: "منصة عربية لحفظ الأنساب — بياناتك ملكك، وخصوصيتك أمانة.",
+  footerAdminEntry: "دخول الإدارة",
   setupLink: "جاهزية الإطلاق",
   setup: {
     title: "جاهزية الإطلاق",
@@ -312,6 +313,9 @@ export const ar = {
     note: "دخول آمن ومشفر — لا نشارك بياناتك مع أحد",
     usersNote: "للأعضاء والزوار: الدخول عبر Google. حساب المشرف منفصل بالبريد.",
     bhdNote: "حساب BHD واحد لكل مواقع المجموعة. بيانات الشجرة تبقى في نَسَب.",
+    adminEntry: "دخول الإدارة عبر BHD",
+    adminEntryNote:
+      "صلاحية المشرف محلية في نَسَب فقط ومرتبطة بـ bhd_sub — الهوية لا تمنح أدمن.",
     googlePendingTitle: "دخول Google قيد التفعيل",
     googlePendingBody:
       "أضف GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET في Vercel. في Google Console ضع Redirect URI: https://nasab-mu.vercel.app/api/oauth/google/callback وأضف أيضاً JavaScript origin: https://nasab-mu.vercel.app",
@@ -399,6 +403,8 @@ export const ar = {
     title: "لوحة المشرف",
     subtitle: "إدارة المستخدمين والاشتراكات والمدفوعات",
     backToApp: "العودة للتطبيق",
+    forbidden: "هذه الصفحة للمشرف فقط",
+    forbiddenHint: "ادخل عبر «دخول الإدارة» بنفس حساب BHD المعيَّن مشرفاً في نَسَب.",
     dbNotConfigured:
       "قاعدة البيانات غير مربوطة على الخادم. أضف DATABASE_URL في Vercel ثم أعد النشر.",
     buildBehind: "البناء الحي {{live}} متأخر عن main {{main}}.",

@@ -259,6 +259,12 @@ export default function Home() {
             <span className="font-display font-bold text-primary">{t("brand")}</span>
           </div>
           <p>{t("footer")}</p>
+          <a
+            href="/api/auth/admin-entry"
+            className="text-xs underline underline-offset-2 hover:text-foreground"
+          >
+            {t("footerAdminEntry")}
+          </a>
           <Link to="/setup" className="text-xs underline underline-offset-2 hover:text-foreground">
             {t("setupLink")}
           </Link>

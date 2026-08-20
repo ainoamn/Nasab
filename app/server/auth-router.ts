@@ -5,7 +5,7 @@ import { Session } from "@contracts/constants";
 import { env } from "./lib/env";
 import { getSessionCookieOptions } from "./lib/cookies";
 import { createRouter, authedQuery, publicQuery } from "./middleware";
-import { signSessionToken } from "./kimi/session";
+import { signSessionToken, verifySessionToken } from "./kimi/session";
 import { LOCAL_DEV_UNION_ID } from "./kimi/local-auth";
 import { upsertUser, findUserByUnionId, incrementSessionVersion } from "./queries/users";
 import { getClientIp } from "./lib/client-ip";
@@ -28,7 +28,29 @@ export const authRouter = createRouter({
     passwordLogin: env.passwordLoginEnabled,
     bhdSsoEnabled: isBhdIdentityReady(),
   })),
-  me: authedQuery.query((opts) => opts.ctx.user),
+  me: authedQuery.query(async ({ ctx }) => {
+    const cookies = cookie.parse(ctx.req.headers.get("cookie") || "");
+    const claim = await verifySessionToken(cookies[Session.cookieName] || "");
+    if (claim) {
+      const token = await issueSessionForUser(
+        ctx.user.id,
+        ctx.user.unionId,
+        claim.clientId,
+      );
+      const cookieOpts = getSessionCookieOptions(ctx.req.headers);
+      ctx.resHeaders.append(
+        "set-cookie",
+        cookie.serialize(Session.cookieName, token, {
+          httpOnly: cookieOpts.httpOnly,
+          path: cookieOpts.path,
+          sameSite: cookieOpts.sameSite?.toLowerCase() as "lax" | "none",
+          secure: cookieOpts.secure,
+          maxAge: Session.maxAgeMs / 1000,
+        }),
+      );
+    }
+    return ctx.user;
+  }),
   loginLocal: publicQuery
     .input(
       z.object({

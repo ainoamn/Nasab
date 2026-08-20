@@ -40,7 +40,7 @@
 | API | tRPC + Hono |
 | قاعدة البيانات | SQLite (تطوير) / PostgreSQL Neon أو MySQL (إنتاج) + Drizzle ORM |
 | النشر | Vercel (واجهة + serverless API) أو Docker / VPS |
-| المصادقة | حساب BHD الموحّد (OIDC على `id.bhd-om.com`) + دخول مشرف بالبريد (`/login?admin=1`) |
+| المصادقة | حساب BHD الموحّد (OIDC على `id.bhd-om.com`)؛ الإدارة عبر `/api/auth/admin-entry` |
 | i18n | العربية + الإنجليزية (react-i18next) |
 | الرسم البياني | مخطط شجرة تفاعلي (FamilyChart) |
 
@@ -263,8 +263,7 @@ npm run vercel:print-env  # طباعة متغيرات للصق في Vercel
 ### 11. تسجيل الدخول
 
 - **حساب BHD الموحّد** — `/login` يحوّل إلى `id.bhd-om.com`
-- **دخول مشرف بالبريد** على `/login?admin=1`
-- **دخول محلي** (تطوير فقط — `DEV_LOCAL_AUTH`)
+- **دخول الإدارة** عبر `/api/auth/admin-entry` (SSO → `/admin`)؛ الدور محلي في نَسَب مربوط بـ `bhd_sub`
 - **Kimi** معطّل في الواجهة
 
 ---
@@ -350,9 +349,8 @@ npm run db:push
 ## المصادقة
 
 - **حساب BHD الموحّد:** زر «تسجيل الدخول» يفتح `GET /api/auth/bhd/start` ثم الهوية على `https://id.bhd-om.com` (OIDC + PKCE). جوجل هناك فقط. بعد الدخول: تسع نقاط؛ «الحساب» في المشغّل = `https://id.bhd-om.com/account`. الشجرات تبقى في نَسَب. الخطة: [`docs/BHD-NASAB-INTEGRATION.md`](./docs/BHD-NASAB-INTEGRATION.md).
-- **المشرف:** `/login?admin=1` (`PASSWORD_LOGIN_*`). الأدوار لا تُمنح من الهوية.
+- **المشرف:** `/api/auth/admin-entry` → SSO → `/admin`. الدور محلي في جدول نَسَب فقط (لا من الهوية). ربط أدمن قديم بالبريد في `callback` مع الإبقاء على الدور: [`docs/BHD-PRODUCT-SSO-ADMIN.md`](./docs/BHD-PRODUCT-SSO-ADMIN.md).
 - **Kimi:** معطّل في الواجهة (`auth.config.kimiEnabled = false`).
-- **تطوير محلي:** `DEV_LOCAL_AUTH=true` (معطّل تلقائياً في الإنتاج).
 
 ### متغيرات البيئة
 

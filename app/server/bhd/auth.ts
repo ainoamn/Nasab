@@ -157,12 +157,26 @@ export function createBhdCallbackHandler() {
       });
       await ensureUserIdentity(user.id);
 
+      /** القسم 0.7 / 0.2: امسح جلسة المنتج السابقة قبل ضبط كوكي الحساب القادم من الهوية */
+      const sessionCookie = getSessionCookieOptions(c.req.raw.headers);
+      try {
+        const previous = await authenticateRequest(c.req.raw.headers);
+        if (previous.id !== user.id) {
+          await incrementSessionVersion(previous.id);
+        }
+      } catch {
+        /* لا جلسة سابقة */
+      }
+      setCookie(c, Session.cookieName, "", {
+        ...sessionCookie,
+        maxAge: 0,
+      });
+
       const token = await issueSessionForUser(
         user.id,
         user.unionId,
         env.appId || "nasab-app",
       );
-      const sessionCookie = getSessionCookieOptions(c.req.raw.headers);
       setCookie(c, Session.cookieName, token, {
         ...sessionCookie,
         maxAge: Session.maxAgeMs / 1000,

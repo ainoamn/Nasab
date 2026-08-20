@@ -26,6 +26,8 @@ import {
 import { securityHeadersMiddleware } from "./lib/security-headers";
 import { Paths, PAYMENT_GATEWAY_SLUGS } from "@contracts/constants";
 import { passwordLoginHandler } from "./password-login-handler";
+import { createAuthMeHandler } from "./auth-me";
+import { createAdminEntryHandler } from "./admin-entry";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -135,6 +137,8 @@ app.get("/api/diag", async (c) => {
 });
 
 app.post("/api/auth/password-login", (c) => passwordLoginHandler(c));
+app.get("/api/auth/me", createAuthMeHandler());
+app.get("/api/auth/admin-entry", createAdminEntryHandler());
 app.post("/api/auth/ping", (c) => c.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/oauth/kimi/start", (c) =>

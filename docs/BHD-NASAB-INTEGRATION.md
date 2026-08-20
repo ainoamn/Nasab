@@ -14,7 +14,8 @@
 - [`BHD-IDENTITY-SSO.md`](./BHD-IDENTITY-SSO.md) — نفّذ **القسم 6** حرفياً
 - [`BHD-APP-SWITCHER.md`](./BHD-APP-SWITCHER.md) — نفّذ بعد نجاح الدخول
 
-تنفيذ نَسَب للقسم 6: [`NASAB-BHD-SSO.md`](./NASAB-BHD-SSO.md).
+تنفيذ نَسَب للقسم 6: [`NASAB-BHD-SSO.md`](./NASAB-BHD-SSO.md).  
+سياسة الأدمن وربط الأدمن القديم: [`BHD-PRODUCT-SSO-ADMIN.md`](./BHD-PRODUCT-SSO-ADMIN.md) (القسم 0.7 و4.9).
 
 ---
 
@@ -75,7 +76,7 @@ sequenceDiagram
 | `post_logout_redirect_uri` | أصل الموقع + `/` |
 | scopes | `openid profile email` |
 | PKCE | `S256` إلزامي |
-| جلسة المنتج | كوكي `kimi_sid` موقَّعة بـ `APP_SECRET` |
+| جلسة المنتج | كوكي `kimi_sid` موقَّعة بـ `APP_SECRET` — خمول منزلق 48 ساعة |
 
 ---
 

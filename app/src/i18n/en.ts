@@ -159,6 +159,7 @@ export const en = {
     button: "Create your tree now",
   },
   footer: "An Arab platform for preserving genealogy — your data is yours, your privacy is a trust.",
+  footerAdminEntry: "Admin sign-in",
   setupLink: "Launch readiness",
   setup: {
     title: "Launch readiness",
@@ -314,6 +315,9 @@ export const en = {
       "Members and guests: sign in with Google. Admin uses a separate email login.",
     bhdNote:
       "One BHD account across the group. Family-tree data stays in Nasab.",
+    adminEntry: "Admin sign-in via BHD",
+    adminEntryNote:
+      "Admin rights are local to Nasab and tied to bhd_sub — identity never grants product admin.",
     googlePendingTitle: "Google sign-in not configured yet",
     googlePendingBody:
       "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel. In Google Console set Redirect URI to https://nasab-mu.vercel.app/api/oauth/google/callback and JavaScript origin https://nasab-mu.vercel.app",
@@ -401,6 +405,9 @@ export const en = {
     title: "Admin panel",
     subtitle: "Manage users, subscriptions, and payments",
     backToApp: "Back to app",
+    forbidden: "This page is for administrators only",
+    forbiddenHint:
+      "Sign in via Admin entry with the BHD account that has Nasab admin role.",
     dbNotConfigured:
       "Database is not linked on the server. Add DATABASE_URL in Vercel and redeploy.",
     buildBehind: "Live build {{live}} is behind main {{main}}.",

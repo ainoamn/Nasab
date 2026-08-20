@@ -1,36 +1,35 @@
-import { useState, useEffect, useLayoutEffect, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { bhdStartHref } from "@/const";
+import { useEffect, useLayoutEffect } from "react";
+import { Link, useSearchParams } from "react-router";
+import { bhdAdminEntryHref, bhdStartHref } from "@/const";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { TreePalm, ChevronDown, ChevronUp } from "lucide-react";
+import { TreePalm } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useBuildBehind } from "@/hooks/useBuildBehind";
-import { trpc } from "@/providers/trpc";
 import { toast } from "sonner";
+
+function isAdminReturnPath(value: string | null): boolean {
+  return Boolean(
+    value &&
+      value.startsWith("/admin") &&
+      !value.startsWith("//") &&
+      !value.includes("://"),
+  );
+}
 
 export default function Login() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
-  const utils = trpc.useUtils();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [signingIn, setSigningIn] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(params.get("admin") === "1");
   const { liveBuild, mainSha, buildBehind, dbConfigured } = useBuildBehind();
 
-  const authConfig = trpc.auth.config.useQuery();
-  const showPasswordForm = authConfig.data?.passwordLogin !== false;
-  const passwordMode = !authConfig.data?.devLocalAuth;
   const dbBlocked = dbConfigured === false;
-  const returnTo = params.get("returnTo");
+  const returnTo = params.get("returnTo") || params.get("next");
   const loginError = params.get("error");
-  const stayForAdmin = params.get("admin") === "1";
+  const wantsAdmin =
+    params.get("admin") === "1" ||
+    params.get("local") === "1" ||
+    isAdminReturnPath(returnTo);
 
   useEffect(() => {
     const meta = document.createElement("meta");
@@ -48,43 +47,15 @@ export default function Login() {
   }, [loginError, t]);
 
   useLayoutEffect(() => {
-    if (stayForAdmin || loginError || dbBlocked) return;
-    window.location.replace(bhdStartHref(returnTo));
-  }, [stayForAdmin, loginError, dbBlocked, returnTo]);
-
-  async function signInWithPassword(e?: FormEvent) {
-    e?.preventDefault();
-    if (dbBlocked) return;
-    setSigningIn(true);
-    try {
-      const res = await fetch("/api/auth/password-login", {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        credentials: "include",
-        body: new URLSearchParams({
-          username: username.trim(),
-          password,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        success?: boolean;
-        message?: string;
-      };
-      if (!res.ok || !data.success) {
-        toast.error(data.message || t("login.localError"));
-        return;
-      }
-      toast.success(t("login.localSuccess"));
-      await utils.auth.me.invalidate();
-      navigate("/dashboard");
-    } catch {
-      toast.error(t("login.localError"));
-    } finally {
-      setSigningIn(false);
+    if (loginError || dbBlocked) return;
+    if (wantsAdmin) {
+      window.location.replace(bhdAdminEntryHref(returnTo));
+      return;
     }
-  }
+    window.location.replace(bhdStartHref(returnTo));
+  }, [wantsAdmin, loginError, dbBlocked, returnTo]);
 
-  const redirecting = !dbBlocked && !stayForAdmin && !loginError;
+  const redirecting = !dbBlocked && !loginError;
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -153,102 +124,20 @@ export default function Login() {
               <Button
                 className="w-full gap-2"
                 size="lg"
-                disabled={dbBlocked || signingIn}
+                disabled={dbBlocked}
                 onClick={() => {
-                  window.location.href = bhdStartHref(returnTo);
+                  window.location.href = wantsAdmin
+                    ? bhdAdminEntryHref(returnTo)
+                    : bhdStartHref(returnTo);
                 }}
               >
-                {t("login.bhd")}
+                {wantsAdmin ? t("login.adminEntry") : t("login.bhd")}
               </Button>
             )}
 
             <p className="text-center text-xs text-muted-foreground">
-              {t("login.bhdNote")}
+              {wantsAdmin ? t("login.adminEntryNote") : t("login.bhdNote")}
             </p>
-
-            {showPasswordForm && !redirecting ? (
-              <>
-                <div className="flex items-center gap-3 pt-1">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground">
-                    {t("login.or")}
-                  </span>
-                  <Separator className="flex-1" />
-                </div>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full gap-2 text-muted-foreground"
-                  onClick={() => setAdminOpen((v) => !v)}
-                >
-                  {t("login.adminToggle")}
-                  {adminOpen ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-
-                {adminOpen ? (
-                  <form
-                    className="space-y-3"
-                    onSubmit={(e) => void signInWithPassword(e)}
-                  >
-                    <p className="text-xs text-muted-foreground">
-                      {t("login.adminHint")}
-                    </p>
-                    <div className="space-y-2">
-                      <Label htmlFor="username">
-                        {passwordMode
-                          ? t("login.email")
-                          : t("login.localUser")}
-                      </Label>
-                      <Input
-                        id="username"
-                        type={passwordMode ? "email" : "text"}
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        autoComplete={passwordMode ? "email" : "username"}
-                        placeholder={
-                          passwordMode ? "admin@example.com" : undefined
-                        }
-                        disabled={dbBlocked}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">{t("login.localPass")}</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        autoComplete="current-password"
-                        disabled={dbBlocked}
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      size="lg"
-                      variant="outline"
-                      disabled={
-                        dbBlocked ||
-                        !username.trim() ||
-                        !password ||
-                        signingIn
-                      }
-                    >
-                      {signingIn
-                        ? t("login.localSigningIn")
-                        : passwordMode
-                          ? t("login.emailButton")
-                          : t("login.localButton")}
-                    </Button>
-                  </form>
-                ) : null}
-              </>
-            ) : null}
           </CardContent>
         </Card>
       </div>
