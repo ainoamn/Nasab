@@ -603,7 +603,7 @@ authorize وtoken دائماً على https://id.bhd-om.com وليس أصل ال
 
 | البند | التوثيق |
 |---|---|
-| تاريخ التثبيت الحي | 18–19 أغسطس 2026 — OIDC ثم المشغّل (`e1231cd` وما بعده) |
+| تاريخ التثبيت الحي | 18–23 أغسطس 2026 — OIDC ثم المشغّل ثم مطابقة 0.1/0.5/0.7 (`9990320` على `main` وVercel) |
 | `client_id` | `bhd-nasab` |
 | الأصل | `https://nasab.bhd-om.com` (نسخة Vercel: `https://nasab-mu.vercel.app`) |
 | `redirect_uri` | `https://nasab.bhd-om.com/api/auth/bhd/callback` + `https://nasab-mu.vercel.app/api/auth/bhd/callback` + `http://localhost:5173/api/auth/bhd/callback` |
