@@ -25,7 +25,7 @@ export const authRouter = createRouter({
     /** Kimi OAuth معطّل — الدخول عبر Google أو حساب المشرف */
     kimiEnabled: false,
     devLocalAuth: env.devLocalAuthEnabled,
-    passwordLogin: env.passwordLoginEnabled,
+    passwordLogin: env.passwordLoginEnabled && !isBhdIdentityReady(),
     bhdSsoEnabled: isBhdIdentityReady(),
   })),
   me: authedQuery.query(async ({ ctx }) => {
@@ -59,12 +59,13 @@ export const authRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const passwordLoginOn = env.passwordLoginEnabled;
+      const passwordLoginOn =
+        env.passwordLoginEnabled && !isBhdIdentityReady();
       const devLoginOn = env.devLocalAuthEnabled;
       if (!passwordLoginOn && !devLoginOn) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "تسجيل الدخول بالبريد غير مفعّل",
+          message: "تسجيل الدخول بالبريد غير مفعّل — استخدم حساب BHD",
         });
       }
 

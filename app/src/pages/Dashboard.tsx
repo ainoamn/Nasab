@@ -5,6 +5,7 @@ import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { trpc } from "@/providers/trpc";
 import { useTranslation } from "react-i18next";
 import AppHeader from "@/components/AppHeader";
+import { BhdSiteFooter } from "@/components/bhd/BhdSiteFooter";
 import { useLabels } from "@/lib/labels";
 import type { TreeRole, TreeStatus } from "@contracts/constants";
 import { Button } from "@/components/ui/button";
@@ -510,6 +511,7 @@ export default function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <BhdSiteFooter />
     </div>
   );
 }

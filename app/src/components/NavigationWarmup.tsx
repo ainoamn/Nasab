@@ -4,11 +4,13 @@ import { useEffect } from "react";
 export function NavigationWarmup() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      void import("@/pages/Home");
       void import("@/pages/Dashboard");
       void import("@/pages/AccountSettings");
       void import("@/pages/Login");
       void import("@/pages/Checkout");
       void import("@/pages/TreeWorkspace");
+      void import("@/pages/Setup");
     }, 200);
     return () => window.clearTimeout(timer);
   }, []);

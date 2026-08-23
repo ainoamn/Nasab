@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import { env } from "../lib/env";
+import { isBhdIdentityReady } from "../lib/bhd-identity";
 import { getSessionCookieOptions } from "../lib/cookies";
 import { Session } from "@contracts/constants";
 import { upsertUser, findUserByUnionId } from "../queries/users";
@@ -15,14 +16,23 @@ const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO = "https://www.googleapis.com/oauth2/v3/userinfo";
 
+export function isGoogleAuthEnabled() {
+  // بعد SSO: جوجل على الهوية فقط — القسم 0.2 / BHD-PRODUCT-SSO-ADMIN
+  if (isBhdIdentityReady()) return false;
+  return Boolean(env.googleClientId && env.googleClientSecret);
+}
+
 function googleRedirectUri(origin: string) {
   return `${origin}/api/oauth/google/callback`;
 }
 
 export function createGoogleAuthHandler() {
   return (c: Context) => {
-    if (!env.googleClientId) {
-      return c.json({ error: "Google login غير مفعّل" }, 503);
+    if (!isGoogleAuthEnabled()) {
+      return c.json(
+        { error: "google_disabled", message: "استخدم حساب BHD الموحّد" },
+        410,
+      );
     }
 
     const ip = getClientIp(c.req.raw.headers);
@@ -48,6 +58,9 @@ export function createGoogleAuthHandler() {
 
 export function createGoogleCallbackHandler() {
   return async (c: Context) => {
+    if (!isGoogleAuthEnabled()) {
+      return c.redirect("/api/auth/bhd/start", 302);
+    }
     if (!env.googleClientId || !env.googleClientSecret) {
       return c.json({ error: "Google login غير مفعّل" }, 503);
     }
@@ -118,11 +131,6 @@ export function createGoogleCallbackHandler() {
   };
 }
 
-export function isGoogleAuthEnabled() {
-  // Redirect OAuth needs both; ID-token GIS needs client ID only.
-  return Boolean(env.googleClientId && env.googleClientSecret);
-}
-
 type GoogleIdTokenInfo = {
   aud?: string;
   sub?: string;
@@ -137,7 +145,7 @@ export async function loginWithGoogleIdToken(
   c: Context,
   idToken: string,
 ): Promise<Response> {
-  if (!env.googleClientId) {
+  if (!env.googleClientId || !isGoogleAuthEnabled()) {
     return c.json({ error: "google_disabled", message: "Google login غير مفعّل" }, 503);
   }
 

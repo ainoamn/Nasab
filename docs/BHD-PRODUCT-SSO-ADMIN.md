@@ -86,3 +86,10 @@
 - [BHD-UNIFIED-LOGIN-AND-APPS.md](BHD-UNIFIED-LOGIN-AND-APPS.md) — القسم 0.7 و4 و4.9
 - [BHD-IDENTITY-SSO.md](BHD-IDENTITY-SSO.md) — بروتوكول OIDC
 - [BHD-APP-SWITCHER.md](BHD-APP-SWITCHER.md) — المشغّل والكتالوج المجمد
+
+---
+
+## 6. نطاق هذا الملف
+
+هذا الدليل يُنفَّذ في **مستودع كل منتج** (وازن، حسابي، نَسَب…).  
+مستودع الهوية `ONE-BHD` يطبّق جانب المُصدِر (كوكي `bhd_id`، OIDC، أدمن المنصة، الكتالوج). راجع القسم **12.1** في الدليل الموحّد لحالة المطابقة الحية.

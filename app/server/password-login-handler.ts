@@ -11,6 +11,7 @@ import { issueSessionForUser } from "./lib/issue-session";
 import { rateLimit, clientRateKey } from "./lib/rate-limit";
 import { passwordLoginUnionId } from "./lib/password-login";
 import { classifyDbError, sanitizeDbError } from "./lib/db-errors";
+import { isBhdIdentityReady } from "./lib/bhd-identity";
 import type { Context } from "hono";
 
 type LoginBody = { username?: string; password?: string };
@@ -81,10 +82,17 @@ export async function passwordLoginHandler(c: Context) {
     );
   }
 
-  const passwordLoginOn = env.passwordLoginEnabled;
+  const passwordLoginOn =
+    env.passwordLoginEnabled && !isBhdIdentityReady();
   const devLoginOn = env.devLocalAuthEnabled;
   if (!passwordLoginOn && !devLoginOn) {
-    return c.json({ error: "forbidden", message: "تسجيل الدخول بالبريد غير مفعّل" }, 403);
+    return c.json(
+      {
+        error: "forbidden",
+        message: "تسجيل الدخول بالبريد غير مفعّل — استخدم حساب BHD",
+      },
+      403,
+    );
   }
 
   const ip = getClientIp(c.req.raw.headers);

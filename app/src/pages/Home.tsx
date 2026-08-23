@@ -3,6 +3,7 @@ import { BHD_START_PATH, bhdStartHref } from "@/const";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { BhdSiteFooter } from "@/components/bhd/BhdSiteFooter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -252,24 +253,7 @@ export default function Home() {
         </Button>
       </section>
 
-      <footer className="border-t py-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <TreePalm className="h-4 w-4 text-primary" />
-            <span className="font-display font-bold text-primary">{t("brand")}</span>
-          </div>
-          <p>{t("footer")}</p>
-          <a
-            href="/api/auth/admin-entry"
-            className="text-xs underline underline-offset-2 hover:text-foreground"
-          >
-            {t("footerAdminEntry")}
-          </a>
-          <Link to="/setup" className="text-xs underline underline-offset-2 hover:text-foreground">
-            {t("setupLink")}
-          </Link>
-        </div>
-      </footer>
+      <BhdSiteFooter />
     </div>
   );
 }

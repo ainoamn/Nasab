@@ -4,64 +4,69 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 152 69% 19%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    /* هوية BHD — القسم 0.1: حبر #092d24 · أخضر #075c45 · رمل #fbfaf7 / #f4f0e8 */
+    --background: 40 33% 98%;
+    --foreground: 162 67% 10%;
+    --card: 40 40% 99%;
+    --card-foreground: 162 67% 10%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 162 67% 10%;
+    --primary: 162 86% 19%;
+    --primary-foreground: 40 33% 98%;
+    --secondary: 150 18% 92%;
+    --secondary-foreground: 162 67% 10%;
+    --muted: 40 25% 94%;
+    --muted-foreground: 160 12% 38%;
+    --accent: 150 18% 92%;
+    --accent-foreground: 162 67% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 150 15% 86%;
+    --input: 150 15% 86%;
+    --ring: 162 86% 19%;
     --radius: 0.625rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 40 33% 98%;
+    --sidebar-foreground: 162 67% 10%;
+    --sidebar-primary: 162 86% 19%;
+    --sidebar-primary-foreground: 40 33% 98%;
+    --sidebar-accent: 150 18% 92%;
+    --sidebar-accent-foreground: 162 67% 10%;
+    --sidebar-border: 150 15% 86%;
+    --sidebar-ring: 162 86% 19%;
+    --ink: #092d24;
+    --emerald: #075c45;
+    --sand: #fbfaf7;
+    --sand-deep: #f4f0e8;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 162 30% 8%;
+    --foreground: 40 33% 96%;
+    --card: 162 25% 11%;
+    --card-foreground: 40 33% 96%;
+    --popover: 162 25% 11%;
+    --popover-foreground: 40 33% 96%;
+    --primary: 158 45% 42%;
+    --primary-foreground: 162 67% 8%;
+    --secondary: 162 18% 16%;
+    --secondary-foreground: 40 33% 96%;
+    --muted: 162 18% 16%;
+    --muted-foreground: 150 12% 65%;
+    --accent: 162 18% 16%;
+    --accent-foreground: 40 33% 96%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 162 18% 18%;
+    --input: 162 18% 18%;
+    --ring: 158 45% 42%;
+    --sidebar-background: 162 30% 8%;
+    --sidebar-foreground: 40 33% 96%;
+    --sidebar-primary: 158 45% 42%;
+    --sidebar-primary-foreground: 162 67% 8%;
+    --sidebar-accent: 162 18% 16%;
+    --sidebar-accent-foreground: 40 33% 96%;
+    --sidebar-border: 162 18% 18%;
+    --sidebar-ring: 158 45% 42%;
   }
 }
 
@@ -70,19 +75,20 @@
     @apply border-border;
   }
   html {
-    font-family: "Tajawal", "Source Sans 3", "Segoe UI", sans-serif;
+    font-family: "IBM Plex Sans Arabic", "IBM Plex Sans", "Segoe UI", sans-serif;
   }
   html[lang="en"] {
-    font-family: "Source Sans 3", "Segoe UI", sans-serif;
+    font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
   }
   body {
     @apply bg-background text-foreground;
   }
   .font-display {
-    font-family: "Amiri", "Source Serif 4", serif;
+    font-family: "IBM Plex Sans Arabic", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
   }
   html[lang="en"] .font-display {
-    font-family: "Source Serif 4", "Georgia", serif;
+    font-family: "IBM Plex Sans", sans-serif;
   }
 }
 

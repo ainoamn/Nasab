@@ -161,6 +161,17 @@ export const en = {
   footer: "An Arab platform for preserving genealogy — your data is yours, your privacy is a trust.",
   footerAdminEntry: "Admin sign-in",
   setupLink: "Launch readiness",
+  bhdFooter: {
+    programs: "Our apps",
+    allApps: "All apps and how they work",
+    about: "About",
+    brand: "Brand",
+    apps: "Apps",
+    privacy: "Privacy",
+    terms: "Terms",
+    security: "Security",
+    rights: "© 2026 Bin Hamoud Development · Muscat · Sultanate of Oman",
+  },
   setup: {
     title: "Launch readiness",
     subtitle: "Check server ↔ Neon wiring and remaining production steps.",

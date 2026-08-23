@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { TreePalm } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { BhdSiteFooter } from "@/components/bhd/BhdSiteFooter";
 import { useBuildBehind } from "@/hooks/useBuildBehind";
 import { toast } from "sonner";
 
@@ -28,8 +29,8 @@ export default function Login() {
   const loginError = params.get("error");
   const wantsAdmin =
     params.get("admin") === "1" ||
-    params.get("local") === "1" ||
-    isAdminReturnPath(returnTo);
+    isAdminReturnPath(returnTo) ||
+    (params.get("local") === "1" && isAdminReturnPath(returnTo));
 
   useEffect(() => {
     const meta = document.createElement("meta");
@@ -141,6 +142,7 @@ export default function Login() {
           </CardContent>
         </Card>
       </div>
+      <BhdSiteFooter />
     </div>
   );
 }
