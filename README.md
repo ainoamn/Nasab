@@ -27,6 +27,7 @@
 - [الدليل المرجعي للدخول الموحّد ومشغّل التطبيقات](./docs/BHD-UNIFIED-LOGIN-AND-APPS.md)
 - [خطة ربط نَسَب (دخول + تطبيقات)](./docs/BHD-NASAB-INTEGRATION.md)
 - [تنفيذ SSO في نَسَب](./docs/NASAB-BHD-SSO.md)
+- [حزمة تسليم للمتابعة من جهاز آخر (أيلول 2026)](./docs/notes/2026-09-03-session-handoff-bhd-unified-login.md)
 - [جاهزية الإطلاق في الواجهة: /setup](https://nasab.bhd-om.com/setup)
 - فحص دوري: GitHub Actions `Ops` (دخان + نسخ Neon)
 
