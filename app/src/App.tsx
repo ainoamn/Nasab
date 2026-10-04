@@ -1,7 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router";
 import { Toaster } from "@/components/ui/sonner";
-import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
 import { NavigationWarmup } from "@/components/NavigationWarmup";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -170,7 +169,6 @@ export default function App() {
         <Route path="/invite/:token" element={<InviteAccept />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <SessionKeepAlive />
       <NavigationWarmup />
       <Toaster position="top-center" richColors />
     </>

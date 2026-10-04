@@ -5,7 +5,8 @@
 > **التاريخ:** 18 أغسطس 2026  
 > **الإصدار:** `bhd-identity.v1`  
 > **الناشر:** بوابة BHD — مشروع Vercel `one-bhd`  
-> **المُصدِر (Issuer):** `https://id.bhd-om.com`
+> **المُصدِر (Issuer):** `https://id.bhd-om.com`  
+> **الدليل التشغيلي للفرق:** [`BHD-UNIFIED-LOGIN-AND-APPS.md`](BHD-UNIFIED-LOGIN-AND-APPS.md) — كيف يُبنى الدخول، كيف يعمل التنقل دون إعادة تسجيل، وكيف يوثّق كل موقع تثبيته وتقنياته.
 
 **حالة التنفيذ الحي (18 أغسطس 2026):** مزوّد الهوية يعمل على البوابة المنشورة. اكتشاف OIDC:
 `https://one-bhd.vercel.app/.well-known/openid-configuration`
@@ -76,8 +77,8 @@ sequenceDiagram
 | صلاحية كود التفويض | 60 ثانية، استخدام واحد |
 | صلاحية ID Token | 10 دقائق |
 | صلاحية Access Token | 10 دقائق |
-| صلاحية Refresh Token | 30 يوماً، تدوير عند كل استخدام |
-| صلاحية جلسة الهوية `bhd_id` | 7 أيام |
+| صلاحية Refresh Token | 400 يوم، تدوير عند كل استخدام |
+| صلاحية جلسة الهوية `bhd_id` | 400 يوم أو حتى الخروج الصريح — **بلا مهلة خمول** (انظر `BHD-SESSION-POLICY.md`) |
 | PKCE | إلزامي، `S256` فقط |
 | scopes الافتراضية | `openid profile email` |
 | مطالبات ID Token الإلزامية | `iss`, `aud`, `sub`, `exp`, `iat`, `nonce`, `email`, `email_verified` |
@@ -94,8 +95,9 @@ sequenceDiagram
 | حسابي | `bhd-hisaby` | `https://hisaby.bhd-om.com` (و`hisaby.pro`) | `https://hisaby.bhd-om.com/api/auth/bhd/callback` |
 | نَسَب | `bhd-nasab` | `https://nasab.bhd-om.com` | `https://nasab.bhd-om.com/api/auth/bhd/callback` |
 | متجر BHD | `bhd-store` | `https://bhdstor.bhd-om.com` | `https://bhdstor.bhd-om.com/api/auth/bhd/callback` |
-| مكتب BHD | `bhd-office` | داخلي | `{origin}/api/auth/bhd/callback` |
+| مكتب BHD | `bhd-office` | `https://baitak.bhd-om.com` | `https://baitak.bhd-om.com/api/auth/bhd/callback` |
 | بيتك | `bhd-baitak` | `https://baitak.bhd-om.com` | `https://baitak.bhd-om.com/api/auth/bhd/callback` |
+| BHD R | `bhd-r` | `https://r.bhd-om.com` / `https://bhd-r-api-phi.vercel.app` | `{origin}/api/auth/bhd/callback` |
 
 محلياً لكل منتج:
 
@@ -116,6 +118,8 @@ sequenceDiagram
 | `BHD_IDENTITY_ISSUER` | `https://id.bhd-om.com` |
 | `GOOGLE_CLIENT_ID` | نفس عميل One BHD |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | نفس القيمة |
+| `FACEBOOK_APP_ID` | تطبيق Meta `bhd-om.com` (`2020952291888711`) |
+| `FACEBOOK_APP_SECRET` | سر التطبيق في Vercel فقط |
 | `BHD_OAUTH_CLIENTS` | JSON للعملاء (انظر 2.3) أو جدول `bhd_oauth_clients` |
 | `BHD_PLATFORM_ADMIN_EMAILS` | بريد مديري المنصة، مفصول بفاصلة. يفتح `/admin` |
 
@@ -161,7 +165,7 @@ sequenceDiagram
 | وازن | المحافظ، الأعضاء، الفوترة + عمود `bhd_sub` | وازن فقط |
 | حسابي | الشركات، الفواتير، الكاشير + عمود `bhd_sub` على المستخدم | حسابي فقط |
 | البوابة | بعد المرحلة 2 تصبح واجهة فوق الهوية أو تحوّل `/login` إلى المُصدِر | لا قاعدة مستخدمين ثانية |
-| نَسَب / متجر / مكتب / بيتك | بيانات المنتج + `bhd_sub` | ذلك المنتج فقط |
+| نَسَب / متجر / مكتب / بيتك / BHD R | بيانات المنتج + `bhd_sub` | ذلك المنتج فقط |
 
 `bhd_contacts` من نوع `SELF` هو دفتر عناوين الحساب الموحّد. دفاتر عملاء حسابي تبقى جداول حسابي.
 
@@ -180,12 +184,14 @@ sequenceDiagram
 | GET | `/oauth/userinfo` | Bearer access token |
 | POST | `/oauth/revoke` | إلغاء refresh |
 | GET | `/oauth/end-session` | خروج موحّد (RP-initiated logout) |
-| GET | `/login` | واجهة الدخول (بريد/اسم مستخدم + Google) |
+| GET | `/login` | واجهة الدخول (بريد/اسم مستخدم + Google + فيسبوك) |
 | GET | `/account` | صفحة ملف الحساب: البيانات، المواقع المرتبطة، الاشتراكات |
 | GET / PATCH | `/api/account` | قراءة/تعديل الملف الشخصي (جلسة هوية مطلوبة) |
 | POST | `/api/auth/login` | دخول محلي للهوية |
 | POST | `/api/auth/register` | إنشاء حساب هوية |
 | POST | `/api/auth/google` | تحقق ID Token من Google على خادم الهوية |
+| GET | `/api/auth/facebook/start` | بدء دخول فيسبوك (تحويل OAuth) |
+| GET | `/api/auth/facebook/callback` | استبدال رمز فيسبوك على خادم الهوية |
 | POST | `/api/auth/logout` | مسح `bhd_id` ثم إن وُجد `post_logout_redirect_uri` يُحوَّل إليه |
 
 تعديل الاسم/الهاتف/العنوان على `/account` يكتب في `bhd_users` و`bhd_contacts` (SELF). `/oauth/userinfo` وID Token التالي يقرآن القيم الجديدة. المنتج يحدّث نسخته المحلية عند الدخول التالي (قسم 6.4). الاشتراكات تظهر في `/account` عندما يبلّغ المنتج عنها؛ حتى ذلك الحين القائمة فارغة عمدًا.
@@ -280,12 +286,14 @@ grant_type=refresh_token
 
 التحقق عند المنتج **إلزامي على الخادم:**
 
-1. جلب JWKS من `jwks_uri` (كاش 10 دقائق) أو `jose` مع `IDENTITY` issuer.
+1. جلب JWKS من `jwks_uri` (كاش 10 دقائق) أو تحقق HS256 بـ `IDENTITY_TOKEN_SECRET` / `BHD_IDENTITY_TOKEN_SECRET` بينما JWKS فارغ.
 2. `iss` === `BHD_IDENTITY_ISSUER`
 3. `aud` === `BHD_OAUTH_CLIENT_ID`
 4. `exp` في المستقبل
 5. `nonce` يطابق القيمة المخزّنة في كوكي/جلسة الـ callback
 6. `email_verified === true` وإلا ارفض الدخول (إلا مسار بريد الهوية نفسه بعد تحقق لاحق — للمنتجات ارفض إن لم يكن موثّقاً)
+
+**احتياطي مقبول (حسابي 23 أغسطس 2026):** بعد نجاح `authorization_code` + PKCE، إن فشل تحقق التوقيع وJWKS فارغ، يجوز استدعاء `GET /oauth/userinfo` بـ `access_token` على نفس الـ issuer (TLS) مع الإبقاء على فحص `nonce` من حمولة `id_token`. لا يُستبدل هذا بمصادقة من المتصفح.
 
 ---
 
@@ -293,11 +301,13 @@ grant_type=refresh_token
 
 | الاسم | أين | Domain | HttpOnly | Secure | SameSite | الغرض |
 |---|---|---|---|---|---|---|
-| `bhd_id` | الهوية فقط | **Host-only** (لا `.bhd-om.com`) | نعم | نعم في الإنتاج | Lax | جلسة مزوّد الهوية |
+| `bhd_id` | الهوية فقط | **Host-only** (لا `.bhd-om.com`) | نعم | نعم في الإنتاج | Lax | جلسة الهوية حتى الخروج الصريح (400 يوم سقف المتصفح) |
 | `bhd_oauth_state` | المنتج، دقائق | Host-only | نعم | نعم في الإنتاج | Lax | `state` + `nonce` + `code_verifier` أثناء الـ redirect |
 | جلسة المنتج الحالية | المنتج | Host-only | نعم | نعم في الإنتاج | Lax | تبقى أسماء حسابي `bhd_access` ووازن كما هي وبوابة `bhd_portal` |
 
 ممنوع ضبط `Domain=.bhd-om.com` على `bhd_id`. SSO يعمل بإعادة توجيه المنتج إلى الهوية التي ترى كوكيزها على `id.bhd-om.com`.
+
+**حساب واحد في الجلسة.** مضيف الهوية القانوني هو `https://id.bhd-om.com` فقط. دخول ثانٍ بينما `bhd_id` لحساب مختلف يُرفض (`SWITCH_REQUIRES_LOGOUT`) حتى يتم `end-session`. المنتج عند `callback` يستبدل جلسته المحلية بالكامل بـ `sub` القادم؛ لا يجوز بقاء `/admin` على مستخدم قديم. `www` و`one-bhd.vercel.app` يحوّلان مسارات الدخول والحساب إلى `id`.
 
 حسابي على `hisaby.bhd-om.com` (و`hisaby.pro`) يعمل بنفس التحويل. لا حاجة لكوكي مشترك عبر النطاقات.
 
@@ -424,6 +434,10 @@ CREATE INDEX IF NOT EXISTS users_bhd_sub_idx ON <users>(bhd_sub);
 
 **Authorized redirect URIs:** لا تُستخدم لمسار GIS (ID Token). إن بقي مسار PKCE قديماً في وازن حتى النقل، أبقِ `https://wazen.bhd-om.com/api/auth/google/callback` إلى يوم القطع ثم احذفه.
 
+## 8.1 Facebook Login (Meta)
+
+انظر `docs/BHD-FACEBOOK-LOGIN.md`. Redirect URIs تُسجَّل حرفياً على `…/api/auth/facebook/callback` لنطاقات الهوية فقط. المنتجات لا تسجّل فيسبوك.
+
 ---
 
 ## 9. DNS (Hostinger)
@@ -494,7 +508,7 @@ bhd_oauth_consents
 | **3** | وازن | قسم 6 كامل؛ دخول محلي يُحوَّل إلى الهوية؛ ترحيل بالقسم 7 |
 | **4** | حسابي | قسم 6 على Nest/Next مع `/api/auth/bhd/callback` عبر بروكسي نفس المنشأ |
 | **5** | البوابة `/login` | تحويل إلى المُصدِر أو نفس التطبيق يخدم الهوية والواجهة |
-| **6** | نَسَب ثم المتجر ثم المكتب ثم بيتك | قسم 6 عند أول شاشة دخول |
+| **6** | نَسَب ثم المتجر ثم المكتب ثم بيتك ثم BHD R | قسم 6 عند أول شاشة دخول |
 | **7** | قطع | إزالة أزرار جوجل المحلية وأصول Google الزائدة |
 
 لا تبدأ مرحلة 3 قبل نجاح اختبارات المرحلة 2 في القسم 13.
@@ -533,10 +547,10 @@ bhd_oauth_consents
 - `redirect_uri`: `https://bhdstor.bhd-om.com/api/auth/bhd/callback`
 - نفّذ القسم 6 عند أول شاشة دخول
 
-### نَسَب / مكتب / بيتك
+### نَسَب / مكتب / بيتك / BHD R
 
 - نفّذ القسم 6 فقط
-- `client_id` من جدول 2.1
+- `client_id` من جدول 2.1 (`bhd-r` لـ BHD R)
 - لا تُبنَى جداول مستخدمين بكلمة مرور جديدة
 
 ---
@@ -559,7 +573,7 @@ bhd_oauth_consents
 
 - تحقق التوكن على الخادم فقط.
 - PKCE إلزامي حتى للعملاء السرّية.
-- معدل طلبات: authorize/login/google ≤ 10/دقيقة/IP.
+- معدل طلبات: authorize/login/google/facebook ≤ 10/دقيقة/IP.
 - أسرار العملاء bcrypt.
 - الكود والـ refresh يُخزَّنان هاش فقط.
 - صفحات `/login` و`/oauth/*`: `noindex`, `no-store`.

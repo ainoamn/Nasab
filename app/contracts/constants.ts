@@ -1,7 +1,7 @@
 export const Session = {
   cookieName: "kimi_sid",
-  /** 48 ساعة خمول منزلق — الدليل المرجعي القسم 0.2 */
-  maxAgeMs: 48 * 60 * 60 * 1000,
+  /** 400 يوم أو حتى «خروج» — بلا خمول (docs/BHD-SESSION-POLICY.md) */
+  maxAgeMs: 400 * 24 * 60 * 60 * 1000,
 } as const;
 
 export const ErrorMessages = {

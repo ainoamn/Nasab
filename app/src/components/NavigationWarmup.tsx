@@ -7,7 +7,6 @@ export function NavigationWarmup() {
       void import("@/pages/Home");
       void import("@/pages/Dashboard");
       void import("@/pages/AccountSettings");
-      void import("@/pages/Login");
       void import("@/pages/Checkout");
       void import("@/pages/TreeWorkspace");
       void import("@/pages/Setup");

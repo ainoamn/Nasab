@@ -3,7 +3,7 @@ import { env } from "../lib/env";
 import type { SessionPayload } from "./types";
 
 const JWT_ALG = "HS256";
-const SESSION_TTL = "48h";
+const SESSION_TTL = "400d";
 
 export async function signSessionToken(
   payload: SessionPayload,

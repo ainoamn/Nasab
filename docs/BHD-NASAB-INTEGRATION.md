@@ -76,7 +76,7 @@ sequenceDiagram
 | `post_logout_redirect_uri` | أصل الموقع + `/` |
 | scopes | `openid profile email` |
 | PKCE | `S256` إلزامي |
-| جلسة المنتج | كوكي `kimi_sid` موقَّعة بـ `APP_SECRET` — خمول منزلق 48 ساعة |
+| جلسة المنتج | كوكي `kimi_sid` موقَّعة بـ `APP_SECRET` — 400 يوم أو حتى «خروج» بلا خمول (`BHD-SESSION-POLICY.md`) |
 
 ---
 

@@ -63,7 +63,33 @@
 
 تعيين أدمن جديد لاحقاً: من `/admin` داخل المنتج أو SQL على الصف المرتبط بـ `bhd_sub` — **ليس** من شاشة الهوية.
 
-### 3.4 بعد نجاح المسار الحي
+### 3.5 مساحة عمل العميل (`returnTo`)
+
+بعد نجاح SSO من بوابة `bhd-om.com` أو المشغّل، المنتج يفتح **لوحة العميل** وليس الصفحة التسويقية:
+
+| المنتج | `returnTo` المعتمد |
+|---|---|
+| وازن | `/dashboard` |
+| حسابي | `/dashboard` |
+| نَسَب | `/app` |
+| BHD R | `/ar/portal` |
+| المتجر | `/dashboard` |
+| المكتب | `/ar` |
+| بوابة بن حمود | `/company` |
+
+اسمح بهذه المسارات في تحقق `returnTo` الآمن. الإدارة تبقى عبر `admin-entry` فقط.
+
+### 3.7 جلسة المنتج (إلزامي)
+
+انسخ [`BHD-SESSION-POLICY.md`](BHD-SESSION-POLICY.md) ونفّذه:
+
+- [ ] لا خمول 48 ساعة ولا `SessionKeepAlive`
+- [ ] كوكي الجلسة المحلية 400 يوم، تُمسح عند «خروج» فقط
+- [ ] `GET /api/auth/me` بلا `Set-Cookie`
+- [ ] لا جوجل محلي ولا One Tap
+- [ ] لا `router.refresh()` عند عودة التبويب
+
+### 3.6 بعد نجاح المسار الحي
 
 - [ ] تحقق: `GET {origin}/api/auth/bhd/start` يعيد 302 إلى `id.bhd-om.com`
 - [ ] أبلغ ONE-BHD لقلب عنصر المنتج في `app/lib/bhd/apps.ts` من `browse` إلى `sso`
@@ -83,6 +109,7 @@
 
 ## 5. مراجع
 
+- [BHD-SESSION-POLICY.md](BHD-SESSION-POLICY.md) — الجلسة حتى الخروج الصريح (بلا خمول وبلا جوجل في المنتج)
 - [BHD-UNIFIED-LOGIN-AND-APPS.md](BHD-UNIFIED-LOGIN-AND-APPS.md) — القسم 0.7 و4 و4.9
 - [BHD-IDENTITY-SSO.md](BHD-IDENTITY-SSO.md) — بروتوكول OIDC
 - [BHD-APP-SWITCHER.md](BHD-APP-SWITCHER.md) — المشغّل والكتالوج المجمد

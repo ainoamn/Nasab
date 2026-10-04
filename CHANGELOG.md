@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-10-04 — الجلسة حتى «خروج» (BHD-SESSION-POLICY)
+
+طبّقت [`docs/BHD-SESSION-POLICY.md`](./docs/BHD-SESSION-POLICY.md) حرفياً. كوكي `kimi_sid` و`exp` في JWT صارا 400 يوم، بلا مهلة خمول. حذفت `SessionKeepAlive`. `GET /api/auth/me` و`auth.me` للقراءة فقط بلا `Set-Cookie`؛ الكوكي يُكتب عند الدخول ويُمسح عند الخروج فقط. لا إعادة جلب لـ `auth.me` عند التركيز أو عودة الشبكة، ولا تسخين لصفحة `/login`. الخروج بزر «خروج» فقط. حدّثت نسخ أدلة ONE-BHD والقسم 12.4.
+
+---
+
 ## 2026-09-03 — حزمة تسليم للمتابعة من جهاز آخر
 
 وثّقت المحادثة الكاملة لربط BHD في [`docs/notes/2026-09-03-session-handoff-bhd-unified-login.md`](./docs/notes/2026-09-03-session-handoff-bhd-unified-login.md): الحالة، الملفات، أوامر السحب/النشر، وما بقي. اسحب `main` على الجهاز الثاني وابدأ من هناك.

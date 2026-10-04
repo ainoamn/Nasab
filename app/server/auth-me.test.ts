@@ -10,4 +10,13 @@ describe("GET /api/auth/me", () => {
     expect(res.status).toBe(401);
     await expect(res.json()).resolves.toEqual({ error: "unauthorized" });
   });
+
+  it("never writes a session cookie", async () => {
+    const app = new Hono();
+    app.get("/api/auth/me", createAuthMeHandler());
+    const res = await app.request("http://localhost/api/auth/me", {
+      headers: { cookie: "kimi_sid=not-a-valid-token" },
+    });
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
 });
