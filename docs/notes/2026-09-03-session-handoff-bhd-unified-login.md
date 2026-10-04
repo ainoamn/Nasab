@@ -75,9 +75,9 @@ npx vercel --prod --yes
 - كتالوج `app/src/lib/bhd/apps.ts` · `BhdAppSwitcher` في `AppHeader`
 - نَسَب في الكتالوج: `mode: "sso"`
 
-### 2) خمول 48 ساعة (`0dd14ea` وما قبله داخل السلسلة)
-- `Session.maxAgeMs` و JWT TTL = 48 ساعة
-- `GET /api/auth/me` + `SessionKeepAlive` + تجديد في `auth.me`
+### 2) خمول 48 ساعة (`0dd14ea`) — **أُلغي في 4 أكتوبر 2026**
+- استُبدل بسياسة «حتى الخروج» (`1ec9b0b`): 400 يوم، بلا `SessionKeepAlive`، `/api/auth/me` للقراءة فقط
+- التفاصيل: [`2026-10-04-session-until-logout.md`](./2026-10-04-session-until-logout.md)
 - منع صريح لغير المشرف على `/admin`
 
 ### 3) القسم 0.7 / 4.9 — أدمن عبر SSO
@@ -103,11 +103,10 @@ npx vercel --prod --yes
 |---|---|
 | `app/server/bhd/auth.ts` | start / callback / logout |
 | `app/server/admin-entry.ts` | دخول الإدارة |
-| `app/server/auth-me.ts` | تجديد الجلسة |
+| `app/server/auth-me.ts` | قراءة الجلسة فقط (بلا `Set-Cookie`) |
 | `app/server/queries/bhd-users.ts` | ربط `bhd_sub` |
 | `app/src/pages/Login.tsx` | غلاف → الهوية فقط |
 | `app/src/components/bhd/BhdSiteFooter.tsx` | فوتر المجموعة |
-| `app/src/components/auth/SessionKeepAlive.tsx` | خمول منزلق |
 | `app/src/lib/bhd/apps.ts` | كتالوج مجمّد للمشغّل |
 
 ---
