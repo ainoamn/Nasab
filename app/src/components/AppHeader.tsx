@@ -7,11 +7,23 @@ import { Button } from "@/components/ui/button";
 import { LayoutDashboard, TreePalm, Shield } from "lucide-react";
 
 export default function AppHeader() {
-  const { user, accounts, logout, logoutAll, switchAccount, addAccount } = useAuth();
+  const { user, identityUser, accounts, logout, logoutAll, switchAccount, addAccount } =
+    useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isAdmin = user?.role === "admin";
   const locale = i18n.language?.startsWith("en") ? "en" : "ar";
+
+  const switcherUser = identityUser
+    ? identityUser
+    : {
+        id: user?.bhdSub ?? user?.unionId ?? undefined,
+        name: user?.name ?? "",
+        email: user?.email ?? "",
+        username: user?.username ?? null,
+        phone: user?.phone ?? null,
+        picture: user?.avatar ?? null,
+      };
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur no-print">
@@ -51,12 +63,7 @@ export default function AppHeader() {
           ) : null}
           {user ? (
             <BhdAppSwitcher
-              user={{
-                id: user.bhdSub ?? user.unionId ?? undefined,
-                name: user.name ?? "",
-                email: user.email ?? "",
-                picture: user.avatar ?? null,
-              }}
+              user={switcherUser}
               accounts={accounts}
               onSignOut={logout}
               onSignOutAll={logoutAll}

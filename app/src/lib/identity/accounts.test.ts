@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountHandle,
   identityAddAccountHref,
   identityEndSessionHref,
   NASAB_WORKSPACE_PATH,
@@ -25,5 +26,23 @@ describe("identity multi-account helpers", () => {
     expect(url).toContain("https://id.bhd-om.com/oauth/end-session");
     expect(url).toContain("client_id=bhd-nasab");
     expect(url).toContain("all=1");
+  });
+
+  it("prefers email, then username, then phone over name", () => {
+    expect(
+      accountHandle({
+        email: "a@bhd.om",
+        username: "ali",
+        phone: "96890000000",
+        name: "علي",
+      }),
+    ).toBe("a@bhd.om");
+    expect(accountHandle({ email: "", username: "ali", phone: "1", name: "علي" })).toBe(
+      "ali",
+    );
+    expect(accountHandle({ email: "", username: "", phone: "9689", name: "علي" })).toBe(
+      "9689",
+    );
+    expect(accountHandle({ name: "علي" })).toBe("علي");
   });
 });

@@ -1,11 +1,9 @@
 import { DEFAULT_IDENTITY_ISSUER } from "./issuer";
 import { bhdStartHref } from "@/const";
+import type { AuthProviderMark, BhdSwitcherUser } from "@/components/bhd/BhdAppSwitcher";
 
-export type IdentityAccount = {
+export type IdentityAccount = BhdSwitcherUser & {
   id: string;
-  name: string;
-  email: string;
-  picture: string | null;
 };
 
 type IdentityMeResponse = {
@@ -29,6 +27,25 @@ async function identityFetch(path: string, init?: RequestInit): Promise<Response
   });
 }
 
+function normalizeAccount(raw: Partial<IdentityAccount> & { id?: string }): IdentityAccount | null {
+  if (!raw.id) return null;
+  const providers = Array.isArray(raw.providers)
+    ? (raw.providers.filter(Boolean) as AuthProviderMark[])
+    : undefined;
+  return {
+    id: raw.id,
+    name: raw.name || "",
+    email: raw.email || "",
+    username: raw.username ?? null,
+    phone: raw.phone ?? null,
+    picture: raw.picture ?? null,
+    providers,
+    googleLinked: raw.googleLinked,
+    facebookLinked: raw.facebookLinked,
+    hasPassword: raw.hasPassword,
+  };
+}
+
 export async function fetchIdentityAccounts(): Promise<{
   user: IdentityAccount | null;
   accounts: IdentityAccount[];
@@ -37,13 +54,14 @@ export async function fetchIdentityAccounts(): Promise<{
     const response = await identityFetch("/api/auth/me");
     if (!response.ok) return { user: null, accounts: [] };
     const data = (await response.json()) as IdentityMeResponse;
-    const user = data.user ?? null;
-    const accounts = data.accounts?.length
-      ? data.accounts
-      : user
-        ? [user]
-        : [];
-    return { user, accounts };
+    const user = data.user ? normalizeAccount(data.user) : null;
+    const accounts = (data.accounts || [])
+      .map((item) => normalizeAccount(item))
+      .filter((item): item is IdentityAccount => Boolean(item));
+    return {
+      user,
+      accounts: accounts.length ? accounts : user ? [user] : [],
+    };
   } catch {
     return { user: null, accounts: [] };
   }
@@ -64,7 +82,7 @@ export async function logoutIdentityAccount(all: boolean): Promise<IdentityAccou
   });
   if (!response.ok) return null;
   const data = (await response.json()) as { user?: IdentityAccount | null };
-  return data.user ?? null;
+  return data.user ? normalizeAccount(data.user) : null;
 }
 
 /** مساحة عمل نَسَب بعد SSO — مطابقة `workspacePath` في الكتالوج المجمد */
@@ -95,4 +113,14 @@ export function identityEndSessionHref(input: {
   url.searchParams.set("post_logout_redirect_uri", input.postLogoutRedirectUri);
   if (input.all) url.searchParams.set("all", "1");
   return url.toString();
+}
+
+/** البريد أولاً، وإلا اسم المستخدم، وإلا الهاتف — للاختبارات والعرض */
+export function accountHandle(user: {
+  email?: string | null;
+  username?: string | null;
+  phone?: string | null;
+  name?: string | null;
+}) {
+  return user.email || user.username || user.phone || user.name || "";
 }

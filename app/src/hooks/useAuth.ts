@@ -23,6 +23,7 @@ export function useAuth(options?: UseAuthOptions) {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
   const [accounts, setAccounts] = useState<IdentityAccount[]>([]);
+  const [identityUser, setIdentityUser] = useState<IdentityAccount | null>(null);
 
   const {
     data: user,
@@ -41,12 +42,14 @@ export function useAuth(options?: UseAuthOptions) {
   useEffect(() => {
     if (!user) {
       setAccounts([]);
+      setIdentityUser(null);
       return;
     }
     let cancelled = false;
     void fetchIdentityAccounts().then((data) => {
       if (cancelled) return;
       setAccounts(data.accounts);
+      setIdentityUser(data.user);
     });
     return () => {
       cancelled = true;
@@ -56,6 +59,7 @@ export function useAuth(options?: UseAuthOptions) {
   const refreshAccounts = useCallback(async () => {
     const data = await fetchIdentityAccounts();
     setAccounts(data.accounts);
+    setIdentityUser(data.user);
     return data;
   }, []);
 
@@ -112,6 +116,7 @@ export function useAuth(options?: UseAuthOptions) {
   return useMemo(
     () => ({
       user: user ?? null,
+      identityUser,
       accounts,
       isAuthenticated: !!user,
       isLoading: isLoading || logoutMutation.isPending,
@@ -125,6 +130,7 @@ export function useAuth(options?: UseAuthOptions) {
     }),
     [
       user,
+      identityUser,
       accounts,
       isLoading,
       logoutMutation.isPending,
