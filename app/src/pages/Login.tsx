@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import { bhdAdminEntryHref, bhdStartHref } from "@/const";
+import { NASAB_WORKSPACE_PATH } from "@/lib/identity/accounts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TreePalm } from "lucide-react";
@@ -19,6 +20,19 @@ function isAdminReturnPath(value: string | null): boolean {
   );
 }
 
+function isSafeReturnTo(value: string | null): value is string {
+  return Boolean(
+    value &&
+      value.startsWith("/") &&
+      !value.startsWith("//") &&
+      !value.includes("://"),
+  );
+}
+
+/**
+ * /login بلا add=1 وجلسة قائمة → لوحة العمل (لا نموذج دخول جديد).
+ * بلا جلسة → start صامت إن وُجدت bhd_id على الهوية.
+ */
 export default function Login() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -27,6 +41,7 @@ export default function Login() {
   const dbBlocked = dbConfigured === false;
   const returnTo = params.get("returnTo") || params.get("next");
   const loginError = params.get("error");
+  const addAccount = params.get("add") === "1";
   const wantsAdmin =
     params.get("admin") === "1" ||
     isAdminReturnPath(returnTo) ||
@@ -49,12 +64,40 @@ export default function Login() {
 
   useLayoutEffect(() => {
     if (loginError || dbBlocked) return;
+    if (addAccount) {
+      /* الإضافة تتم على الهوية فقط — لا تبقَ على /login?add=1 في نَسَب */
+      window.location.replace("https://id.bhd-om.com/login?add=1");
+      return;
+    }
     if (wantsAdmin) {
       window.location.replace(bhdAdminEntryHref(returnTo));
       return;
     }
-    window.location.replace(bhdStartHref(returnTo));
-  }, [wantsAdmin, loginError, dbBlocked, returnTo]);
+
+    let cancelled = false;
+    void fetch("/api/auth/me", { cache: "no-store", credentials: "include" })
+      .then(async (response) => {
+        if (cancelled) return;
+        if (response.ok) {
+          const dest = isSafeReturnTo(returnTo) ? returnTo : NASAB_WORKSPACE_PATH;
+          window.location.replace(dest);
+          return;
+        }
+        window.location.replace(
+          bhdStartHref(isSafeReturnTo(returnTo) ? returnTo : NASAB_WORKSPACE_PATH),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        window.location.replace(
+          bhdStartHref(isSafeReturnTo(returnTo) ? returnTo : NASAB_WORKSPACE_PATH),
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wantsAdmin, loginError, dbBlocked, returnTo, addAccount]);
 
   const redirecting = !dbBlocked && !loginError;
 

@@ -9,7 +9,9 @@ import {
 
 describe("identity multi-account helpers", () => {
   it("builds add-account and silent-start URLs", () => {
-    expect(identityAddAccountHref()).toBe("https://id.bhd-om.com/login?add=1");
+    const add = identityAddAccountHref();
+    expect(add.startsWith("https://id.bhd-om.com/login?add=1")).toBe(true);
+    expect(add).toContain("next=");
     expect(NASAB_WORKSPACE_PATH).toBe("/app");
     expect(nasabSilentStartHref()).toBe("/api/auth/bhd/start?returnTo=%2Fapp");
     expect(nasabSilentStartHref("/dashboard")).toBe(

@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-10-20 — عزل الحساب بأسلوب جوجل (ACCOUNT-SWITCHER)
+
+التبديل: `POST /switch` ثم `start?returnTo=` لإعادة تحميل بيانات الحساب الجديد فقط — ممنوع `add=1`. الشارة بجانب البريد. `BhdSilentSso` يربط الرابط المباشر بالحساب النشط. `/login` بلا `add=1` وجلسة قائمة → مساحة العمل. الملف للنسخ: `docs/BHD-ACCOUNT-SWITCHER.md`.
+
+---
+
 ## 2026-10-20 — حارس مساحة العمل: SSO صامت من المواقع الأخرى
 
 مسارات `/app` و`/dashboard` و`/account` و`/checkout` و`/admin` و`/trees/*` بلا كوكي `kimi_sid` تُحوَّل فوراً (Edge) إلى `/api/auth/bhd/start`. إن كانت جلسة الهوية `bhd_id` قائمة من موقع BHD آخر يكتمل الدخول بلا نموذج. يطابق ميدلوير §5 في `BHD-ACCOUNT-SWITCHER.md`.

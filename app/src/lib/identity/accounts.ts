@@ -1,4 +1,5 @@
 import { DEFAULT_IDENTITY_ISSUER } from "./issuer";
+import { addAccountUrl, identityFetch as rawIdentityFetch } from "./client";
 import { bhdStartHref } from "@/const";
 import type { AuthProviderMark, BhdSwitcherUser } from "@/components/bhd/BhdAppSwitcher";
 
@@ -16,10 +17,8 @@ function identityUrl(path: string) {
 }
 
 async function identityFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(identityUrl(path), {
+  return rawIdentityFetch(path, {
     ...init,
-    credentials: "include",
-    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers || {}),
@@ -120,8 +119,9 @@ export function nasabSilentStartHref(returnTo?: string | null): string {
   return bhdStartHref(path);
 }
 
+/** `add=1` فقط — مع next للعودة عبر /auth/continue على الهوية */
 export function identityAddAccountHref(): string {
-  return identityUrl("/login?add=1");
+  return addAccountUrl();
 }
 
 export function identityEndSessionHref(input: {

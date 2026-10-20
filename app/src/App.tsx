@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationWarmup } from "@/components/NavigationWarmup";
+import { BhdSilentSso } from "@/components/bhd/BhdSilentSso";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Setup from "./pages/Setup";
@@ -170,6 +171,7 @@ export default function App() {
         <Route path="/invite/:token" element={<InviteAccept />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <BhdSilentSso />
       <NavigationWarmup />
       <Toaster position="top-center" richColors />
     </>
