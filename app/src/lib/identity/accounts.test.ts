@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import {
+  identityAddAccountHref,
+  identityEndSessionHref,
+  NASAB_WORKSPACE_PATH,
+  nasabSilentStartHref,
+} from "./accounts";
+
+describe("identity multi-account helpers", () => {
+  it("builds add-account and silent-start URLs", () => {
+    expect(identityAddAccountHref()).toBe("https://id.bhd-om.com/login?add=1");
+    expect(NASAB_WORKSPACE_PATH).toBe("/app");
+    expect(nasabSilentStartHref()).toBe("/api/auth/bhd/start?returnTo=%2Fapp");
+    expect(nasabSilentStartHref("/dashboard")).toBe(
+      "/api/auth/bhd/start?returnTo=%2Fdashboard",
+    );
+  });
+
+  it("adds all=1 on end-session for logout of every account", () => {
+    const url = identityEndSessionHref({
+      clientId: "bhd-nasab",
+      postLogoutRedirectUri: "https://nasab.bhd-om.com/",
+      all: true,
+    });
+    expect(url).toContain("https://id.bhd-om.com/oauth/end-session");
+    expect(url).toContain("client_id=bhd-nasab");
+    expect(url).toContain("all=1");
+  });
+});

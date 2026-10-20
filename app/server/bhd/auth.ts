@@ -223,11 +223,15 @@ export function createBhdLogoutHandler() {
   };
 }
 
-export function bhdEndSessionUrlForOrigin(origin: string): string | undefined {
+export function bhdEndSessionUrlForOrigin(
+  origin: string,
+  options?: { all?: boolean },
+): string | undefined {
   if (!isBhdIdentityReady()) return undefined;
   return bhdEndSessionUrl({
     issuer: bhdIdentityIssuer(),
     clientId: bhdOauthClientId(),
     postLogoutRedirectUri: bhdPostLogoutRedirectUri(origin),
+    all: options?.all,
   });
 }

@@ -136,23 +136,27 @@ export const authRouter = createRouter({
       );
       return { success: true };
     }),
-  logout: authedQuery.mutation(async ({ ctx }) => {
-    await incrementSessionVersion(ctx.user.id);
-    const opts = getSessionCookieOptions(ctx.req.headers);
-    ctx.resHeaders.append(
-      "set-cookie",
-      cookie.serialize(Session.cookieName, "", {
-        httpOnly: opts.httpOnly,
-        path: opts.path,
-        sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
-        secure: opts.secure,
-        maxAge: 0,
-      }),
-    );
-    const origin = getRequestOrigin(ctx.req.headers, ctx.req.url);
-    return {
-      success: true,
-      endSessionUrl: bhdEndSessionUrlForOrigin(origin) ?? null,
-    };
-  }),
+  logout: authedQuery
+    .input(z.object({ all: z.boolean().optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      await incrementSessionVersion(ctx.user.id);
+      const opts = getSessionCookieOptions(ctx.req.headers);
+      ctx.resHeaders.append(
+        "set-cookie",
+        cookie.serialize(Session.cookieName, "", {
+          httpOnly: opts.httpOnly,
+          path: opts.path,
+          sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
+          secure: opts.secure,
+          maxAge: 0,
+        }),
+      );
+      const origin = getRequestOrigin(ctx.req.headers, ctx.req.url);
+      const all = input?.all === true;
+      return {
+        success: true,
+        all,
+        endSessionUrl: bhdEndSessionUrlForOrigin(origin, { all }) ?? null,
+      };
+    }),
 });

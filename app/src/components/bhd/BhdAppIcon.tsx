@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type IconId = "account" | "portal" | "wazen" | "hisaby" | "nasab" | "baitak" | "store" | "office";
+type IconId = "account" | "portal" | "wazen" | "hisaby" | "nasab" | "baitak" | "bhd-r" | "store" | "office";
 
 const ICONS: Record<IconId, { label: string; soft: string; accent: string; glyph: ReactNode }> = {
   account: {
@@ -63,7 +63,19 @@ const ICONS: Record<IconId, { label: string; soft: string; accent: string; glyph
     ),
   },
   baitak: {
-    label: "بيتك",
+    label: "BHD R",
+    soft: "#f4e8d8",
+    accent: "#a66b2d",
+    glyph: (
+      <>
+        <path d="M11 23.5 24 12l13 11.5" />
+        <path d="M16 22.5V35h16V22.5" />
+        <path d="M21.5 35v-8h5v8" />
+      </>
+    ),
+  },
+  "bhd-r": {
+    label: "BHD R",
     soft: "#f4e8d8",
     accent: "#a66b2d",
     glyph: (
@@ -105,8 +117,9 @@ const SLUG_TO_ICON: Record<string, IconId> = {
   hisab: "hisaby",
   hisaby: "hisaby",
   nasab: "nasab",
-  baitak: "baitak",
-  "ain-oman": "baitak",
+  baitak: "bhd-r",
+  "ain-oman": "bhd-r",
+  "bhd-r": "bhd-r",
   "bhd-store": "store",
   store: "store",
   "bhd-office": "office",

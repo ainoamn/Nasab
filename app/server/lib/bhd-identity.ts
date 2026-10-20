@@ -68,7 +68,7 @@ export function isSafeReturnTo(value: string | null | undefined): boolean {
 }
 
 export function defaultReturnTo(): string {
-  return "/dashboard";
+  return "/app";
 }
 
 export function randomUrlToken(bytes = 32): string {
@@ -153,10 +153,12 @@ export function bhdEndSessionUrl(input: {
   issuer: string;
   clientId: string;
   postLogoutRedirectUri: string;
+  all?: boolean;
 }): string {
   const url = new URL("/oauth/end-session", `${input.issuer}/`);
   url.searchParams.set("post_logout_redirect_uri", input.postLogoutRedirectUri);
   url.searchParams.set("client_id", input.clientId);
+  if (input.all) url.searchParams.set("all", "1");
   return url.toString();
 }
 
