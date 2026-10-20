@@ -6,7 +6,7 @@ import {
   fetchIdentityAccounts,
   identityAddAccountHref,
   logoutIdentityAccount,
-  nasabSilentStartHref,
+  NASAB_WORKSPACE_PATH,
   switchIdentityAccount,
   type IdentityAccount,
 } from "@/lib/identity/accounts";
@@ -15,6 +15,14 @@ type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
   redirectPath?: string;
 };
+
+function productSub(user: { bhdSub?: string | null; unionId?: string | null } | null | undefined) {
+  if (!user) return null;
+  if (user.bhdSub) return String(user.bhdSub);
+  const unionId = user.unionId || "";
+  if (unionId.startsWith("bhd:")) return unionId.slice(4);
+  return null;
+}
 
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = LOGIN_PATH } =
@@ -63,14 +71,33 @@ export function useAuth(options?: UseAuthOptions) {
     return data;
   }, []);
 
-  const logout = useCallback(async () => {
-    await logoutMutation.mutateAsync({ all: false });
+  /** امسح جلسة نَسَب فقط ثم افتح مساحة العمل — الميدلوير/الحارس يحوّل إلى start إن لزم */
+  const rebindProductSession = useCallback(async () => {
+    try {
+      await logoutMutation.mutateAsync({ all: false });
+    } catch {
+      /* ignore — cookie may already be gone */
+    }
     await utils.invalidate();
-    const remaining = await logoutIdentityAccount(false);
-    if (remaining) {
-      window.location.assign(nasabSilentStartHref(window.location.pathname));
+    window.location.assign(NASAB_WORKSPACE_PATH);
+  }, [logoutMutation, utils]);
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutMutation.mutateAsync({ all: false });
+    } catch {
+      /* continue */
+    }
+    await utils.invalidate();
+    const next = await logoutIdentityAccount(false);
+    if (next.user) {
+      setIdentityUser(next.user);
+      setAccounts(next.accounts.length ? next.accounts : [next.user]);
+      window.location.assign(NASAB_WORKSPACE_PATH);
       return;
     }
+    setIdentityUser(null);
+    setAccounts([]);
     navigate(redirectPath);
   }, [logoutMutation, navigate, redirectPath, utils]);
 
@@ -78,6 +105,8 @@ export function useAuth(options?: UseAuthOptions) {
     const result = await logoutMutation.mutateAsync({ all: true });
     await utils.invalidate();
     await logoutIdentityAccount(true);
+    setIdentityUser(null);
+    setAccounts([]);
     if (result?.endSessionUrl) {
       window.location.href = result.endSessionUrl;
       return;
@@ -85,12 +114,24 @@ export function useAuth(options?: UseAuthOptions) {
     navigate(redirectPath);
   }, [logoutMutation, navigate, redirectPath, utils]);
 
-  const switchAccount = useCallback(async (sub: string) => {
-    const ok = await switchIdentityAccount(sub);
-    if (!ok) return;
-    const returnTo = `${window.location.pathname}${window.location.search}`;
-    window.location.assign(nasabSilentStartHref(returnTo));
-  }, []);
+  const switchAccount = useCallback(
+    async (sub: string) => {
+      const previous = identityUser;
+      const optimistic = accounts.find((item) => item.id === sub);
+      if (optimistic) setIdentityUser(optimistic);
+      const data = await switchIdentityAccount(sub);
+      if (!data?.user) {
+        if (previous) setIdentityUser(previous);
+        return;
+      }
+      setIdentityUser(data.user);
+      setAccounts(data.accounts);
+      const currentSub = productSub(user);
+      if (currentSub && currentSub === data.user.id) return;
+      await rebindProductSession();
+    },
+    [accounts, identityUser, rebindProductSession, user],
+  );
 
   const addAccount = useCallback(() => {
     window.location.assign(identityAddAccountHref());
@@ -104,7 +145,11 @@ export function useAuth(options?: UseAuthOptions) {
           window.location.replace(bhdAdminEntryHref(window.location.pathname));
           return;
         }
-        window.location.replace(bhdStartHref(currentPath));
+        const returnTo =
+          currentPath.startsWith("/") && !currentPath.startsWith("//")
+            ? currentPath
+            : NASAB_WORKSPACE_PATH;
+        window.location.replace(bhdStartHref(returnTo));
         return;
       }
       if (currentPath !== redirectPath) {

@@ -6,7 +6,7 @@ export type IdentityAccount = BhdSwitcherUser & {
   id: string;
 };
 
-type IdentityMeResponse = {
+export type IdentityMeResponse = {
   user: IdentityAccount | null;
   accounts?: IdentityAccount[];
 };
@@ -46,6 +46,20 @@ function normalizeAccount(raw: Partial<IdentityAccount> & { id?: string }): Iden
   };
 }
 
+function normalizeMe(data: IdentityMeResponse): {
+  user: IdentityAccount | null;
+  accounts: IdentityAccount[];
+} {
+  const user = data.user ? normalizeAccount(data.user) : null;
+  const accounts = (data.accounts || [])
+    .map((item) => normalizeAccount(item))
+    .filter((item): item is IdentityAccount => Boolean(item));
+  return {
+    user,
+    accounts: accounts.length ? accounts : user ? [user] : [],
+  };
+}
+
 export async function fetchIdentityAccounts(): Promise<{
   user: IdentityAccount | null;
   accounts: IdentityAccount[];
@@ -54,35 +68,42 @@ export async function fetchIdentityAccounts(): Promise<{
     const response = await identityFetch("/api/auth/me");
     if (!response.ok) return { user: null, accounts: [] };
     const data = (await response.json()) as IdentityMeResponse;
-    const user = data.user ? normalizeAccount(data.user) : null;
-    const accounts = (data.accounts || [])
-      .map((item) => normalizeAccount(item))
-      .filter((item): item is IdentityAccount => Boolean(item));
-    return {
-      user,
-      accounts: accounts.length ? accounts : user ? [user] : [],
-    };
+    return normalizeMe(data);
   } catch {
     return { user: null, accounts: [] };
   }
 }
 
-export async function switchIdentityAccount(sub: string): Promise<boolean> {
+export async function switchIdentityAccount(sub: string): Promise<{
+  user: IdentityAccount | null;
+  accounts: IdentityAccount[];
+} | null> {
   const response = await identityFetch("/api/auth/switch", {
     method: "POST",
     body: JSON.stringify({ sub }),
   });
-  return response.ok;
+  if (!response.ok) return null;
+  const data = (await response.json()) as IdentityMeResponse;
+  const next = normalizeMe(data);
+  return next.user ? next : null;
 }
 
-export async function logoutIdentityAccount(all: boolean): Promise<IdentityAccount | null> {
+export async function logoutIdentityAccount(all: boolean): Promise<{
+  user: IdentityAccount | null;
+  accounts: IdentityAccount[];
+}> {
   const response = await identityFetch("/api/auth/logout", {
     method: "POST",
     body: JSON.stringify({ all }),
   });
-  if (!response.ok) return null;
-  const data = (await response.json()) as { user?: IdentityAccount | null };
-  return data.user ? normalizeAccount(data.user) : null;
+  if (!response.ok) return { user: null, accounts: [] };
+  const data = (await response.json()) as IdentityMeResponse & {
+    user?: IdentityAccount | null;
+  };
+  return normalizeMe({
+    user: data.user ?? null,
+    accounts: data.accounts,
+  });
 }
 
 /** مساحة عمل نَسَب بعد SSO — مطابقة `workspacePath` في الكتالوج المجمد */

@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-10-20 — سرعة بلا وميض (ACCOUNT-SWITCHER §5)
+
+تبديل الحساب يحدّث الصورة والبريد من JSON الهوية فوراً بلا `reload`. فتح تطبيق آخر يذهب إلى `{origin}{workspacePath}` عبر `launchUrlForApp`؛ `start` فقط عندما لا توجد جلسة منتج (حارس `useAuth`). تسخين الشبكة بـ `preconnect`/`prefetch` و`hopOrigins`. نُسخت الوثائق كما هي مع `BhdAppSwitcher` و`lib/bhd/apps.ts` من ONE-BHD. التفصيل: [`docs/notes/2026-10-20-account-switcher-no-flash.md`](./docs/notes/2026-10-20-account-switcher-no-flash.md).
+
+---
+
 ## 2026-10-20 — بطاقة حساب بنمط جوجل (صورة + بريد)
 
 طبّقت [`docs/BHD-ACCOUNT-SWITCHER.md`](./docs/BHD-ACCOUNT-SWITCHER.md): الحساب النشط صورة 56px + بريد، الباقي صفوف 40px + بريد، شارة المصدر على زاوية الصورة، إضافة بحرف `+`، وخروج نصي أسفل الفاصل. نُسخ `BhdAppSwitcher` وأنماط الوجه من ONE-BHD (`ab8686a`).

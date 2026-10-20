@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { BHD_APPS } from "@/lib/bhd/apps";
+import { BHD_APPS, launchUrlForApp } from "@/lib/bhd/apps";
 import { BhdAppIcon } from "@/components/bhd/BhdAppIcon";
 import "@/bhd-footer.css";
 
@@ -32,11 +32,9 @@ export function BhdSiteFooter() {
         <div className="bhd-footer-programs-grid">
           {programs.map((app) => {
             const href =
-              app.mode === "sso" && app.startUrl
-                ? app.startUrl
-                : app.origin
-                  ? `${app.origin.replace(/\/$/, "")}/`
-                  : `${PORTAL}/apps`;
+              app.mode === "identity"
+                ? `${app.origin.replace(/\/$/, "")}${app.workspacePath}`
+                : launchUrlForApp(app) || `${PORTAL}/apps`;
             return (
               <a
                 key={app.id}

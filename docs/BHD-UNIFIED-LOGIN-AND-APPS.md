@@ -604,7 +604,7 @@ authorize وtoken دائماً على https://id.bhd-om.com وليس أصل ال
 
 | البند | التوثيق |
 |---|---|
-| تاريخ التثبيت الحي | 18–19 أغسطس 2026 — OIDC ثم المشغّل · 4 أكتوبر 2026 — جلسة حتى الخروج · 20 أكتوبر 2026 — حسابات متعددة من الرأس |
+| تاريخ التثبيت الحي | 18–19 أغسطس 2026 — OIDC ثم المشغّل · 4 أكتوبر 2026 — جلسة حتى الخروج · 20 أكتوبر 2026 — حسابات متعددة من الرأس · سرعة بلا وميض (ACCOUNT-SWITCHER §5) |
 | `client_id` | `bhd-nasab` |
 | الأصل | `https://nasab.bhd-om.com` (نسخة Vercel: `https://nasab-mu.vercel.app`) |
 | `redirect_uri` | `https://nasab.bhd-om.com/api/auth/bhd/callback` + `https://nasab-mu.vercel.app/api/auth/bhd/callback` + `http://localhost:5173/api/auth/bhd/callback` |
@@ -612,7 +612,7 @@ authorize وtoken دائماً على https://id.bhd-om.com وليس أصل ال
 | كيف يعمل الدخول | زر «تسجيل الدخول» → `GET /api/auth/bhd/start` → `https://id.bhd-om.com/oauth/authorize` (ليس أصل نَسَب) → `callback` يربط `bhd_sub` (يبقي دور الأدمن المحلي إن وُجد بالبريد) ويمسح جلسة المنتج السابقة → كوكي `kimi_sid`. جوجل وكلمة المرور المحلية معطّلان عند جاهزية SSO |
 | كيف يعمل التنقل الصامت | كوكي `bhd_id` على مضيف الهوية فقط؛ نَسَب لا يقرأ كوكي البوابة |
 | المشغّل | `AppHeader` بعد جلسة نَسَب فقط. «الحساب» → `https://id.bhd-om.com/account`. إعدادات الشجرة/الفوترة تبقى `/account` داخل نَسَب |
-| جلسة المنتج | حتى «خروج» — `BHD-SESSION-POLICY.md`. كوكي `kimi_sid` 400 يوم. بلا خمول ولا KeepAlive. بطاقة الحساب بنمط جوجل — `BHD-ACCOUNT-SWITCHER.md`: صورة+بريد، شارة مصدر على زاوية الصورة. قائمة من هوية `/api/auth/me` → `accounts`؛ تبديل `POST /api/auth/switch` ثم `start` صامت؛ إضافة → `login?add=1`؛ خروج هذا/الكل. مساحة العمل `/app` |
+| جلسة المنتج | حتى «خروج» — `BHD-SESSION-POLICY.md`. كوكي `kimi_sid` 400 يوم. بلا خمول ولا KeepAlive. بطاقة الحساب بنمط جوجل — `BHD-ACCOUNT-SWITCHER.md` (§5 سرعة بلا وميض): صورة+بريد، شارة مصدر. تبديل → `POST /api/auth/switch` ثم `setState` من JSON بلا `reload`؛ إن اختلف `sub` عن جلسة نَسَب: تنقّل مرة إلى `/app` والحارس يحوّل إلى `start` فقط بلا جلسة. فتح تطبيق آخر → `launchUrlForApp` = `workspacePath` (ليس `start` في كل نقرة). `preconnect`/`prefetch` عبر `hopOrigins`. إضافة → `login?add=1`؛ خروج هذا/الكل. |
 | الإدارة | صلاحية محلية `users.role=admin` فقط مربوط بـ `bhd_sub`. مسار الدخول: `GET /api/auth/admin-entry` → SSO → `/admin`. لا `/login?admin=1` ولا كلمة مرور محلية للمستخدم النهائي. غير المشرف يرى منعاً صريحاً. أدمن منصة الهوية لا يفتح نَسَب |
 | الفوتر | صف «برامجنا» من الكتالوج + روابط عن الشركة/الهوية/apps/الخصوصية/الشروط/الأمان على `www.bhd-om.com` + «دخول الإدارة» → `/api/auth/admin-entry` |
 | الهوية البصرية | حبر `#092d24` · أخضر `#075c45` · رمل `#fbfaf7`/`#f4f0e8` · IBM Plex Sans Arabic (لون تمييز نَسَب في أيقونة المشغّل فقط) |
