@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-10-20 — حارس مساحة العمل: SSO صامت من المواقع الأخرى
+
+مسارات `/app` و`/dashboard` و`/account` و`/checkout` و`/admin` و`/trees/*` بلا كوكي `kimi_sid` تُحوَّل فوراً (Edge) إلى `/api/auth/bhd/start`. إن كانت جلسة الهوية `bhd_id` قائمة من موقع BHD آخر يكتمل الدخول بلا نموذج. يطابق ميدلوير §5 في `BHD-ACCOUNT-SWITCHER.md`.
+
+---
+
 ## 2026-10-20 — سرعة بلا وميض (ACCOUNT-SWITCHER §5)
 
 تبديل الحساب يحدّث الصورة والبريد من JSON الهوية فوراً بلا `reload`. فتح تطبيق آخر يذهب إلى `{origin}{workspacePath}` عبر `launchUrlForApp`؛ `start` فقط عندما لا توجد جلسة منتج (حارس `useAuth`). تسخين الشبكة بـ `preconnect`/`prefetch` و`hopOrigins`. نُسخت الوثائق كما هي مع `BhdAppSwitcher` و`lib/bhd/apps.ts` من ONE-BHD. التفصيل: [`docs/notes/2026-10-20-account-switcher-no-flash.md`](./docs/notes/2026-10-20-account-switcher-no-flash.md).

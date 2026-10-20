@@ -132,12 +132,35 @@ writeFileSync(
   ),
 );
 
+const mwDir = path.join(out, "functions", "_middleware.func");
+mkdirSync(mwDir, { recursive: true });
+cpSync(
+  path.join(root, "server", "edge-session-guard.js"),
+  path.join(mwDir, "index.js"),
+);
+writeFileSync(
+  path.join(mwDir, ".vc-config.json"),
+  JSON.stringify(
+    {
+      runtime: "edge",
+      entrypoint: "index.js",
+    },
+    null,
+    2,
+  ),
+);
+
 writeFileSync(
   path.join(out, "config.json"),
   JSON.stringify(
     {
       version: 3,
       routes: [
+        {
+          src: "/(.*)",
+          middlewarePath: "_middleware",
+          continue: true,
+        },
         { src: "/api(?:/.*)?", dest: "/api" },
         { handle: "filesystem" },
         { src: "/(.*)", dest: "/index.html" },
