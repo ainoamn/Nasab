@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { BhdAppSwitcher } from "@/components/bhd/BhdAppSwitcher";
+import { BhdPrivacyGate } from "@/components/bhd/BhdPrivacyGate";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, TreePalm, Shield } from "lucide-react";
 
@@ -25,8 +26,13 @@ export default function AppHeader() {
         picture: user?.avatar ?? null,
       };
 
+  const productSub = user?.bhdSub ?? (user?.unionId?.startsWith("bhd:") ? user.unionId.slice(4) : undefined);
+
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur no-print">
+      {user ? (
+        <BhdPrivacyGate productSub={productSub ?? switcherUser.id} productEmail={user.email} />
+      ) : null}
       <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-4">
         <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">

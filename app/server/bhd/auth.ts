@@ -254,9 +254,28 @@ async function profileFromWindowToken(token: string): Promise<WindowProfile> {
   };
 }
 
+function bindReturnPath(returnTo: string, sub: string) {
+  const safe = isSafeReturnTo(returnTo) ? returnTo : defaultReturnTo();
+  try {
+    const url = new URL(safe, "https://bhd.local");
+    url.searchParams.set("au", sub);
+    url.searchParams.set("_bhd", String(Date.now()));
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return safe;
+  }
+}
+
+function wantsJson(c: Context) {
+  const accept = c.req.header("accept") || "";
+  return accept.includes("application/json");
+}
+
 export function createBhdRebindHandler() {
   return async (c: Context) => {
+    const json = wantsJson(c);
     if (!isBhdIdentityReady()) {
+      if (json) return c.json({ ok: false, error: "sso" }, 503);
       return c.redirect("/login?local=1", 303);
     }
 
@@ -279,6 +298,7 @@ export function createBhdRebindHandler() {
     const header = c.req.header("authorization");
     if (!token && header?.toLowerCase().startsWith("bearer ")) token = header.slice(7).trim();
     if (!token || token.length < 20) {
+      if (json) return c.json({ ok: false, error: "token" }, 401);
       return c.redirect(`/api/auth/bhd/start?returnTo=${encodeURIComponent(returnTo)}`, 303);
     }
 
@@ -288,15 +308,29 @@ export function createBhdRebindHandler() {
     try {
       const profile = await profileFromWindowToken(token);
       let currentBhdSub: string | null = null;
+      let currentUser: Awaited<ReturnType<typeof authenticateRequest>> | null = null;
       try {
-        const current = await authenticateRequest(c.req.raw.headers);
-        if (current.bhdSub) currentBhdSub = String(current.bhdSub);
-        else if (current.unionId?.startsWith("bhd:")) currentBhdSub = current.unionId.slice(4);
+        currentUser = await authenticateRequest(c.req.raw.headers);
+        if (currentUser.bhdSub) currentBhdSub = String(currentUser.bhdSub);
+        else if (currentUser.unionId?.startsWith("bhd:")) currentBhdSub = currentUser.unionId.slice(4);
       } catch {
         /* no product session */
       }
 
       if (currentBhdSub && currentBhdSub === profile.sub) {
+        if (json) {
+          c.header("Cache-Control", "no-store, no-cache, must-revalidate, private");
+          c.header("Pragma", "no-cache");
+          return c.json({
+            ok: true,
+            unchanged: true,
+            user: {
+              id: profile.sub,
+              email: currentUser?.email ?? profile.email,
+              name: currentUser?.name ?? profile.name ?? profile.email,
+            },
+          });
+        }
         const existing = await findUserByBhdSub(profile.sub);
         if (existing) {
           const sessionToken = await issueSessionForUser(
@@ -336,11 +370,25 @@ export function createBhdRebindHandler() {
         env.appId || "nasab-app",
       );
       setCookie(c, Session.cookieName, sessionToken, { ...sessionCookie, maxAge });
-      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+      c.header("Cache-Control", "no-store, no-cache, must-revalidate, private");
       c.header("Pragma", "no-cache");
-      return c.redirect(returnTo, 303);
+
+      if (json) {
+        return c.json({
+          ok: true,
+          user: {
+            id: profile.sub,
+            email: linked.email ?? profile.email,
+            name: linked.name ?? profile.name ?? profile.email,
+          },
+        });
+      }
+      return c.redirect(bindReturnPath(returnTo, profile.sub), 303);
     } catch {
       setCookie(c, Session.cookieName, "", { ...sessionCookie, maxAge: 0 });
+      if (json) {
+        return c.json({ ok: false, error: "rebind" }, 401);
+      }
       const continueUrl = `/api/auth/bhd/start?returnTo=${encodeURIComponent(returnTo)}`;
       return c.redirect(`/api/auth/bhd/logout?continue=${encodeURIComponent(continueUrl)}`, 303);
     }

@@ -96,7 +96,7 @@ export function useAuth(options?: UseAuthOptions) {
   const switchAccount = useCallback(async (sub: string) => {
     const switched = await switchWindowAccount(sub);
     if (!switched.ok) return;
-    await applyAccountIsolation(switched.token);
+    await applyAccountIsolation(switched.token, { force: true, sub: switched.userId ?? sub });
   }, []);
 
   const addAccount = useCallback(() => {
