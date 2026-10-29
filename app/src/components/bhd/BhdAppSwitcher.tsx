@@ -1,6 +1,7 @@
 "use client";
 
-import { getCachedCatalogApps, hopOrigins, launchUrlForApp, type BhdApp } from "../../lib/bhd/apps";
+import { hopOrigins, launchUrlForApp, type BhdApp } from "../../lib/bhd/apps";
+import { getCachedCatalogApps } from "../../lib/bhd/catalog";
 import { useBhdCatalog } from "../../lib/identity/use-bhd-catalog";
 import { DEFAULT_IDENTITY_ISSUER } from "../../lib/identity/issuer";
 import { BhdAppIcon } from "./BhdAppIcon";
