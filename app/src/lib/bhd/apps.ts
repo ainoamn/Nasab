@@ -8,12 +8,17 @@ export type BhdApp = {
   origin: string;
   /** مسار نسبي داخل المنتج بعد SSO — مساحة عمل العميل وليس الصفحة التسويقية. */
   workspacePath: string;
+  homePath?: string;
   startUrl: string | null;
   mode: BhdAppMode;
   enabled: boolean;
   mark: string;
   accent: string;
   soft: string;
+  logoUrl?: string | null;
+  homeUrl?: string;
+  workspaceUrl?: string;
+  sortOrder?: number;
 };
 
 export const BHD_APP_SWITCHER_SPEC = "bhd-appswitcher.v1";
@@ -24,12 +29,9 @@ function ssoStart(origin: string, workspacePath: string) {
 }
 
 /**
- * كتالوج مجمد — يُنسخ حرفياً إلى كل منتجات BHD.
- * workspacePath = لوحة العميل بعد التعرّف عبر الهوية (ليس /admin إلا للمكتب الداخلي).
- * النقر يفتح workspacePath مباشرة. start فقط إن لم توجد جلسة منتج (ميدلوير المنتج).
- * انظر docs/BHD-PRODUCT-SSO-ADMIN.md وdocs/BHD-APP-SWITCHER.md
+ * احتياط محلي — المصدر الحي: https://id.bhd-om.com/api/bhd/catalog
  */
-export const BHD_APPS: BhdApp[] = [
+export const BHD_APPS_FALLBACK: BhdApp[] = [
   {
     id: "account",
     clientId: null,
@@ -144,8 +146,11 @@ export const BHD_APPS: BhdApp[] = [
   },
 ];
 
-export function gatewayApps(): BhdApp[] {
-  return BHD_APPS.filter((app) => app.enabled && app.id !== "account");
+/** @deprecated استخدم الكتالوج الحي عبر useBhdCatalog / fetchIdentityCatalog */
+export const BHD_APPS = BHD_APPS_FALLBACK;
+
+export function gatewayApps(apps: BhdApp[] = BHD_APPS_FALLBACK): BhdApp[] {
+  return apps.filter((app) => app.enabled && app.id !== "account");
 }
 
 function samePortalOrigin(pageOrigin?: string) {
@@ -171,6 +176,7 @@ export function workspaceUrlForApp(app: BhdApp, pageOrigin?: string): string {
   if (app.id === "portal" && samePortalOrigin(pageOrigin)) {
     return app.workspacePath;
   }
+  if (app.workspaceUrl) return app.workspaceUrl;
   if (app.origin) {
     return `${app.origin.replace(/\/$/, "")}${app.workspacePath || "/"}`;
   }
@@ -185,6 +191,6 @@ export function startUrlForApp(app: BhdApp): string | null {
   return app.startUrl;
 }
 
-export function hopOrigins(): string[] {
-  return [...new Set(BHD_APPS.filter((app) => app.enabled && app.origin).map((app) => app.origin.replace(/\/$/, "")))];
+export function hopOrigins(apps: BhdApp[] = BHD_APPS_FALLBACK): string[] {
+  return [...new Set(apps.filter((app) => app.enabled && app.origin).map((app) => app.origin.replace(/\/$/, "")))];
 }

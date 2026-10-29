@@ -30,6 +30,8 @@ import {
 import { linkOrCreateBhdUser } from "../queries/bhd-users";
 import { incrementSessionVersion } from "../queries/users";
 import { authenticateRequest } from "../kimi/auth";
+import { identitySessionMaxAgeSecCached } from "../lib/bhd-runtime";
+import { findUserByBhdSub } from "../queries/bhd-users";
 
 function oauthCookieOpts(headers: Headers) {
   const host = headers.get("host") || "";
@@ -179,7 +181,7 @@ export function createBhdCallbackHandler() {
       );
       setCookie(c, Session.cookieName, token, {
         ...sessionCookie,
-        maxAge: Session.maxAgeMs / 1000,
+        maxAge: identitySessionMaxAgeSecCached(),
       });
 
       const dest = isSafeReturnTo(saved.returnTo)
@@ -220,6 +222,128 @@ export function createBhdLogoutHandler() {
       }),
       302,
     );
+  };
+}
+
+type WindowProfile = {
+  sub: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+};
+
+async function profileFromWindowToken(token: string): Promise<WindowProfile> {
+  const issuer = bhdIdentityIssuer();
+  const response = await fetch(`${issuer}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) throw new Error(`me_${response.status}`);
+  const body = (await response.json()) as {
+    user?: { id?: string; email?: string; name?: string; picture?: string | null } | null;
+  };
+  const user = body.user;
+  const email = typeof user?.email === "string" ? user.email.trim().toLowerCase() : "";
+  if (!user?.id || !email) throw new Error("claims");
+  return {
+    sub: user.id,
+    email,
+    name: typeof user.name === "string" && user.name.trim() ? user.name.trim() : email.split("@")[0],
+    picture: typeof user.picture === "string" && user.picture.startsWith("https://") ? user.picture : null,
+  };
+}
+
+export function createBhdRebindHandler() {
+  return async (c: Context) => {
+    if (!isBhdIdentityReady()) {
+      return c.redirect("/login?local=1", 303);
+    }
+
+    let token = "";
+    let returnTo = "/";
+    const contentType = c.req.header("content-type") || "";
+    if (c.req.method === "POST" && contentType.includes("application/json")) {
+      const json = (await c.req.json().catch(() => ({}))) as { token?: string; returnTo?: string };
+      token = typeof json.token === "string" ? json.token.trim() : "";
+      returnTo = isSafeReturnTo(json.returnTo) ? json.returnTo! : defaultReturnTo();
+    } else if (c.req.method === "POST") {
+      const form = await c.req.parseBody().catch(() => ({}));
+      token = String(form?.token || "").trim();
+      const rawReturn = String(form?.returnTo || "");
+      returnTo = isSafeReturnTo(rawReturn) ? rawReturn : defaultReturnTo();
+    } else {
+      returnTo = isSafeReturnTo(c.req.query("returnTo")) ? c.req.query("returnTo")! : defaultReturnTo();
+    }
+
+    const header = c.req.header("authorization");
+    if (!token && header?.toLowerCase().startsWith("bearer ")) token = header.slice(7).trim();
+    if (!token || token.length < 20) {
+      return c.redirect(`/api/auth/bhd/start?returnTo=${encodeURIComponent(returnTo)}`, 303);
+    }
+
+    const sessionCookie = getSessionCookieOptions(c.req.raw.headers);
+    const maxAge = identitySessionMaxAgeSecCached();
+
+    try {
+      const profile = await profileFromWindowToken(token);
+      let currentBhdSub: string | null = null;
+      try {
+        const current = await authenticateRequest(c.req.raw.headers);
+        if (current.bhdSub) currentBhdSub = String(current.bhdSub);
+        else if (current.unionId?.startsWith("bhd:")) currentBhdSub = current.unionId.slice(4);
+      } catch {
+        /* no product session */
+      }
+
+      if (currentBhdSub && currentBhdSub === profile.sub) {
+        const existing = await findUserByBhdSub(profile.sub);
+        if (existing) {
+          const sessionToken = await issueSessionForUser(
+            existing.id,
+            existing.unionId,
+            env.appId || "nasab-app",
+          );
+          setCookie(c, Session.cookieName, sessionToken, { ...sessionCookie, maxAge });
+        }
+        c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+        c.header("Pragma", "no-cache");
+        return c.redirect(returnTo, 303);
+      }
+
+      const linked = await linkOrCreateBhdUser({
+        sub: profile.sub,
+        email: profile.email,
+        name: profile.name,
+        picture: profile.picture,
+        preferredUsername: null,
+        phoneNumber: null,
+        ip: getClientIp(c.req.raw.headers),
+      });
+      await ensureUserIdentity(linked.id);
+      try {
+        const previous = await authenticateRequest(c.req.raw.headers);
+        if (previous.id !== linked.id) {
+          await incrementSessionVersion(previous.id);
+        }
+      } catch {
+        /* none */
+      }
+      setCookie(c, Session.cookieName, "", { ...sessionCookie, maxAge: 0 });
+      const sessionToken = await issueSessionForUser(
+        linked.id,
+        linked.unionId,
+        env.appId || "nasab-app",
+      );
+      setCookie(c, Session.cookieName, sessionToken, { ...sessionCookie, maxAge });
+      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+      c.header("Pragma", "no-cache");
+      return c.redirect(returnTo, 303);
+    } catch {
+      setCookie(c, Session.cookieName, "", { ...sessionCookie, maxAge: 0 });
+      const continueUrl = `/api/auth/bhd/start?returnTo=${encodeURIComponent(returnTo)}`;
+      return c.redirect(`/api/auth/bhd/logout?continue=${encodeURIComponent(continueUrl)}`, 303);
+    }
   };
 }
 

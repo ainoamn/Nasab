@@ -1,5 +1,8 @@
+"use client";
+
 import { useTranslation } from "react-i18next";
-import { BHD_APPS, launchUrlForApp } from "@/lib/bhd/apps";
+import { launchUrlForApp } from "@/lib/bhd/apps";
+import { useBhdCatalog } from "@/lib/identity/use-bhd-catalog";
 import { BhdAppIcon } from "@/components/bhd/BhdAppIcon";
 import "@/bhd-footer.css";
 
@@ -14,13 +17,11 @@ const COMPANY_LINKS = [
   { href: `${PORTAL}/security`, key: "security" },
 ] as const;
 
-/** فوتر المجموعة — الدليل المرجعي القسم 0.5 */
 export function BhdSiteFooter() {
   const { t, i18n } = useTranslation();
+  const catalogApps = useBhdCatalog();
   const isAr = i18n.language?.startsWith("ar") !== false;
-  const programs = BHD_APPS.filter(
-    (app) => app.enabled && app.id !== "account",
-  );
+  const programs = catalogApps.filter((app) => app.enabled && app.id !== "account");
 
   return (
     <footer className="bhd-site-footer no-print">
@@ -42,7 +43,13 @@ export function BhdSiteFooter() {
                 className="bhd-footer-program"
                 title={isAr ? app.nameAr : app.nameEn}
               >
-                <BhdAppIcon id={app.id} title={isAr ? app.nameAr : app.nameEn} />
+                <BhdAppIcon
+                  id={app.id}
+                  title={isAr ? app.nameAr : app.nameEn}
+                  logoUrl={app.logoUrl}
+                  soft={app.soft}
+                  accent={app.accent}
+                />
                 <span>{isAr ? app.nameAr : app.nameEn}</span>
               </a>
             );

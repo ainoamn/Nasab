@@ -2,12 +2,11 @@ import { trpc } from "@/providers/trpc";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { LOGIN_PATH, bhdAdminEntryHref, bhdStartHref } from "@/const";
-import { addAccountUrl, applyAccountIsolation } from "@/lib/identity/client";
+import { addAccountUrl, applyAccountIsolation, switchWindowAccount } from "@/lib/identity/client";
 import {
   fetchIdentityAccounts,
   logoutIdentityAccount,
   NASAB_WORKSPACE_PATH,
-  switchIdentityAccount,
   type IdentityAccount,
 } from "@/lib/identity/accounts";
 
@@ -94,11 +93,10 @@ export function useAuth(options?: UseAuthOptions) {
     navigate(redirectPath);
   }, [logoutMutation, navigate, redirectPath, utils]);
 
-  /** عزل إلزامي: بعد switch أعد ربط المنتج عبر start — ليس add=1 */
   const switchAccount = useCallback(async (sub: string) => {
-    const data = await switchIdentityAccount(sub);
-    if (!data?.user) return;
-    applyAccountIsolation();
+    const switched = await switchWindowAccount(sub);
+    if (!switched.ok) return;
+    await applyAccountIsolation(switched.token);
   }, []);
 
   const addAccount = useCallback(() => {

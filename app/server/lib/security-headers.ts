@@ -19,7 +19,7 @@ export async function securityHeadersMiddleware(c: Context, next: Next) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+      "script-src 'self' 'unsafe-inline' https://accounts.google.com https://id.bhd-om.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
